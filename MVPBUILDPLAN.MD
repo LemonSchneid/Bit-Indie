@@ -217,7 +217,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 ### Milestone 0 — Repo & Skeleton (Week 1)
 
-* **T0-1** Monorepo scaffolding (apps/web, apps/api, infra/docker-compose). *DoD:* `docker-compose up` brings Postgres, MinIO, API health.
+* **T0-1** Monorepo scaffolding (apps/web, apps/api, infra/docker-compose). *DoD:* `docker-compose up` brings Postgres, MinIO, API health. ✅ Done
 * **T0-2** FastAPI skeleton + health route + OpenAPI. *DoD:* `/docs` renders; CORS set.
 * **T0-3** Next.js app boot + base layout. *DoD:* Web home renders; calls API health.
 * **T0-4** DB init + Alembic baseline. *DoD:* `alembic upgrade head` creates v0 tables.

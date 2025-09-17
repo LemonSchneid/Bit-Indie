@@ -162,3 +162,23 @@ Proof of Play = **the Bitcoin/Nostr-native indie game marketplace**.
 * **Comments = free speech.**
 * **Zaps = paid value.**
 * Proof of Play earns from **sales cuts + its own zaps/tips.**
+
+---
+
+## Development setup
+
+This repository is a polyglot monorepo:
+
+* `apps/web` — Next.js 14 storefront (TypeScript + Tailwind CSS).
+* `apps/api` — FastAPI backend service.
+* `infra` — Docker Compose stack for local dependencies (Postgres, MinIO, API).
+* `scripts/dev_bootstrap.sh` — helper to build and start the stack.
+
+To bring the stack online, run:
+
+```bash
+./scripts/dev_bootstrap.sh
+```
+
+The API listens on [http://localhost:8080](http://localhost:8080) with a `/health` endpoint. Postgres is exposed on `localhost:5432`
+and MinIO on `localhost:9000` (console at `:9001`).
