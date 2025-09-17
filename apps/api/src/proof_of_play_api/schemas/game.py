@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, field_validator
@@ -114,4 +115,41 @@ class GameRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-__all__ = ["GameCreateRequest", "GameUpdateRequest", "GameRead"]
+class PublishRequirementCode(str, enum.Enum):
+    """Identifiers for the requirements needed to publish a game."""
+
+    SUMMARY = "SUMMARY"
+    DESCRIPTION = "DESCRIPTION"
+    COVER_IMAGE = "COVER_IMAGE"
+    BUILD_UPLOAD = "BUILD_UPLOAD"
+
+
+class GamePublishRequirement(BaseModel):
+    """A single unmet requirement blocking a game from being published."""
+
+    code: PublishRequirementCode
+    message: str
+
+
+class GamePublishChecklist(BaseModel):
+    """Missing publish requirements for a game and overall readiness."""
+
+    is_publish_ready: bool
+    missing_requirements: list[GamePublishRequirement] = Field(default_factory=list)
+
+
+class GamePublishRequest(BaseModel):
+    """Request payload for promoting a game draft to the unlisted state."""
+
+    user_id: str
+
+
+__all__ = [
+    "GameCreateRequest",
+    "GamePublishChecklist",
+    "GamePublishRequest",
+    "GamePublishRequirement",
+    "GameRead",
+    "GameUpdateRequest",
+    "PublishRequirementCode",
+]

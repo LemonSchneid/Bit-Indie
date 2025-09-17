@@ -7,8 +7,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
-from proof_of_play_api.db.models import Game, User
-from proof_of_play_api.schemas.game import GameCreateRequest, GameRead, GameUpdateRequest
+from proof_of_play_api.db.models import Game, GameStatus, User
+from proof_of_play_api.schemas.game import (
+    GameCreateRequest,
+    GamePublishChecklist,
+    GamePublishRequest,
+    GamePublishRequirement,
+    GameRead,
+    GameUpdateRequest,
+    PublishRequirementCode,
+)
 from proof_of_play_api.schemas.storage import (
     GameAssetUploadRequest,
     GameAssetUploadResponse,
@@ -62,7 +70,7 @@ def create_game_draft(
         )
 
     payload = request.model_dump(exclude={"user_id"})
-    game = Game(developer_id=developer_id, **payload)
+    game = Game(developer_id=developer_id, active=False, **payload)
     session.add(game)
     session.flush()
     session.refresh(game)
@@ -162,4 +170,147 @@ def create_game_asset_upload(
     )
 
 
-__all__ = ["create_game_asset_upload", "create_game_draft", "update_game_draft"]
+def _evaluate_publish_requirements(game: Game) -> list[GamePublishRequirement]:
+    """Return any unmet requirements blocking a game from being published."""
+
+    missing: list[GamePublishRequirement] = []
+
+    if not (game.summary and game.summary.strip()):
+        missing.append(
+            GamePublishRequirement(
+                code=PublishRequirementCode.SUMMARY,
+                message="Add a short summary before publishing.",
+            )
+        )
+
+    if not (game.description_md and game.description_md.strip()):
+        missing.append(
+            GamePublishRequirement(
+                code=PublishRequirementCode.DESCRIPTION,
+                message="Provide a longer description to help players understand the game.",
+            )
+        )
+
+    if not game.cover_url:
+        missing.append(
+            GamePublishRequirement(
+                code=PublishRequirementCode.COVER_IMAGE,
+                message="Upload a cover image to showcase the game on its listing page.",
+            )
+        )
+
+    build_requirements = (
+        game.build_object_key,
+        game.build_size_bytes,
+        game.checksum_sha256,
+    )
+    if not all(build_requirements):
+        missing.append(
+            GamePublishRequirement(
+                code=PublishRequirementCode.BUILD_UPLOAD,
+                message="Upload a downloadable build with size and checksum recorded.",
+            )
+        )
+
+    return missing
+
+
+@router.get(
+    "/{game_id}/publish-checklist",
+    response_model=GamePublishChecklist,
+    summary="List remaining requirements before a game can be published",
+)
+def get_publish_checklist(
+    game_id: str,
+    user_id: str,
+    session: Session = Depends(get_session),
+) -> GamePublishChecklist:
+    """Return the outstanding publish requirements for the caller's game draft."""
+
+    developer_id = _get_developer_id(session=session, user_id=user_id)
+
+    game = session.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+
+    if game.developer_id != developer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this checklist.",
+        )
+
+    missing = _evaluate_publish_requirements(game)
+
+    return GamePublishChecklist(is_publish_ready=not missing, missing_requirements=missing)
+
+
+@router.post(
+    "/{game_id}/publish",
+    response_model=GameRead,
+    summary="Publish a game listing as unlisted once requirements are met",
+)
+def publish_game(
+    game_id: str,
+    request: GamePublishRequest,
+    session: Session = Depends(get_session),
+) -> GameRead:
+    """Promote a game draft to the unlisted catalog if all requirements are satisfied."""
+
+    developer_id = _get_developer_id(session=session, user_id=request.user_id)
+
+    game = session.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+
+    if game.developer_id != developer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to publish this game.",
+        )
+
+    missing = _evaluate_publish_requirements(game)
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Game is missing required fields for publishing.",
+                "missing_requirements": [item.model_dump() for item in missing],
+            },
+        )
+
+    game.active = True
+    game.status = GameStatus.UNLISTED
+
+    session.flush()
+    session.refresh(game)
+    return GameRead.model_validate(game)
+
+
+@router.get(
+    "/slug/{slug}",
+    response_model=GameRead,
+    summary="Retrieve a published game by its slug",
+)
+def read_game_by_slug(slug: str, session: Session = Depends(get_session)) -> GameRead:
+    """Return a published game that is accessible via direct URL lookup."""
+
+    normalized_slug = slug.strip().lower()
+    if not normalized_slug:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug cannot be empty.")
+
+    stmt = select(Game).where(Game.slug == normalized_slug, Game.active.is_(True))
+    game = session.scalar(stmt)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+
+    return GameRead.model_validate(game)
+
+
+__all__ = [
+    "create_game_asset_upload",
+    "create_game_draft",
+    "get_publish_checklist",
+    "publish_game",
+    "read_game_by_slug",
+    "update_game_draft",
+]
