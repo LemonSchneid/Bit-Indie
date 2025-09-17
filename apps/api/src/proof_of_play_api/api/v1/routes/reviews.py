@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, InvoiceStatus, Purchase, Review, User
 from proof_of_play_api.schemas.review import ReviewCreateRequest, ReviewRead
+from proof_of_play_api.services.review_ranking import update_review_helpful_score
 
 
 router = APIRouter(prefix="/v1/games/{game_id}/reviews", tags=["reviews"])
@@ -20,13 +21,13 @@ router = APIRouter(prefix="/v1/games/{game_id}/reviews", tags=["reviews"])
     summary="List reviews for a game",
 )
 def list_game_reviews(game_id: str, session: Session = Depends(get_session)) -> list[ReviewRead]:
-    """Return all reviews for the requested game ordered by creation time."""
+    """Return all reviews for the requested game ordered by helpful score."""
 
     game = session.get(Game, game_id)
     if game is None or not game.active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
 
-    stmt = select(Review).where(Review.game_id == game_id).order_by(Review.created_at.asc())
+    stmt = select(Review).where(Review.game_id == game_id).order_by(Review.helpful_score.desc(), Review.created_at.desc())
     reviews = session.scalars(stmt).all()
     return [ReviewRead.model_validate(review) for review in reviews]
 
@@ -76,6 +77,10 @@ def create_game_review(
         is_verified_purchase=has_verified_purchase,
     )
     session.add(review)
+    session.flush()
+    session.refresh(review)
+
+    update_review_helpful_score(review=review, user=user)
     session.flush()
     session.refresh(review)
 

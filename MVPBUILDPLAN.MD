@@ -241,7 +241,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 * **T3-1** Comments CRUD (free speech). *DoD:* Post/list comments per game. ✅ Done
 * **T3-2** Verified-purchase reviews (rating gated). *DoD:* If purchase → allow rating; else text only. ✅ Done
-* **T3-3** Helpful score calculation (backend service). *DoD:* Endpoint returns sorted reviews.
+* **T3-3** Helpful score calculation (backend service). *DoD:* Endpoint returns sorted reviews. ✅ Done
 * **T3-4** UI badges (Verified Purchase, sats received). *DoD:* Visible labels; tooltip for disclosures.
 
 ### Milestone 4 — Zaps Integration (Week 8–9)
