@@ -240,7 +240,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 ### Milestone 3 — Comments, Reviews, Ranking (Week 6–7)
 
 * **T3-1** Comments CRUD (free speech). *DoD:* Post/list comments per game. ✅ Done
-* **T3-2** Verified-purchase reviews (rating gated). *DoD:* If purchase → allow rating; else text only.
+* **T3-2** Verified-purchase reviews (rating gated). *DoD:* If purchase → allow rating; else text only. ✅ Done
 * **T3-3** Helpful score calculation (backend service). *DoD:* Endpoint returns sorted reviews.
 * **T3-4** UI badges (Verified Purchase, sats received). *DoD:* Visible labels; tooltip for disclosures.
 
