@@ -5,6 +5,7 @@ from __future__ import annotations
 import enum
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import PurePath
 from typing import Any, Protocol
@@ -25,6 +26,11 @@ class _PresignClient(Protocol):
     def generate_presigned_post(self, **kwargs: Any) -> dict[str, Any]:
         """Return a dictionary describing a pre-signed POST upload."""
 
+    def generate_presigned_url(
+        self, ClientMethod: str, Params: dict[str, Any], ExpiresIn: int
+    ) -> str:
+        """Return a pre-signed URL for the requested client method."""
+
 
 class GameAssetKind(str, enum.Enum):
     """Enumerate the supported asset types for a game listing."""
@@ -41,6 +47,14 @@ class PresignedUpload:
     fields: dict[str, str]
     object_key: str
     public_url: str
+
+
+@dataclass(frozen=True)
+class PresignedDownload:
+    """Representation of a time limited download link."""
+
+    url: str
+    expires_at: datetime
 
 
 class StorageService:
@@ -113,6 +127,17 @@ class StorageService:
             object_key=object_key,
             public_url=self.build_public_url(object_key),
         )
+
+    def create_presigned_download(self, *, object_key: str) -> PresignedDownload:
+        """Return a time limited download link for the specified object key."""
+
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=self._presign_expiration)
+        url = self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self._bucket, "Key": object_key},
+            ExpiresIn=self._presign_expiration,
+        )
+        return PresignedDownload(url=url, expires_at=expires_at)
 
     def build_asset_key(self, *, game_id: str, asset: GameAssetKind, filename: str) -> str:
         """Return an object key suitable for storing the requested asset."""

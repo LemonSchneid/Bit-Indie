@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,6 +9,7 @@ from proof_of_play_api.db.models import (
     Game,
     GameStatus,
     InvoiceStatus as PurchaseInvoiceStatus,
+    DownloadAuditLog,
     Purchase,
     User,
 )
@@ -17,6 +20,8 @@ from proof_of_play_api.services.payments import (
     get_payment_service,
     reset_payment_service,
 )
+from proof_of_play_api.services.storage import PresignedDownload, get_storage_service
+from sqlalchemy import select
 
 
 class _StubPaymentService:
@@ -69,15 +74,19 @@ def _create_schema() -> None:
     Base.metadata.create_all(engine)
 
 
-def _build_client(stub: _StubPaymentService) -> TestClient:
+def _build_client(stub: _StubPaymentService, storage: object | None = None) -> TestClient:
     """Return a FastAPI client with the payment service dependency overridden."""
 
     app = create_application()
     app.dependency_overrides[get_payment_service] = lambda: stub
+    if storage is not None:
+        app.dependency_overrides[get_storage_service] = lambda: storage
     return TestClient(app)
 
 
-def _seed_game_with_price(*, price_msats: int, active: bool = True) -> tuple[str, str]:
+def _seed_game_with_price(
+    *, price_msats: int, active: bool = True, build_object_key: str | None = None
+) -> tuple[str, str]:
     """Persist a user, developer, and game returning their identifiers."""
 
     with session_scope() as session:
@@ -97,12 +106,28 @@ def _seed_game_with_price(*, price_msats: int, active: bool = True) -> tuple[str
             price_msats=price_msats,
             active=active,
             status=GameStatus.UNLISTED,
+            build_object_key=build_object_key,
         )
         session.add(game)
         session.flush()
         game_id = game.id
 
     return user_id, game_id
+
+
+class _StubStorageService:
+    """Test double that returns a deterministic download link."""
+
+    def __init__(self) -> None:
+        self.object_keys: list[str] = []
+        self.response = PresignedDownload(
+            url="https://downloads.example.com/build.zip?token=abc",
+            expires_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        )
+
+    def create_presigned_download(self, *, object_key: str) -> PresignedDownload:
+        self.object_keys.append(object_key)
+        return self.response
 
 
 def test_create_game_invoice_persists_purchase_and_returns_invoice() -> None:
@@ -239,3 +264,132 @@ def test_webhook_expires_unpaid_invoice() -> None:
         assert refreshed.invoice_status is PurchaseInvoiceStatus.EXPIRED
         assert refreshed.download_granted is False
         assert refreshed.paid_at is None
+
+
+def test_create_download_link_returns_signed_url_and_logs_event() -> None:
+    """Eligible purchases should receive a signed download link and log entry."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(stub, storage=storage_stub)
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/download-link",
+        json={"user_id": user_id},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["download_url"] == storage_stub.response.url
+    response_expires = datetime.fromisoformat(body["expires_at"].replace("Z", "+00:00"))
+    assert response_expires == storage_stub.response.expires_at
+    assert storage_stub.object_keys == [f"games/{game_id}/build/build.zip"]
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is not None
+        assert log.purchase_id == purchase_id
+        assert log.user_id == user_id
+        assert log.game_id == game_id
+        assert log.object_key == f"games/{game_id}/build/build.zip"
+        assert log.expires_at == storage_stub.response.expires_at.replace(tzinfo=None)
+
+
+def test_create_download_link_rejects_unpaid_purchase() -> None:
+    """Purchases that are not fully paid should not receive download links."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PENDING,
+            amount_msats=5000,
+            download_granted=False,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(stub, storage=storage_stub)
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/download-link",
+        json={"user_id": user_id},
+    )
+
+    assert response.status_code == 400
+    assert storage_stub.object_keys == []
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is None
+
+
+def test_create_download_link_blocks_other_users() -> None:
+    """Users may only request download links for their own purchases."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(stub, storage=storage_stub)
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/download-link",
+        json={"user_id": "not-owner"},
+    )
+
+    assert response.status_code == 403
+    assert storage_stub.object_keys == []
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is None
