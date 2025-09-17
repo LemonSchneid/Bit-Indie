@@ -94,6 +94,12 @@ class User(TimestampMixin, Base):
         single_parent=True,
     )
 
+    @property
+    def is_developer(self) -> bool:
+        """Return ``True`` when the user has an associated developer profile."""
+
+        return self.developer_profile is not None
+
 
 class Developer(TimestampMixin, Base):
     """Developer profile linked to a user account."""
