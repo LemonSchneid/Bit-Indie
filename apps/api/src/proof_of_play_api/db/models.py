@@ -196,6 +196,21 @@ class Purchase(TimestampMixin, Base):
     game: Mapped[Game] = relationship(back_populates="purchases")
 
 
+class DownloadAuditLog(TimestampMixin, Base):
+    """Audit trail entries recorded each time a download link is issued."""
+
+    __tablename__ = "download_audit_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    purchase_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("purchases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    game_id: Mapped[str] = mapped_column(String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False)
+    object_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 __all__ = [
     "Developer",
     "Game",
@@ -206,4 +221,5 @@ __all__ = [
     "RefundStatus",
     "TimestampMixin",
     "User",
+    "DownloadAuditLog",
 ]

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from proof_of_play_api.services.storage import GameAssetKind, StorageService
+from datetime import datetime, timezone
+
+from proof_of_play_api.services.storage import (
+    GameAssetKind,
+    PresignedDownload,
+    StorageService,
+)
 
 
 class _RecordingClient:
@@ -10,6 +16,7 @@ class _RecordingClient:
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
+        self.download_calls: list[dict[str, object]] = []
 
     def generate_presigned_post(self, **kwargs: object) -> dict[str, object]:
         self.calls.append(kwargs)
@@ -18,6 +25,18 @@ class _RecordingClient:
             "url": "http://localhost:9000/pop-games",
             "fields": {"key": key, "policy": "encoded", "Content-Type": kwargs.get("Fields", {}).get("Content-Type", "")},
         }
+
+    def generate_presigned_url(
+        self, ClientMethod: str, Params: dict[str, object], ExpiresIn: int
+    ) -> str:
+        self.download_calls.append(
+            {
+                "ClientMethod": ClientMethod,
+                "Params": Params,
+                "ExpiresIn": ExpiresIn,
+            }
+        )
+        return f"http://localhost:9000/pop-games/{Params['Key']}?signature=abc"
 
 
 def test_generate_game_asset_upload_includes_expected_conditions() -> None:
@@ -68,3 +87,28 @@ def test_build_asset_key_handles_cover_extensions() -> None:
 
     assert key.startswith("games/abc/cover/")
     assert key.endswith(".png")
+
+
+def test_create_presigned_download_returns_expiring_url() -> None:
+    """Generating a download link should call the client and record expiration."""
+
+    client = _RecordingClient()
+    service = StorageService(
+        client=client,
+        bucket="pop-games",
+        presign_expiration=900,
+        public_base_url="http://localhost:9000/pop-games",
+    )
+
+    download = service.create_presigned_download(object_key="games/xyz/build/archive.zip")
+
+    assert isinstance(download, PresignedDownload)
+    assert download.url.startswith("http://localhost:9000/pop-games/games/xyz/build/")
+    assert download.url.endswith("?signature=abc")
+    assert download.expires_at > datetime.now(timezone.utc)
+
+    assert client.download_calls
+    call = client.download_calls[0]
+    assert call["ClientMethod"] == "get_object"
+    assert call["Params"] == {"Bucket": "pop-games", "Key": "games/xyz/build/archive.zip"}
+    assert call["ExpiresIn"] == 900

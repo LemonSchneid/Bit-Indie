@@ -49,9 +49,24 @@ class LnBitsWebhookPayload(BaseModel):
     payment_hash: str = Field(..., min_length=1, max_length=120)
 
 
+class PurchaseDownloadRequest(BaseModel):
+    """Request payload for generating a signed download link."""
+
+    user_id: str = Field(..., min_length=1)
+
+
+class PurchaseDownloadResponse(BaseModel):
+    """Response payload describing a signed download link."""
+
+    download_url: AnyUrl
+    expires_at: datetime
+
+
 __all__ = [
     "InvoiceCreateRequest",
     "InvoiceCreateResponse",
     "LnBitsWebhookPayload",
+    "PurchaseDownloadRequest",
+    "PurchaseDownloadResponse",
     "PurchaseRead",
 ]
