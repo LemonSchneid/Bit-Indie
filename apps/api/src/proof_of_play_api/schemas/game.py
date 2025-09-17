@@ -1,0 +1,101 @@
+"""Pydantic models describing game draft payloads and responses."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, field_validator
+
+from proof_of_play_api.db.models import GameCategory, GameStatus
+
+
+class GameBase(BaseModel):
+    """Shared fields for creating and updating game drafts."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    slug: str = Field(..., min_length=1, max_length=200)
+    summary: str | None = Field(default=None, max_length=280)
+    description_md: str | None = None
+    price_msats: int | None = Field(default=None, ge=0)
+    cover_url: AnyUrl | None = None
+    trailer_url: AnyUrl | None = None
+    category: GameCategory = GameCategory.PROTOTYPE
+
+    @field_validator("slug")
+    @classmethod
+    def _validate_slug(cls, value: str) -> str:
+        """Ensure the slug only contains URL-safe characters."""
+
+        allowed = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+        normalized = value.strip().lower()
+        if not normalized:
+            msg = "Slug cannot be empty."
+            raise ValueError(msg)
+        if any(char not in allowed for char in normalized):
+            msg = "Slug may only include lowercase letters, numbers, and hyphens."
+            raise ValueError(msg)
+        return normalized
+
+
+class GameCreateRequest(GameBase):
+    """Request payload for creating a new game draft."""
+
+    user_id: str
+
+
+class GameUpdateRequest(BaseModel):
+    """Request payload for updating an existing game draft."""
+
+    user_id: str
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    slug: str | None = Field(default=None, min_length=1, max_length=200)
+    summary: str | None = Field(default=None, max_length=280)
+    description_md: str | None = None
+    price_msats: int | None = Field(default=None, ge=0)
+    cover_url: AnyUrl | None = None
+    trailer_url: AnyUrl | None = None
+    category: GameCategory | None = None
+
+    @field_validator("slug")
+    @classmethod
+    def _validate_slug(cls, value: str | None) -> str | None:
+        """Normalize provided slug values."""
+
+        if value is None:
+            return None
+        allowed = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+        normalized = value.strip().lower()
+        if not normalized:
+            msg = "Slug cannot be empty."
+            raise ValueError(msg)
+        if any(char not in allowed for char in normalized):
+            msg = "Slug may only include lowercase letters, numbers, and hyphens."
+            raise ValueError(msg)
+        return normalized
+
+
+class GameRead(BaseModel):
+    """Serialized representation of a stored game draft."""
+
+    id: str
+    developer_id: str
+    status: GameStatus
+    title: str
+    slug: str
+    summary: str | None
+    description_md: str | None
+    price_msats: int | None
+    cover_url: AnyUrl | None
+    trailer_url: AnyUrl | None
+    category: GameCategory
+    build_object_key: str | None
+    build_size_bytes: int | None
+    checksum_sha256: str | None
+    active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+__all__ = ["GameCreateRequest", "GameUpdateRequest", "GameRead"]

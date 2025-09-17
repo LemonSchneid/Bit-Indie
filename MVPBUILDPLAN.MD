@@ -226,7 +226,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 * **T1-1** NIP-07 login flow (challenge → signature). *DoD:* Can login; user in DB. ✅ Done
 * **T1-2** Become Developer endpoint/UI. *DoD:* Dev profile saved; badge on profile. ✅ Done
-* **T1-3** Game create/update endpoints + form. *DoD:* Draft saved; validation errors surfaced.
+* **T1-3** Game create/update endpoints + form. *DoD:* Draft saved; validation errors surfaced. ✅ Done
 * **T1-4** Storage presign + upload build/cover. *DoD:* Upload to MinIO/S3 works; checksum stored.
 * **T1-5** Publish checklist + UNLISTED status. *DoD:* Game visible at direct URL.
 

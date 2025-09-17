@@ -59,6 +59,52 @@ export interface BecomeDeveloperRequest {
   contact_email?: string | null;
 }
 
+export type GameCategory = "PROTOTYPE" | "EARLY_ACCESS" | "FINISHED";
+
+export interface GameDraft {
+  id: string;
+  developer_id: string;
+  status: "UNLISTED" | "DISCOVER" | "FEATURED";
+  title: string;
+  slug: string;
+  summary: string | null;
+  description_md: string | null;
+  price_msats: number | null;
+  cover_url: string | null;
+  trailer_url: string | null;
+  category: GameCategory;
+  build_object_key: string | null;
+  build_size_bytes: number | null;
+  checksum_sha256: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateGameDraftRequest {
+  user_id: string;
+  title: string;
+  slug: string;
+  summary?: string | null;
+  description_md?: string | null;
+  price_msats?: number | null;
+  cover_url?: string | null;
+  trailer_url?: string | null;
+  category?: GameCategory;
+}
+
+export interface UpdateGameDraftRequest {
+  user_id: string;
+  title?: string | null;
+  slug?: string | null;
+  summary?: string | null;
+  description_md?: string | null;
+  price_msats?: number | null;
+  cover_url?: string | null;
+  trailer_url?: string | null;
+  category?: GameCategory;
+}
+
 function buildApiUrl(path: string): string {
   if (!path.startsWith("/")) {
     throw new Error(`API paths must start with a forward slash. Received: ${path}`);
@@ -139,4 +185,69 @@ export async function becomeDeveloper(payload: BecomeDeveloperRequest): Promise<
   }
 
   return (await response.json()) as DeveloperProfile;
+}
+
+async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json();
+    const detail = body?.detail;
+    if (typeof detail === "string") {
+      return detail;
+    }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => {
+          if (typeof item === "string") {
+            return item;
+          }
+          if (typeof item?.msg === "string") {
+            return item.msg;
+          }
+          return null;
+        })
+        .filter((value): value is string => Boolean(value));
+      if (messages.length > 0) {
+        return messages.join(" ");
+      }
+    }
+    return fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+export async function createGameDraft(payload: CreateGameDraftRequest): Promise<GameDraft> {
+  const response = await fetch(buildApiUrl("/v1/games"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to create game draft.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as GameDraft;
+}
+
+export async function updateGameDraft(gameId: string, payload: UpdateGameDraftRequest): Promise<GameDraft> {
+  const response = await fetch(buildApiUrl(`/v1/games/${gameId}`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to update game draft.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as GameDraft;
 }
