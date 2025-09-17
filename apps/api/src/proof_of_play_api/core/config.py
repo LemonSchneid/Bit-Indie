@@ -8,6 +8,11 @@ from functools import lru_cache
 from typing import Tuple
 
 
+DEFAULT_STORAGE_PROVIDER = "s3"
+DEFAULT_S3_PRESIGN_EXPIRATION_SECONDS = 3600
+DEFAULT_S3_REGION = "us-east-1"
+
+
 DEFAULT_ALLOWED_ORIGINS: Tuple[str, ...] = ("http://localhost:3000",)
 DEFAULT_DATABASE_HOST = "localhost"
 DEFAULT_DATABASE_PORT = 5432
@@ -123,3 +128,91 @@ def clear_database_settings_cache() -> None:
     """Reset the cached database settings. Intended for use in tests."""
 
     get_database_settings.cache_clear()
+
+
+class StorageConfigurationError(RuntimeError):
+    """Raised when environment variables do not describe a usable storage backend."""
+
+
+@dataclass(frozen=True)
+class StorageSettings:
+    """Configuration describing the object storage integration."""
+
+    provider: str
+    bucket: str
+    region: str
+    endpoint_url: str | None
+    access_key: str | None
+    secret_key: str | None
+    presign_expiration: int
+    public_base_url: str
+
+    @classmethod
+    def from_environment(cls) -> "StorageSettings":
+        """Construct storage configuration by reading environment variables."""
+
+        provider = os.getenv("STORAGE_PROVIDER", DEFAULT_STORAGE_PROVIDER).lower()
+        if provider != "s3":
+            msg = "Only the 's3' storage provider is currently supported."
+            raise StorageConfigurationError(msg)
+
+        bucket = os.getenv("S3_BUCKET")
+        if not bucket:
+            msg = "S3_BUCKET must be set when using the s3 storage provider."
+            raise StorageConfigurationError(msg)
+
+        region = os.getenv("S3_REGION", DEFAULT_S3_REGION)
+        endpoint_url = os.getenv("S3_ENDPOINT")
+        access_key = os.getenv("S3_ACCESS_KEY")
+        secret_key = os.getenv("S3_SECRET_KEY")
+        presign_expiration = _parse_int(
+            os.getenv("S3_PRESIGN_EXPIRES"),
+            default=DEFAULT_S3_PRESIGN_EXPIRATION_SECONDS,
+        )
+        public_base_url = cls._determine_public_base_url(
+            bucket=bucket,
+            region=region,
+            endpoint_url=endpoint_url,
+        )
+
+        return cls(
+            provider=provider,
+            bucket=bucket,
+            region=region,
+            endpoint_url=endpoint_url,
+            access_key=access_key,
+            secret_key=secret_key,
+            presign_expiration=presign_expiration,
+            public_base_url=public_base_url,
+        )
+
+    @staticmethod
+    def _determine_public_base_url(*, bucket: str, region: str, endpoint_url: str | None) -> str:
+        """Return the base URL clients should use to retrieve stored objects."""
+
+        explicit = os.getenv("S3_PUBLIC_BASE_URL")
+        if explicit:
+            return explicit.rstrip("/")
+
+        if endpoint_url:
+            return f"{endpoint_url.rstrip('/')}/{bucket}"
+
+        normalized_region = (region or DEFAULT_S3_REGION).strip().lower()
+        if normalized_region in {"", "auto", "us-east-1"}:
+            host = "s3.amazonaws.com"
+        else:
+            host = f"s3.{normalized_region}.amazonaws.com"
+        return f"https://{bucket}.{host}" if host != "s3.amazonaws.com" else f"https://{bucket}.s3.amazonaws.com"
+
+
+@lru_cache(maxsize=1)
+def get_storage_settings() -> StorageSettings:
+    """Return cached storage configuration settings."""
+
+    return StorageSettings.from_environment()
+
+
+def clear_storage_settings_cache() -> None:
+    """Reset the cached storage settings. Intended for use in tests."""
+
+    get_storage_settings.cache_clear()

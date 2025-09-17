@@ -9,6 +9,15 @@ from sqlalchemy.orm import Session
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, User
 from proof_of_play_api.schemas.game import GameCreateRequest, GameRead, GameUpdateRequest
+from proof_of_play_api.schemas.storage import (
+    GameAssetUploadRequest,
+    GameAssetUploadResponse,
+)
+from proof_of_play_api.services.storage import (
+    GameAssetKind,
+    StorageService,
+    get_storage_service,
+)
 
 
 router = APIRouter(prefix="/v1/games", tags=["games"])
@@ -96,6 +105,13 @@ def update_game_draft(
                 detail="A game with this slug already exists.",
             )
 
+    new_build_key = updates.get("build_object_key")
+    if new_build_key and not new_build_key.startswith(f"games/{game.id}/build/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Build object key is invalid for this game.",
+        )
+
     for field, value in updates.items():
         setattr(game, field, value)
 
@@ -104,4 +120,46 @@ def update_game_draft(
     return GameRead.model_validate(game)
 
 
-__all__ = ["create_game_draft", "update_game_draft"]
+@router.post(
+    "/{game_id}/uploads/{asset}",
+    response_model=GameAssetUploadResponse,
+    summary="Generate a pre-signed upload for a game asset",
+)
+def create_game_asset_upload(
+    game_id: str,
+    asset: GameAssetKind,
+    request: GameAssetUploadRequest,
+    session: Session = Depends(get_session),
+    storage: StorageService = Depends(get_storage_service),
+) -> GameAssetUploadResponse:
+    """Return a pre-signed upload payload for a developer owned game asset."""
+
+    developer_id = _get_developer_id(session=session, user_id=request.user_id)
+
+    game = session.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+
+    if game.developer_id != developer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this game.",
+        )
+
+    upload = storage.generate_game_asset_upload(
+        game_id=game_id,
+        asset=asset,
+        filename=request.filename,
+        content_type=request.content_type,
+        max_bytes=request.max_bytes,
+    )
+
+    return GameAssetUploadResponse(
+        upload_url=upload.upload_url,
+        fields=upload.fields,
+        object_key=upload.object_key,
+        public_url=upload.public_url,
+    )
+
+
+__all__ = ["create_game_asset_upload", "create_game_draft", "update_game_draft"]
