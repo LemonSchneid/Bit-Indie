@@ -219,6 +219,14 @@ export function GamePurchaseFlow({
     }
   }, [buildAvailable, gameId]);
 
+  const receiptUrl = useMemo(() => {
+    if (!invoice) {
+      return null;
+    }
+
+    return `/purchases/${invoice.purchase_id}/receipt`;
+  }, [invoice]);
+
   const qrImageUrl = useMemo(() => {
     if (!invoice) {
       return null;
@@ -446,14 +454,14 @@ export function GamePurchaseFlow({
                     <p className="mt-2 text-sm text-slate-200">{statusMessage}</p>
                   </div>
                   <p className="text-xs text-slate-400">
-                    We&apos;ll keep refreshing automatically. You can also open the purchase record in a new tab:&nbsp;
+                    We&apos;ll keep refreshing automatically. You can also open the receipt in a new tab:&nbsp;
                     <a
-                      href={invoice.check_url}
+                      href={receiptUrl ?? invoice.check_url}
                       target="_blank"
                       rel="noreferrer"
                       className="text-emerald-300 underline hover:text-emerald-200"
                     >
-                      View purchase status
+                      {receiptUrl ? "View Lightning receipt" : "View purchase status"}
                     </a>
                   </p>
                 </div>

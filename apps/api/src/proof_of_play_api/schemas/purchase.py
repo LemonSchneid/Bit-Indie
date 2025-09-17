@@ -62,6 +62,35 @@ class PurchaseDownloadResponse(BaseModel):
     expires_at: datetime
 
 
+class PurchaseReceiptGame(BaseModel):
+    """Summary details about the purchased game for receipt displays."""
+
+    id: str
+    title: str
+    slug: str
+    cover_url: str | None
+    price_msats: int | None
+    build_available: bool
+
+
+class PurchaseReceiptBuyer(BaseModel):
+    """Minimal representation of the buyer shown on receipts."""
+
+    id: str
+    pubkey_hex: str
+    display_name: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PurchaseReceipt(BaseModel):
+    """Full payload for rendering a purchase receipt."""
+
+    purchase: PurchaseRead
+    game: PurchaseReceiptGame
+    buyer: PurchaseReceiptBuyer
+
+
 __all__ = [
     "InvoiceCreateRequest",
     "InvoiceCreateResponse",
@@ -69,4 +98,7 @@ __all__ = [
     "PurchaseDownloadRequest",
     "PurchaseDownloadResponse",
     "PurchaseRead",
+    "PurchaseReceipt",
+    "PurchaseReceiptBuyer",
+    "PurchaseReceiptGame",
 ]

@@ -15,6 +15,9 @@ from proof_of_play_api.schemas.purchase import (
     PurchaseDownloadRequest,
     PurchaseDownloadResponse,
     PurchaseRead,
+    PurchaseReceipt,
+    PurchaseReceiptBuyer,
+    PurchaseReceiptGame,
 )
 from proof_of_play_api.services.payments import (
     PaymentService,
@@ -40,6 +43,52 @@ def read_purchase(purchase_id: str, session: Session = Depends(get_session)) -> 
     if purchase is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
     return PurchaseRead.model_validate(purchase)
+
+
+@router.get(
+    "/{purchase_id}/receipt",
+    response_model=PurchaseReceipt,
+    summary="Retrieve purchase details for receipt rendering",
+    name="read_purchase_receipt",
+)
+def read_purchase_receipt(
+    purchase_id: str,
+    session: Session = Depends(get_session),
+) -> PurchaseReceipt:
+    """Return a receipt payload containing purchase, buyer, and game information."""
+
+    purchase = session.get(Purchase, purchase_id)
+    if purchase is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
+
+    game = purchase.game
+    if game is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game details are unavailable for this purchase.",
+        )
+
+    buyer = purchase.user
+    if buyer is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Buyer details are unavailable for this purchase.",
+        )
+
+    receipt_game = PurchaseReceiptGame(
+        id=game.id,
+        title=game.title,
+        slug=game.slug,
+        cover_url=game.cover_url,
+        price_msats=game.price_msats,
+        build_available=bool(game.build_object_key),
+    )
+
+    return PurchaseReceipt(
+        purchase=PurchaseRead.model_validate(purchase),
+        game=receipt_game,
+        buyer=PurchaseReceiptBuyer.model_validate(buyer),
+    )
 
 
 @router.post(
@@ -130,5 +179,6 @@ def create_purchase_download_link(
 __all__ = [
     "create_purchase_download_link",
     "handle_lnbits_webhook",
+    "read_purchase_receipt",
     "read_purchase",
 ]

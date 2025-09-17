@@ -198,6 +198,53 @@ def test_read_purchase_returns_current_state() -> None:
     assert body["amount_msats"] == 5000
 
 
+def test_read_purchase_receipt_includes_related_details() -> None:
+    """Receipts should include purchase, buyer, and game metadata."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.cover_url = "https://cdn.example.com/covers/synth-runner.jpg"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/{purchase_id}/receipt")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["purchase"]["id"] == purchase_id
+    assert body["purchase"]["invoice_status"] == PurchaseInvoiceStatus.PAID.value
+    assert body["game"] == {
+        "id": game_id,
+        "title": "Synth Runner",
+        "slug": "synth-runner",
+        "cover_url": "https://cdn.example.com/covers/synth-runner.jpg",
+        "price_msats": 5000,
+        "build_available": False,
+    }
+    assert body["buyer"] == {
+        "id": user_id,
+        "pubkey_hex": "buyer-pubkey",
+        "display_name": None,
+    }
+
+
 def test_webhook_marks_purchase_as_paid() -> None:
     """Webhook processing should mark a purchase as paid when the provider confirms it."""
 
