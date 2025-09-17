@@ -10,6 +10,7 @@ import {
   requestLoginChallenge,
   verifyLoginEvent,
 } from "../lib/api";
+import { loadStoredUserProfile, saveUserProfile } from "../lib/user-storage";
 import { GameDraftForm } from "./game-draft-form";
 
 type LoginState = "idle" | "pending" | "success" | "error";
@@ -47,9 +48,13 @@ export function LoginCard(): JSX.Element {
   const [hasSigner, setHasSigner] = useState(false);
   const [state, setState] = useState<LoginState>("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [developerState, setDeveloperState] = useState<LoginState>("idle");
-  const [developerMessage, setDeveloperMessage] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());
+  const [developerState, setDeveloperState] = useState<LoginState>(() =>
+    profile?.is_developer ? "success" : "idle",
+  );
+  const [developerMessage, setDeveloperMessage] = useState<string | null>(() =>
+    profile?.is_developer ? "Your account is now registered as a developer." : null,
+  );
 
   useEffect(() => {
     const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
@@ -97,6 +102,7 @@ export function LoginCard(): JSX.Element {
       const response: LoginSuccessResponse = await verifyLoginEvent(signedEvent);
 
       setProfile(response.user);
+      saveUserProfile(response.user);
       if (response.user.is_developer) {
         setDeveloperState("success");
         setDeveloperMessage("Your account is now registered as a developer.");
@@ -132,7 +138,9 @@ export function LoginCard(): JSX.Element {
 
     try {
       await becomeDeveloper({ user_id: profile.id });
-      setProfile({ ...profile, is_developer: true });
+      const updatedProfile: UserProfile = { ...profile, is_developer: true };
+      setProfile(updatedProfile);
+      saveUserProfile(updatedProfile);
       setDeveloperState("success");
       setDeveloperMessage("Your account is now registered as a developer.");
     } catch (error: unknown) {

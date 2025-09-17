@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import type { GameDraft } from "../../../lib/api";
 import { getGameBySlug } from "../../../lib/api";
+import { GamePurchaseFlow } from "../../../components/game-purchase-flow";
 
 type GamePageProps = {
   params: {
@@ -88,6 +89,9 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const descriptionParagraphs = getDescriptionParagraphs(game.description_md);
   const priceLabel = formatPriceMsats(game.price_msats);
   const updatedLabel = formatUpdatedAt(game.updated_at);
+  const hasPaidPrice = game.price_msats != null && game.price_msats > 0;
+  const buildAvailable = Boolean(game.build_object_key);
+  const checkoutAvailable = hasPaidPrice && game.active;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -155,17 +159,49 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             )}
           </article>
 
-          <aside className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Release status</h2>
-            <p>
-              Unlisted games are ready for direct sharing. Developers can finalize their launch checklist to move into the
-              public catalog.
-            </p>
-            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-200">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em]">Visibility</p>
-              <p className="mt-1 text-sm">
-                Share this link with playtesters to gather feedback before promoting the game to the Discover feed.
+          <aside className="space-y-5">
+            {hasPaidPrice ? (
+              checkoutAvailable ? (
+                <GamePurchaseFlow
+                  gameId={game.id}
+                  gameTitle={game.title}
+                  priceMsats={game.price_msats}
+                  priceLabel={priceLabel}
+                  buildAvailable={buildAvailable}
+                />
+              ) : (
+                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
+                    Checkout locked
+                  </h2>
+                  <p className="mt-3 text-sm text-slate-300">
+                    Lightning checkout opens once this listing is published. The developer can finish their launch checklist
+                    to make purchases available.
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Free download</h2>
+                <p className="mt-3 text-sm text-slate-300">
+                  This build will be shared for free once the developer uploads the files. Check back soon for the download
+                  link.
+                </p>
+              </div>
+            )}
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Release status</h2>
+              <p>
+                Unlisted games are ready for direct sharing. Developers can finalize their launch checklist to move into the
+                public catalog.
               </p>
+              <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-200">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em]">Visibility</p>
+                <p className="mt-1 text-sm">
+                  Share this link with playtesters to gather feedback before promoting the game to the Discover feed.
+                </p>
+              </div>
             </div>
           </aside>
         </section>
