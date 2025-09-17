@@ -2,8 +2,16 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    appDir: true
-  }
+    appDir: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.qrserver.com",
+      },
+    ],
+  },
 };
 
 module.exports = nextConfig;
