@@ -172,6 +172,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["rating"] == 4
     assert body["is_verified_purchase"] is True
     assert body["helpful_score"] == pytest.approx(0.0)
+    assert body["total_zap_msats"] == 0
 
     with session_scope() as session:
         stored = session.get(Review, body["id"])
@@ -179,6 +180,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
         assert stored.rating == 4
         assert stored.is_verified_purchase is True
         assert stored.helpful_score == pytest.approx(0.0)
+        assert stored.total_zap_msats == 0
 
 
 def test_create_review_without_purchase_sets_flag_false() -> None:
@@ -199,6 +201,7 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     assert body["rating"] is None
     assert body["is_verified_purchase"] is False
     assert body["helpful_score"] == pytest.approx(0.0)
+    assert body["total_zap_msats"] == 0
 
 
 def test_list_reviews_orders_by_helpful_score() -> None:
@@ -238,6 +241,10 @@ def test_list_reviews_orders_by_helpful_score() -> None:
         update_review_helpful_score(first, user=user, total_zap_msats=50_000)
         update_review_helpful_score(second, user=user, total_zap_msats=1_000)
         session.flush()
+        session.refresh(first)
+        session.refresh(second)
+        assert first.total_zap_msats == 50_000
+        assert second.total_zap_msats == 1_000
 
     client = _build_client()
     response = client.get(f"/v1/games/{game_id}/reviews")
@@ -247,3 +254,5 @@ def test_list_reviews_orders_by_helpful_score() -> None:
     assert [item["body_md"] for item in body] == ["Solid patch", "Needs work"]
     assert body[0]["helpful_score"] > body[1]["helpful_score"]
     assert body[0]["created_at"] < body[1]["created_at"]
+    assert body[0]["total_zap_msats"] == 50_000
+    assert body[1]["total_zap_msats"] == 1_000

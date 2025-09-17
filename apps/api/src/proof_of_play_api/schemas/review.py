@@ -37,6 +37,7 @@ class ReviewRead(BaseModel):
     body_md: str
     rating: int | None
     helpful_score: float
+    total_zap_msats: int
     is_verified_purchase: bool
     created_at: datetime
 
