@@ -12,6 +12,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum as SqlEnum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -98,6 +99,11 @@ class User(TimestampMixin, Base):
         cascade="all,delete-orphan",
         single_parent=True,
     )
+    reviews: Mapped[list["Review"]] = relationship(
+        back_populates="user",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
 
     @property
     def is_developer(self) -> bool:
@@ -165,6 +171,11 @@ class Game(TimestampMixin, Base):
         single_parent=True,
     )
     comments: Mapped[list["Comment"]] = relationship(
+        back_populates="game",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
+    reviews: Mapped[list["Review"]] = relationship(
         back_populates="game",
         cascade="all,delete-orphan",
         single_parent=True,
@@ -240,6 +251,40 @@ class Comment(Base):
     user: Mapped[User] = relationship(back_populates="comments")
 
 
+class Review(Base):
+    """User submitted review containing optional rating and purchase verification."""
+
+    __tablename__ = "reviews"
+
+    __table_args__ = (
+        CheckConstraint(
+            "(rating BETWEEN 1 AND 5) OR rating IS NULL",
+            name="ck_reviews_rating_range",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    game_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(200))
+    body_md: Mapped[str] = mapped_column(Text, nullable=False)
+    rating: Mapped[int | None] = mapped_column(Integer)
+    helpful_score: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, server_default="0"
+    )
+    is_verified_purchase: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    game: Mapped[Game] = relationship(back_populates="reviews")
+    user: Mapped[User] = relationship(back_populates="reviews")
+
+
 __all__ = [
     "Comment",
     "Developer",
@@ -248,6 +293,7 @@ __all__ = [
     "GameStatus",
     "InvoiceStatus",
     "Purchase",
+    "Review",
     "RefundStatus",
     "TimestampMixin",
     "User",
