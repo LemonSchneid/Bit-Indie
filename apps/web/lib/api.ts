@@ -109,6 +109,27 @@ export interface PurchaseRecord {
   updated_at: string;
 }
 
+export interface PurchaseReceiptGame {
+  id: string;
+  title: string;
+  slug: string;
+  cover_url: string | null;
+  price_msats: number | null;
+  build_available: boolean;
+}
+
+export interface PurchaseReceiptBuyer {
+  id: string;
+  pubkey_hex: string;
+  display_name: string | null;
+}
+
+export interface PurchaseReceipt {
+  purchase: PurchaseRecord;
+  game: PurchaseReceiptGame;
+  buyer: PurchaseReceiptBuyer;
+}
+
 export type PublishRequirementCode =
   | "SUMMARY"
   | "DESCRIPTION"
@@ -434,6 +455,34 @@ export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
   }
 
   return (await response.json()) as PurchaseRecord;
+}
+
+export async function getPurchaseReceipt(purchaseId: string): Promise<PurchaseReceipt> {
+  const normalizedId = purchaseId.trim();
+  if (!normalizedId) {
+    throw new Error("Purchase ID is required.");
+  }
+
+  const response = await fetch(
+    buildApiUrl(`/v1/purchases/${encodeURIComponent(normalizedId)}/receipt`),
+    {
+      headers: {
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (response.status === 404) {
+    throw new Error("Purchase not found.");
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to load purchase receipt.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as PurchaseReceipt;
 }
 
 export function getGameDownloadUrl(gameId: string): string {
