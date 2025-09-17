@@ -17,6 +17,7 @@ from proof_of_play_api.db.models import (
     User,
 )
 from proof_of_play_api.main import create_application
+from proof_of_play_api.services.review_ranking import update_review_helpful_score
 
 
 @pytest.fixture(autouse=True)
@@ -170,12 +171,14 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["body_md"] == "Combat feels tight now."
     assert body["rating"] == 4
     assert body["is_verified_purchase"] is True
+    assert body["helpful_score"] == pytest.approx(0.0)
 
     with session_scope() as session:
         stored = session.get(Review, body["id"])
         assert stored is not None
         assert stored.rating == 4
         assert stored.is_verified_purchase is True
+        assert stored.helpful_score == pytest.approx(0.0)
 
 
 def test_create_review_without_purchase_sets_flag_false() -> None:
@@ -195,26 +198,31 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     body = response.json()
     assert body["rating"] is None
     assert body["is_verified_purchase"] is False
+    assert body["helpful_score"] == pytest.approx(0.0)
 
 
-def test_list_reviews_returns_chronological_order() -> None:
-    """Listing reviews should return them sorted by creation timestamp."""
+def test_list_reviews_orders_by_helpful_score() -> None:
+    """Listing reviews should prioritise helpful score over recency."""
 
     _create_schema()
     game_id = _seed_game(active=True)
     user_id = _create_user()
 
-    first_created = datetime(2024, 2, 1, 12, 0, tzinfo=timezone.utc)
-    second_created = datetime(2024, 3, 5, 18, 30, tzinfo=timezone.utc)
+    older_created = datetime(2024, 2, 1, 12, 0, tzinfo=timezone.utc)
+    newer_created = datetime(2024, 3, 5, 18, 30, tzinfo=timezone.utc)
 
     with session_scope() as session:
+        user = session.get(User, user_id)
+        assert user is not None
+        user.nip05 = f"{user.pubkey_hex}@example.com"
+
         first = Review(
             game_id=game_id,
             user_id=user_id,
             body_md="Solid patch",
             rating=4,
             is_verified_purchase=True,
-            created_at=first_created,
+            created_at=older_created,
         )
         second = Review(
             game_id=game_id,
@@ -222,9 +230,14 @@ def test_list_reviews_returns_chronological_order() -> None:
             body_md="Needs work",
             rating=None,
             is_verified_purchase=False,
-            created_at=second_created,
+            created_at=newer_created,
         )
         session.add_all([first, second])
+        session.flush()
+
+        update_review_helpful_score(first, user=user, total_zap_msats=50_000)
+        update_review_helpful_score(second, user=user, total_zap_msats=1_000)
+        session.flush()
 
     client = _build_client()
     response = client.get(f"/v1/games/{game_id}/reviews")
@@ -232,5 +245,5 @@ def test_list_reviews_returns_chronological_order() -> None:
     assert response.status_code == 200
     body = response.json()
     assert [item["body_md"] for item in body] == ["Solid patch", "Needs work"]
+    assert body[0]["helpful_score"] > body[1]["helpful_score"]
     assert body[0]["created_at"] < body[1]["created_at"]
-
