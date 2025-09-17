@@ -12,3 +12,15 @@ docker compose -f infra/docker-compose.yml up --build
 ```
 
 The API listens on [http://localhost:8080](http://localhost:8080) and exposes a simple health endpoint at `/health`.
+
+## Database migrations
+
+The service uses Alembic for schema migrations. After installing the API dependencies (`pip install -e .[dev]` from this
+directory), apply the latest migrations with:
+
+```bash
+export DATABASE_URL=postgresql+psycopg://pop:devpass@localhost:5432/pop
+alembic upgrade head
+```
+
+Alternatively, set the `PG_*` environment variables shown in `.env.example` before running Alembic.
