@@ -9,8 +9,12 @@ from functools import lru_cache
 from pathlib import PurePath
 from typing import Any, Protocol
 
-import boto3
-from botocore.config import Config
+try:
+    import boto3
+    from botocore.config import Config
+except ModuleNotFoundError:  # pragma: no cover - optional dependency guard
+    boto3 = None  # type: ignore[assignment]
+    Config = None  # type: ignore[assignment]
 
 from proof_of_play_api.core.config import StorageSettings, get_storage_settings
 
@@ -126,6 +130,10 @@ class StorageService:
 
 def _create_s3_client(settings: StorageSettings) -> _PresignClient:
     """Instantiate a boto3 S3 client for presigned upload generation."""
+
+    if boto3 is None or Config is None:  # pragma: no cover - dependency guard
+        msg = "boto3 is required to use the S3 storage backend."
+        raise RuntimeError(msg)
 
     session = boto3.session.Session()
     region = settings.region if settings.region.lower() != "auto" else None

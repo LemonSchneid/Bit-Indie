@@ -232,7 +232,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 ### Milestone 2 — Purchase & Download (Week 4–5)
 
-* **T2-1** LNbits invoice creation + webhook verification. *DoD:* Invoice lifecycles recorded.
+* **T2-1** LNbits invoice creation + webhook verification. *DoD:* Invoice lifecycles recorded. ✅ Done
 * **T2-2** Purchase flow UI (modal → QR → polling). *DoD:* Paid state unlocks download.
 * **T2-3** Signed URL for downloads. *DoD:* Expiring links; audit log entry.
 * **T2-4** Basic receipts (email optional later). *DoD:* Client sees receipt page.
