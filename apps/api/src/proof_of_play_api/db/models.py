@@ -93,6 +93,11 @@ class User(TimestampMixin, Base):
         cascade="all,delete-orphan",
         single_parent=True,
     )
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="user",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
 
     @property
     def is_developer(self) -> bool:
@@ -159,6 +164,11 @@ class Game(TimestampMixin, Base):
         cascade="all,delete-orphan",
         single_parent=True,
     )
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="game",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
 
 
 class Purchase(TimestampMixin, Base):
@@ -211,7 +221,27 @@ class DownloadAuditLog(TimestampMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class Comment(Base):
+    """User submitted comment attached to a game listing."""
+
+    __tablename__ = "comments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    game_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    body_md: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    game: Mapped[Game] = relationship(back_populates="comments")
+    user: Mapped[User] = relationship(back_populates="comments")
+
+
 __all__ = [
+    "Comment",
     "Developer",
     "Game",
     "GameCategory",
