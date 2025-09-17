@@ -87,8 +87,8 @@ class User(TimestampMixin, Base):
     reputation_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
-    developer_profile: Mapped["Developer" | None] = relationship(back_populates="user", uselist=False)
-    purchases: Mapped[list["Purchase"]] = relationship(
+    developer_profile: Mapped[Developer | None] = relationship(back_populates="user", uselist=False)
+    purchases: Mapped[list[Purchase]] = relationship(
         back_populates="user",
         cascade="all,delete-orphan",
         single_parent=True,
@@ -115,7 +115,7 @@ class Developer(TimestampMixin, Base):
     contact_email: Mapped[str | None] = mapped_column(String(255))
 
     user: Mapped[User] = relationship(back_populates="developer_profile")
-    games: Mapped[list["Game"]] = relationship(
+    games: Mapped[list[Game]] = relationship(
         back_populates="developer",
         cascade="all,delete-orphan",
         single_parent=True,
@@ -151,10 +151,10 @@ class Game(TimestampMixin, Base):
     build_object_key: Mapped[str | None] = mapped_column(String(500))
     build_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     checksum_sha256: Mapped[str | None] = mapped_column(String(64))
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     developer: Mapped[Developer] = relationship(back_populates="games")
-    purchases: Mapped[list["Purchase"]] = relationship(
+    purchases: Mapped[list[Purchase]] = relationship(
         back_populates="game",
         cascade="all,delete-orphan",
         single_parent=True,

@@ -81,6 +81,22 @@ export interface GameDraft {
   updated_at: string;
 }
 
+export type PublishRequirementCode =
+  | "SUMMARY"
+  | "DESCRIPTION"
+  | "COVER_IMAGE"
+  | "BUILD_UPLOAD";
+
+export interface GamePublishRequirement {
+  code: PublishRequirementCode;
+  message: string;
+}
+
+export interface GamePublishChecklist {
+  is_publish_ready: boolean;
+  missing_requirements: GamePublishRequirement[];
+}
+
 export interface CreateGameDraftRequest {
   user_id: string;
   title: string;
@@ -103,6 +119,10 @@ export interface UpdateGameDraftRequest {
   cover_url?: string | null;
   trailer_url?: string | null;
   category?: GameCategory;
+}
+
+export interface PublishGameRequest {
+  user_id: string;
 }
 
 function buildApiUrl(path: string): string {
@@ -246,6 +266,85 @@ export async function updateGameDraft(gameId: string, payload: UpdateGameDraftRe
 
   if (!response.ok) {
     const message = await parseErrorMessage(response, "Unable to update game draft.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as GameDraft;
+}
+
+export async function getGamePublishChecklist(
+  gameId: string,
+  userId: string,
+): Promise<GamePublishChecklist> {
+  const query = new URLSearchParams({ user_id: userId });
+  const response = await fetch(buildApiUrl(`/v1/games/${gameId}/publish-checklist?${query.toString()}`), {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    throw new Error("Game not found.");
+  }
+
+  if (response.status === 403) {
+    throw new Error("You do not have permission to view this checklist.");
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to load publish checklist.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as GamePublishChecklist;
+}
+
+export async function publishGame(gameId: string, payload: PublishGameRequest): Promise<GameDraft> {
+  const response = await fetch(buildApiUrl(`/v1/games/${gameId}/publish`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 404) {
+    throw new Error("Game not found.");
+  }
+
+  if (response.status === 403) {
+    throw new Error("You do not have permission to publish this game.");
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to publish game.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as GameDraft;
+}
+
+export async function getGameBySlug(slug: string): Promise<GameDraft> {
+  const normalized = slug.trim();
+  if (!normalized) {
+    throw new Error("Slug is required.");
+  }
+
+  const response = await fetch(buildApiUrl(`/v1/games/slug/${encodeURIComponent(normalized)}`), {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    throw new Error("Game not found.");
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to load game.");
     throw new Error(message);
   }
 

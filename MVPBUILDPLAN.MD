@@ -228,7 +228,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 * **T1-2** Become Developer endpoint/UI. *DoD:* Dev profile saved; badge on profile. ✅ Done
 * **T1-3** Game create/update endpoints + form. *DoD:* Draft saved; validation errors surfaced. ✅ Done
 * **T1-4** Storage presign + upload build/cover. *DoD:* Upload to MinIO/S3 works; checksum stored. ✅ Done
-* **T1-5** Publish checklist + UNLISTED status. *DoD:* Game visible at direct URL.
+* **T1-5** Publish checklist + UNLISTED status. *DoD:* Game visible at direct URL. ✅ Done
 
 ### Milestone 2 — Purchase & Download (Week 4–5)
 

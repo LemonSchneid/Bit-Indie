@@ -6,8 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import Developer, Game, GameCategory, User
+from proof_of_play_api.db.models import Developer, Game, GameCategory, GameStatus, User
 from proof_of_play_api.main import create_application
+from proof_of_play_api.schemas.game import PublishRequirementCode
 from proof_of_play_api.services.auth import reset_login_challenge_store
 from proof_of_play_api.services.storage import (
     GameAssetKind,
@@ -135,6 +136,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
     assert body["slug"] == "neon-drift"
     assert body["summary"] == "Slide through cyber streets."
     assert body["price_msats"] == 1500
+    assert body["active"] is False
     assert body["category"] == GameCategory.PROTOTYPE.value
 
     with session_scope() as session:
@@ -144,6 +146,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
         assert stored.slug == "neon-drift"
         assert stored.summary == "Slide through cyber streets."
         assert stored.price_msats == 1500
+        assert stored.active is False
 
 
 def test_create_game_draft_rejects_duplicate_slug() -> None:
@@ -370,3 +373,122 @@ def test_create_game_asset_upload_rejects_other_developers() -> None:
 
     assert response.status_code == 403
     assert not dummy.calls
+
+
+def test_get_publish_checklist_returns_missing_requirements() -> None:
+    """The publish checklist should enumerate unmet requirements for a draft."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Solar Winds",
+            "slug": "solar-winds",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    checklist = client.get(
+        f"/v1/games/{game_id}/publish-checklist",
+        params={"user_id": user_id},
+    )
+
+    assert checklist.status_code == 200
+    payload = checklist.json()
+    assert payload["is_publish_ready"] is False
+    codes = {item["code"] for item in payload["missing_requirements"]}
+    assert PublishRequirementCode.SUMMARY.value in codes
+    assert PublishRequirementCode.DESCRIPTION.value in codes
+    assert PublishRequirementCode.COVER_IMAGE.value in codes
+    assert PublishRequirementCode.BUILD_UPLOAD.value in codes
+
+
+def test_publish_game_rejects_incomplete_draft() -> None:
+    """Attempting to publish without meeting the checklist should fail."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Lunar Drift",
+            "slug": "lunar-drift",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    publish = client.post(
+        f"/v1/games/{game_id}/publish",
+        json={"user_id": user_id},
+    )
+
+    assert publish.status_code == 400
+    detail = publish.json()["detail"]
+    codes = {item["code"] for item in detail["missing_requirements"]}
+    assert PublishRequirementCode.SUMMARY.value in codes
+    assert PublishRequirementCode.DESCRIPTION.value in codes
+    assert PublishRequirementCode.COVER_IMAGE.value in codes
+    assert PublishRequirementCode.BUILD_UPLOAD.value in codes
+
+
+def test_publish_game_activates_listing_and_enables_slug_lookup() -> None:
+    """Publishing should mark the game active and allow lookups by slug."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Nebula Riders",
+            "slug": "nebula-riders",
+        },
+    )
+    assert created.status_code == 201
+    created_body = created.json()
+    game_id = created_body["id"]
+
+    # Drafts should not be publicly accessible until published.
+    not_listed = client.get("/v1/games/slug/nebula-riders")
+    assert not_listed.status_code == 404
+
+    update = client.put(
+        f"/v1/games/{game_id}",
+        json={
+            "user_id": user_id,
+            "summary": "High-speed hover bike racing across the stars.",
+            "description_md": "Race solo or with friends in procedurally generated tracks.",
+            "cover_url": "https://cdn.example.com/covers/nebula-riders.png",
+            "build_object_key": f"games/{game_id}/build/nebula-riders.zip",
+            "build_size_bytes": 2_097_152,
+            "checksum_sha256": "b" * 64,
+        },
+    )
+    assert update.status_code == 200
+
+    publish = client.post(
+        f"/v1/games/{game_id}/publish",
+        json={"user_id": user_id},
+    )
+
+    assert publish.status_code == 200
+    published_body = publish.json()
+    assert published_body["active"] is True
+    assert published_body["status"] == GameStatus.UNLISTED.value
+
+    by_slug = client.get("/v1/games/slug/Nebula-Riders")
+    assert by_slug.status_code == 200
+    slug_body = by_slug.json()
+    assert slug_body["id"] == game_id
+    assert slug_body["title"] == "Nebula Riders"
