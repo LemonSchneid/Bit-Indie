@@ -80,7 +80,7 @@ export default async function HomePage() {
 
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-emerald-500/5 backdrop-blur">
-            <h2 className="text-xl font-semibold text-white">What we're building</h2>
+            <h2 className="text-xl font-semibold text-white">What we&apos;re building</h2>
             <ul className="mt-6 space-y-5 text-sm text-slate-300">
               {featureHighlights.map((item) => (
                 <li key={item.title} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5">
