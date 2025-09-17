@@ -6,7 +6,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from proof_of_play_api.db.models import Review, User
-from proof_of_play_api.services.review_ranking import compute_review_helpful_score
+from proof_of_play_api.services.review_ranking import (
+    compute_review_helpful_score,
+    update_review_helpful_score,
+)
 
 
 def test_compute_review_helpful_score_applies_trust_and_decay() -> None:
@@ -58,3 +61,25 @@ def test_compute_review_helpful_score_respects_clamps() -> None:
 
     expected = math.log1p(2_000) * 0.5 * 0.5
     assert score == pytest.approx(expected)
+
+
+def test_update_review_helpful_score_records_zap_totals() -> None:
+    """Updating helpfulness should persist normalised zap totals on the review."""
+
+    user = User(pubkey_hex="carol")
+    review = Review(
+        game_id="game-3",
+        user_id="user-3",
+        body_md="Thanks for the patch",
+        rating=5,
+        created_at=datetime.now(timezone.utc),
+    )
+
+    score = update_review_helpful_score(
+        review=review,
+        user=user,
+        total_zap_msats=-5_000,
+    )
+
+    assert score == pytest.approx(math.log1p(0) * 1.0)
+    assert review.total_zap_msats == 0

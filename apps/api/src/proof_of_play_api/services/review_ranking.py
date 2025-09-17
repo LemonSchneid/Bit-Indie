@@ -76,13 +76,15 @@ def update_review_helpful_score(
 ) -> float:
     """Recalculate and persist the helpfulness score for a review instance."""
 
+    zap_msats = max(total_zap_msats, 0)
     score = compute_review_helpful_score(
         review=review,
         user=user,
-        total_zap_msats=total_zap_msats,
+        total_zap_msats=zap_msats,
         flagged_suspicious=flagged_suspicious,
         reference=reference,
     )
+    review.total_zap_msats = zap_msats
     review.helpful_score = score
     return score
 

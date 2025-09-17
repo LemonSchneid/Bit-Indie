@@ -274,6 +274,9 @@ class Review(Base):
     helpful_score: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, server_default="0"
     )
+    total_zap_msats: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     is_verified_purchase: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

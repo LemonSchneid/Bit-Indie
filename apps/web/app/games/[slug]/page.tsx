@@ -1,9 +1,13 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import type { GameDraft } from "../../../lib/api";
-import { getGameBySlug } from "../../../lib/api";
 import { GamePurchaseFlow } from "../../../components/game-purchase-flow";
+import {
+  getGameBySlug,
+  getGameReviews,
+  type GameDraft,
+  type GameReview,
+} from "../../../lib/api";
 
 type GamePageProps = {
   params: {
@@ -63,6 +67,32 @@ function formatUpdatedAt(timestamp: string): string {
   });
 }
 
+function formatReviewDate(timestamp: string): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Recently posted";
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatZapAmount(msats: number): string {
+  if (!Number.isFinite(msats) || msats <= 0) {
+    return "0 sats";
+  }
+
+  const sats = msats / 1000;
+  if (Number.isInteger(sats)) {
+    return `${Number(sats).toLocaleString()} sats`;
+  }
+
+  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+}
+
 function getDescriptionParagraphs(description: string | null): string[] {
   if (!description) {
     return [];
@@ -72,6 +102,49 @@ function getDescriptionParagraphs(description: string | null): string[] {
     .split(/\r?\n\r?\n/)
     .map((paragraph) => paragraph.trim())
     .filter((paragraph) => paragraph.length > 0);
+}
+
+function getReviewParagraphs(body: string): string[] {
+  return body
+    .split(/\r?\n\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+}
+
+const BADGE_TONE_CLASSES = {
+  emerald: "border-emerald-400/40 bg-emerald-500/15 text-emerald-100",
+  amber: "border-amber-400/40 bg-amber-500/15 text-amber-100",
+} as const;
+
+type ReviewBadgeTone = keyof typeof BADGE_TONE_CLASSES;
+
+type ReviewBadgeProps = {
+  label: string;
+  tooltip: string;
+  tone: ReviewBadgeTone;
+  icon?: string;
+};
+
+function ReviewBadge({ label, tooltip, tone, icon }: ReviewBadgeProps): JSX.Element {
+  const toneClasses = BADGE_TONE_CLASSES[tone];
+
+  return (
+    <span
+      className={`group relative inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] ${toneClasses}`}
+      role="note"
+      tabIndex={0}
+    >
+      {icon ? (
+        <span aria-hidden className="text-sm leading-none">
+          {icon}
+        </span>
+      ) : null}
+      <span>{label}</span>
+      <span className="pointer-events-none absolute left-1/2 top-full z-10 hidden w-64 -translate-x-1/2 translate-y-2 rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 text-xs font-normal normal-case leading-relaxed text-slate-200 shadow-lg shadow-emerald-500/10 group-focus-visible:flex group-hover:flex">
+        {tooltip}
+      </span>
+    </span>
+  );
 }
 
 export default async function GameDetailPage({ params }: GamePageProps) {
@@ -92,6 +165,21 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const hasPaidPrice = game.price_msats != null && game.price_msats > 0;
   const buildAvailable = Boolean(game.build_object_key);
   const checkoutAvailable = hasPaidPrice && game.active;
+  let reviews: GameReview[] = [];
+  let reviewsError: string | null = null;
+
+  try {
+    reviews = await getGameReviews(game.id);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Reviews are not available for this game.") {
+      reviews = [];
+    } else {
+      reviewsError =
+        error instanceof Error
+          ? error.message
+          : "Unable to load community reviews right now.";
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -204,6 +292,97 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               </div>
             </div>
           </aside>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
+                Community reviews
+              </h2>
+              <p className="mt-2 text-xl font-semibold text-white">Zap-powered player feedback</p>
+            </div>
+            <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
+              Verified purchase badges confirm the reviewer bought the game. Zap totals reveal how many sats other players tipped
+              their feedback.
+            </p>
+          </div>
+
+          {reviewsError ? (
+            <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">
+              {reviewsError}
+            </p>
+          ) : reviews.length === 0 ? (
+            <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
+              No reviews yet. Share the download link to gather the first wave of community impressions.
+            </p>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {reviews.map((review) => {
+                const paragraphs = getReviewParagraphs(review.body_md);
+                const trimmedBody = review.body_md.trim();
+                const displayParagraphs =
+                  paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
+                const zapLabel = formatZapAmount(review.total_zap_msats);
+
+                return (
+                  <article
+                    key={review.id}
+                    className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-lg shadow-emerald-500/10"
+                  >
+                    <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-3">
+                        {review.title ? (
+                          <h3 className="text-lg font-semibold text-white">{review.title}</h3>
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                          {review.rating != null ? (
+                            <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-amber-100">
+                              <span aria-hidden className="text-base leading-none text-amber-300">
+                                ★
+                              </span>
+                              <span className="font-semibold text-amber-100">{review.rating}/5</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/80">
+                                Rating
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                              Comment only
+                            </span>
+                          )}
+                          <time dateTime={review.created_at} className="text-slate-400">
+                            {formatReviewDate(review.created_at)}
+                          </time>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {review.is_verified_purchase ? (
+                          <ReviewBadge
+                            label="Verified Purchase"
+                            icon="✓"
+                            tone="emerald"
+                            tooltip="This review comes from a player who paid for the build through Proof of Play."
+                          />
+                        ) : null}
+                        <ReviewBadge
+                          label={`Received ${zapLabel}`}
+                          icon="⚡"
+                          tone="amber"
+                          tooltip="Lightning zaps tipped to this review. More sats signal that players found it especially helpful."
+                        />
+                      </div>
+                    </header>
+                    <div className="mt-4 space-y-3 text-base leading-7 text-slate-200">
+                      {displayParagraphs.map((paragraph, index) => (
+                        <p key={`${review.id}-paragraph-${index}`}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </main>
