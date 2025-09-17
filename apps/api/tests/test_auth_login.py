@@ -97,6 +97,7 @@ def test_verify_login_creates_user_record() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["user"]["pubkey_hex"] == signed_event["pubkey"]
+    assert body["user"]["is_developer"] is False
 
     with session_scope() as session:
         count = session.scalar(sa.select(sa.func.count()).select_from(User))

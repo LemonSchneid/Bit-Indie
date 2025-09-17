@@ -6,6 +6,7 @@ import {
   LoginSuccessResponse,
   SignedEvent,
   UserProfile,
+  becomeDeveloper,
   requestLoginChallenge,
   verifyLoginEvent,
 } from "../lib/api";
@@ -46,6 +47,8 @@ export function LoginCard(): JSX.Element {
   const [state, setState] = useState<LoginState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [developerState, setDeveloperState] = useState<LoginState>("idle");
+  const [developerMessage, setDeveloperMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
@@ -93,6 +96,13 @@ export function LoginCard(): JSX.Element {
       const response: LoginSuccessResponse = await verifyLoginEvent(signedEvent);
 
       setProfile(response.user);
+      if (response.user.is_developer) {
+        setDeveloperState("success");
+        setDeveloperMessage("Your account is now registered as a developer.");
+      } else {
+        setDeveloperState("idle");
+        setDeveloperMessage(null);
+      }
       setState("success");
       setMessage("Your Nostr identity is linked to Proof of Play.");
     } catch (error: unknown) {
@@ -105,6 +115,35 @@ export function LoginCard(): JSX.Element {
     }
   }, [state]);
 
+  const handleBecomeDeveloper = useCallback(async () => {
+    if (!profile) {
+      setDeveloperState("error");
+      setDeveloperMessage("Sign in before creating a developer profile.");
+      return;
+    }
+
+    if (developerState === "pending") {
+      return;
+    }
+
+    setDeveloperState("pending");
+    setDeveloperMessage(null);
+
+    try {
+      await becomeDeveloper({ user_id: profile.id });
+      setProfile({ ...profile, is_developer: true });
+      setDeveloperState("success");
+      setDeveloperMessage("Your account is now registered as a developer.");
+    } catch (error: unknown) {
+      setDeveloperState("error");
+      if (error instanceof Error) {
+        setDeveloperMessage(error.message);
+      } else {
+        setDeveloperMessage("Failed to create developer profile.");
+      }
+    }
+  }, [profile, developerState]);
+
   return (
     <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
       <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Sign in</h3>
@@ -114,8 +153,41 @@ export function LoginCard(): JSX.Element {
 
       {profile ? (
         <div className="mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm text-emerald-200">
-          <p className="font-semibold text-emerald-100">Connected</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-semibold text-emerald-100">Connected</p>
+            {profile.is_developer ? (
+              <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
+                Developer
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1 font-mono text-xs uppercase tracking-widest">{formatPubkey(profile.pubkey_hex)}</p>
+          {profile.is_developer ? (
+            <p className="mt-4 text-xs text-emerald-100/80">
+              Your Proof of Play account can publish and manage game listings.
+            </p>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleBecomeDeveloper}
+                disabled={developerState === "pending"}
+                className="mt-4 inline-flex items-center justify-center rounded-full border border-emerald-300/50 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {developerState === "pending" ? "Saving…" : "Become a developer"}
+              </button>
+              {developerMessage ? (
+                <p className={`mt-3 text-xs ${developerState === "error" ? "text-rose-200" : "text-emerald-100"}`}>
+                  {developerMessage}
+                </p>
+              ) : null}
+            </>
+          )}
+          {profile.is_developer && developerMessage ? (
+            <p className={`mt-3 text-xs ${developerState === "error" ? "text-rose-200" : "text-emerald-100"}`}>
+              {developerMessage}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

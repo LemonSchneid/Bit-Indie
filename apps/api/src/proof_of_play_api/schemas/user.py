@@ -16,6 +16,7 @@ class UserRead(BaseModel):
     nip05: str | None
     reputation_score: int
     is_admin: bool
+    is_developer: bool
     created_at: datetime
     updated_at: datetime
 
