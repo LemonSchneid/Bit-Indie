@@ -9,6 +9,12 @@ from proof_of_play_api.db import Base, get_engine, reset_database_state, session
 from proof_of_play_api.db.models import Developer, Game, GameCategory, User
 from proof_of_play_api.main import create_application
 from proof_of_play_api.services.auth import reset_login_challenge_store
+from proof_of_play_api.services.storage import (
+    GameAssetKind,
+    PresignedUpload,
+    get_storage_service,
+    reset_storage_service,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -18,9 +24,11 @@ def _reset_state(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
     reset_login_challenge_store()
+    reset_storage_service()
     yield
     reset_database_state()
     reset_login_challenge_store()
+    reset_storage_service()
 
 
 def _create_schema() -> None:
@@ -50,6 +58,38 @@ def _create_user_and_developer(*, with_developer: bool) -> str:
             session.add(developer)
 
     return user_id
+
+
+class _DummyStorageService:
+    """Test double for the storage service that records invocations."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def generate_game_asset_upload(
+        self,
+        *,
+        game_id: str,
+        asset: GameAssetKind,
+        filename: str,
+        content_type: str | None = None,
+        max_bytes: int | None = None,
+    ) -> PresignedUpload:
+        self.calls.append(
+            {
+                "game_id": game_id,
+                "asset": asset,
+                "filename": filename,
+                "content_type": content_type,
+                "max_bytes": max_bytes,
+            }
+        )
+        return PresignedUpload(
+            upload_url="http://localhost:9000/pop-games",
+            fields={"key": "generated", "Content-Type": content_type or "application/octet-stream"},
+            object_key="games/identifier/build/generated.bin",
+            public_url="http://localhost:9000/pop-games/games/identifier/build/generated.bin",
+        )
 
 
 def test_create_game_draft_requires_developer_profile() -> None:
@@ -162,6 +202,9 @@ def test_update_game_draft_applies_changes() -> None:
             "slug": "quantum-trails-dx",
             "summary": None,
             "category": GameCategory.EARLY_ACCESS.value,
+            "build_object_key": f"games/{game_id}/build/build.zip",
+            "build_size_bytes": 4096,
+            "checksum_sha256": "a" * 64,
         },
     )
 
@@ -171,6 +214,9 @@ def test_update_game_draft_applies_changes() -> None:
     assert body["slug"] == "quantum-trails-dx"
     assert body["summary"] is None
     assert body["category"] == GameCategory.EARLY_ACCESS.value
+    assert body["build_object_key"] == f"games/{game_id}/build/build.zip"
+    assert body["build_size_bytes"] == 4096
+    assert body["checksum_sha256"] == "a" * 64
 
     with session_scope() as session:
         stored = session.get(Game, game_id)
@@ -179,6 +225,38 @@ def test_update_game_draft_applies_changes() -> None:
         assert stored.slug == "quantum-trails-dx"
         assert stored.summary is None
         assert stored.category == GameCategory.EARLY_ACCESS
+        assert stored.build_object_key == f"games/{game_id}/build/build.zip"
+        assert stored.build_size_bytes == 4096
+        assert stored.checksum_sha256 == "a" * 64
+
+
+def test_update_game_draft_rejects_invalid_build_key() -> None:
+    """Developers should not be able to attach arbitrary build object keys."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Sky Forge",
+            "slug": "sky-forge",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    response = client.put(
+        f"/v1/games/{game_id}",
+        json={
+            "user_id": user_id,
+            "build_object_key": "games/other/build/file.zip",
+        },
+    )
+
+    assert response.status_code == 400
 
 
 def test_update_game_draft_rejects_other_developers() -> None:
@@ -209,3 +287,86 @@ def test_update_game_draft_rejects_other_developers() -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_create_game_asset_upload_returns_presigned_payload() -> None:
+    """Developers should receive pre-signed data for uploading game assets."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Aurora Bloom",
+            "slug": "aurora-bloom",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    dummy = _DummyStorageService()
+    client.app.dependency_overrides[get_storage_service] = lambda: dummy
+
+    response = client.post(
+        f"/v1/games/{game_id}/uploads/{GameAssetKind.BUILD.value}",
+        json={
+            "user_id": user_id,
+            "filename": "build.zip",
+            "content_type": "application/zip",
+            "max_bytes": 1024,
+        },
+    )
+
+    client.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["upload_url"] == "http://localhost:9000/pop-games"
+    assert body["object_key"] == "games/identifier/build/generated.bin"
+    assert body["public_url"].endswith("generated.bin")
+    assert dummy.calls
+    recorded = dummy.calls[0]
+    assert recorded["game_id"] == game_id
+    assert recorded["asset"] == GameAssetKind.BUILD
+    assert recorded["filename"] == "build.zip"
+    assert recorded["content_type"] == "application/zip"
+    assert recorded["max_bytes"] == 1024
+
+
+def test_create_game_asset_upload_rejects_other_developers() -> None:
+    """Only the owning developer should be able to generate upload credentials."""
+
+    _create_schema()
+    owner_id = _create_user_and_developer(with_developer=True)
+    intruder_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": owner_id,
+            "title": "Celestial Grid",
+            "slug": "celestial-grid",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    dummy = _DummyStorageService()
+    client.app.dependency_overrides[get_storage_service] = lambda: dummy
+
+    response = client.post(
+        f"/v1/games/{game_id}/uploads/{GameAssetKind.COVER.value}",
+        json={
+            "user_id": intruder_id,
+            "filename": "cover.png",
+        },
+    )
+
+    client.app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+    assert not dummy.calls

@@ -55,6 +55,9 @@ class GameUpdateRequest(BaseModel):
     cover_url: AnyUrl | None = None
     trailer_url: AnyUrl | None = None
     category: GameCategory | None = None
+    build_object_key: str | None = Field(default=None, min_length=1, max_length=500)
+    build_size_bytes: int | None = Field(default=None, ge=0)
+    checksum_sha256: str | None = Field(default=None, min_length=64, max_length=64)
 
     @field_validator("slug")
     @classmethod
@@ -70,6 +73,19 @@ class GameUpdateRequest(BaseModel):
             raise ValueError(msg)
         if any(char not in allowed for char in normalized):
             msg = "Slug may only include lowercase letters, numbers, and hyphens."
+            raise ValueError(msg)
+        return normalized
+
+    @field_validator("checksum_sha256")
+    @classmethod
+    def _normalize_checksum(cls, value: str | None) -> str | None:
+        """Ensure checksum values are lowercase hexadecimal strings."""
+
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if len(normalized) != 64 or any(char not in "0123456789abcdef" for char in normalized):
+            msg = "Checksum must be a 64 character hexadecimal string."
             raise ValueError(msg)
         return normalized
 
