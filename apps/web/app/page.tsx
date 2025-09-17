@@ -1,3 +1,4 @@
+import { LoginCard } from "../components/login-card";
 import { getApiHealth } from "../lib/api";
 
 type FeatureHighlight = {
@@ -97,6 +98,7 @@ export default async function HomePage() {
               </p>
               <p className="mt-3 text-sm text-slate-300">{apiMessage}</p>
             </div>
+            <LoginCard />
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Upcoming milestones</h3>
               <ul className="mt-4 space-y-3 text-sm text-slate-300">
