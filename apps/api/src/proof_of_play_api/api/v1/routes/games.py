@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
-from proof_of_play_api.db.models import Game, GameStatus, User
+from proof_of_play_api.db.models import Game, GameStatus, InvoiceStatus, Purchase, User
 from proof_of_play_api.schemas.game import (
     GameCreateRequest,
     GamePublishChecklist,
@@ -17,6 +18,10 @@ from proof_of_play_api.schemas.game import (
     GameUpdateRequest,
     PublishRequirementCode,
 )
+from proof_of_play_api.schemas.purchase import (
+    InvoiceCreateRequest,
+    InvoiceCreateResponse,
+)
 from proof_of_play_api.schemas.storage import (
     GameAssetUploadRequest,
     GameAssetUploadResponse,
@@ -25,6 +30,11 @@ from proof_of_play_api.services.storage import (
     GameAssetKind,
     StorageService,
     get_storage_service,
+)
+from proof_of_play_api.services.payments import (
+    PaymentService,
+    PaymentServiceError,
+    get_payment_service,
 )
 
 
@@ -46,6 +56,82 @@ def _get_developer_id(*, session: Session, user_id: str) -> str:
         )
 
     return developer.id
+
+
+@router.post(
+    "/{game_id}/invoice",
+    response_model=InvoiceCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a Lightning invoice for purchasing a game",
+)
+def create_game_invoice(
+    game_id: str,
+    invoice_request: InvoiceCreateRequest,
+    http_request: Request,
+    session: Session = Depends(get_session),
+    payments: PaymentService = Depends(get_payment_service),
+) -> InvoiceCreateResponse:
+    """Create a purchase record and Lightning invoice for the requested game."""
+
+    user = session.get(User, invoice_request.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    game = session.get(Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
+
+    if not game.active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Game is not available for purchase.",
+        )
+
+    price_msats = game.price_msats
+    if price_msats is None or price_msats <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Game does not have a price configured for purchase.",
+        )
+    if price_msats % 1000 != 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Game price must be divisible by 1,000 milli-satoshis.",
+        )
+
+    base_url = str(http_request.base_url).rstrip("/")
+    webhook_url = f"{base_url}/v1/purchases/lnbits/webhook"
+    memo = f"Proof of Play - {game.title}"
+
+    try:
+        invoice = payments.create_invoice(
+            amount_msats=price_msats,
+            memo=memo,
+            webhook_url=webhook_url,
+        )
+    except PaymentServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    purchase = Purchase(
+        user_id=user.id,
+        game_id=game_id,
+        invoice_id=invoice.invoice_id,
+        invoice_status=InvoiceStatus.PENDING,
+        amount_msats=price_msats,
+    )
+    session.add(purchase)
+    session.flush()
+    session.refresh(purchase)
+
+    check_url = str(http_request.url_for("read_purchase", purchase_id=purchase.id))
+    return InvoiceCreateResponse(
+        purchase_id=purchase.id,
+        invoice_id=invoice.invoice_id,
+        payment_request=invoice.payment_request,
+        amount_msats=price_msats,
+        invoice_status=purchase.invoice_status,
+        check_url=check_url,
+    )
 
 
 @router.post(
@@ -121,6 +207,8 @@ def update_game_draft(
         )
 
     for field, value in updates.items():
+        if isinstance(value, AnyUrl):
+            value = str(value)
         setattr(game, field, value)
 
     session.flush()
@@ -309,6 +397,7 @@ def read_game_by_slug(slug: str, session: Session = Depends(get_session)) -> Gam
 __all__ = [
     "create_game_asset_upload",
     "create_game_draft",
+    "create_game_invoice",
     "get_publish_checklist",
     "publish_game",
     "read_game_by_slug",

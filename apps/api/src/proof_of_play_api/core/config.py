@@ -11,6 +11,7 @@ from typing import Tuple
 DEFAULT_STORAGE_PROVIDER = "s3"
 DEFAULT_S3_PRESIGN_EXPIRATION_SECONDS = 3600
 DEFAULT_S3_REGION = "us-east-1"
+DEFAULT_PAYMENT_PROVIDER = "lnbits"
 
 
 DEFAULT_ALLOWED_ORIGINS: Tuple[str, ...] = ("http://localhost:3000",)
@@ -216,3 +217,71 @@ def clear_storage_settings_cache() -> None:
     """Reset the cached storage settings. Intended for use in tests."""
 
     get_storage_settings.cache_clear()
+
+
+class PaymentsConfigurationError(RuntimeError):
+    """Raised when payment related environment variables are invalid or missing."""
+
+
+@dataclass(frozen=True)
+class LnBitsSettings:
+    """Configuration describing how to talk to an LNbits wallet."""
+
+    api_url: str
+    api_key: str
+    wallet_id: str
+
+
+@dataclass(frozen=True)
+class PaymentSettings:
+    """High level payment provider configuration for the application."""
+
+    provider: str
+    lnbits: LnBitsSettings
+
+
+def _normalize_base_url(url: str) -> str:
+    """Ensure provider base URLs do not end with a trailing slash."""
+
+    return url.rstrip("/")
+
+
+@lru_cache(maxsize=1)
+def get_payment_settings() -> PaymentSettings:
+    """Return cached payment provider settings derived from the environment."""
+
+    provider = os.getenv("LN_PROVIDER", DEFAULT_PAYMENT_PROVIDER).strip().lower()
+    if provider != "lnbits":
+        msg = "Only the 'lnbits' Lightning provider is currently supported."
+        raise PaymentsConfigurationError(msg)
+
+    api_url = os.getenv("LNBITS_API_URL")
+    api_key = os.getenv("LNBITS_API_KEY")
+    wallet_id = os.getenv("LNBITS_WALLET_ID")
+
+    missing = [
+        name
+        for name, value in (
+            ("LNBITS_API_URL", api_url),
+            ("LNBITS_API_KEY", api_key),
+            ("LNBITS_WALLET_ID", wallet_id),
+        )
+        if not (value and value.strip())
+    ]
+    if missing:
+        formatted = ", ".join(missing)
+        msg = f"Missing required payment environment variables: {formatted}."
+        raise PaymentsConfigurationError(msg)
+
+    settings = LnBitsSettings(
+        api_url=_normalize_base_url(api_url.strip()),
+        api_key=api_key.strip(),
+        wallet_id=wallet_id.strip(),
+    )
+    return PaymentSettings(provider=provider, lnbits=settings)
+
+
+def clear_payment_settings_cache() -> None:
+    """Reset cached payment provider configuration. Intended for tests."""
+
+    get_payment_settings.cache_clear()

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -49,7 +51,7 @@ def _create_user_and_developer(*, with_developer: bool) -> str:
     """Persist a user (and optionally developer profile) returning the user identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex="user-pubkey")
+        user = User(pubkey_hex=f"user-pubkey-{uuid.uuid4().hex}")
         session.add(user)
         session.flush()
         user_id = user.id
