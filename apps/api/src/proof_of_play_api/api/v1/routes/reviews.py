@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, InvoiceStatus, Purchase, Review, User
-from proof_of_play_api.services.game_promotion import maybe_promote_game_to_discover
+from proof_of_play_api.services.game_promotion import (
+    maybe_promote_game_to_discover,
+    update_game_featured_status,
+)
 from proof_of_play_api.services.proof_of_work import (
     ProofOfWorkValidationError,
     enforce_proof_of_work,
@@ -141,7 +144,8 @@ def create_game_review(
     session.refresh(review)
 
     promoted = maybe_promote_game_to_discover(session=session, game=game)
-    if promoted:
+    featured_changed, _ = update_game_featured_status(session=session, game=game)
+    if promoted or featured_changed:
         session.flush()
 
     return ReviewRead.model_validate(review)

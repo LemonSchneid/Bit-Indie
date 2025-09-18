@@ -19,6 +19,7 @@ from proof_of_play_api.schemas.purchase import (
     RefundPayoutRead,
     RefundPayoutResponse,
 )
+from proof_of_play_api.services.game_promotion import update_game_featured_status
 
 
 router = APIRouter(prefix="/v1/admin/refunds", tags=["admin"])
@@ -72,6 +73,12 @@ def record_refund_payout(
     purchase.invoice_status = InvoiceStatus.REFUNDED
     purchase.download_granted = False
     session.flush()
+
+    game = purchase.game
+    if game is not None:
+        changed, _ = update_game_featured_status(session=session, game=game)
+        if changed:
+            session.flush()
 
     return RefundPayoutResponse(
         purchase=PurchaseRead.model_validate(purchase),

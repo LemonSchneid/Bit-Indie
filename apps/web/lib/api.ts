@@ -104,6 +104,15 @@ export interface GameReviewAuthor {
   lightning_address: string | null;
 }
 
+export interface FeaturedGameSummary {
+  game: GameDraft;
+  verified_review_count: number;
+  paid_purchase_count: number;
+  refunded_purchase_count: number;
+  refund_rate: number;
+  updated_within_window: boolean;
+}
+
 export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
 export type RefundStatus = "NONE" | "REQUESTED" | "APPROVED" | "DENIED" | "PAID";
 
@@ -504,6 +513,33 @@ export async function getGameBySlug(slug: string): Promise<GameDraft> {
   }
 
   return (await response.json()) as GameDraft;
+}
+
+export async function getFeaturedGames(limit?: number): Promise<FeaturedGameSummary[]> {
+  const params = new URLSearchParams();
+  if (typeof limit === "number" && Number.isFinite(limit)) {
+    const bounded = Math.max(1, Math.min(12, Math.trunc(limit)));
+    params.set("limit", String(bounded));
+  }
+
+  const path = params.size > 0 ? `/v1/games/featured?${params.toString()}` : "/v1/games/featured";
+
+  const response = await fetch(buildApiUrl(path), {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(
+      response,
+      "Unable to load featured games right now.",
+    );
+    throw new Error(message);
+  }
+
+  return (await response.json()) as FeaturedGameSummary[];
 }
 
 export async function getGameReviews(gameId: string): Promise<GameReview[]> {
