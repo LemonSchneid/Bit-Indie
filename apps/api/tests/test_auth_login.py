@@ -98,6 +98,11 @@ def test_verify_login_creates_user_record() -> None:
     body = response.json()
     assert body["user"]["pubkey_hex"] == signed_event["pubkey"]
     assert body["user"]["is_developer"] is False
+    assert body["user"]["created_at"] is not None
+    assert body["user"]["updated_at"] is not None
+    created_at = datetime.fromisoformat(body["user"]["created_at"])
+    updated_at = datetime.fromisoformat(body["user"]["updated_at"])
+    assert updated_at >= created_at
 
     with session_scope() as session:
         count = session.scalar(sa.select(sa.func.count()).select_from(User))

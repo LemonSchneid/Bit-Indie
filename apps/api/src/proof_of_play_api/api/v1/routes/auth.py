@@ -128,5 +128,6 @@ def _get_or_create_user(*, session: Session, pubkey_hex: str) -> User:
     user = User(pubkey_hex=pubkey_hex)
     session.add(user)
     session.flush()
+    session.refresh(user)
     return user
 
