@@ -194,6 +194,38 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
         assert stored.total_zap_msats == 0
 
 
+def test_create_review_promotes_game_after_paid_purchase() -> None:
+    """Submitting a review should promote an eligible game to Discover."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user()
+    _seed_purchase(user_id=user_id, game_id=game_id, status=InvoiceStatus.PAID)
+
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        assert game.status is GameStatus.UNLISTED
+
+    client = _build_client()
+
+    response = client.post(
+        f"/v1/games/{game_id}/reviews",
+        json={
+            "user_id": user_id,
+            "body_md": "Worth the sats",
+            "rating": 5,
+        },
+    )
+
+    assert response.status_code == 201
+
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        assert game.status is GameStatus.DISCOVER
+
+
 def test_create_review_without_purchase_sets_flag_false() -> None:
     """Reviews without a purchase should be stored without a verified flag."""
 

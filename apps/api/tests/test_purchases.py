@@ -11,6 +11,7 @@ from proof_of_play_api.db.models import (
     InvoiceStatus as PurchaseInvoiceStatus,
     DownloadAuditLog,
     Purchase,
+    Review,
     User,
 )
 from proof_of_play_api.main import create_application
@@ -278,6 +279,54 @@ def test_webhook_marks_purchase_as_paid() -> None:
         assert refreshed.download_granted is True
         assert refreshed.paid_at is not None
         assert refreshed.amount_msats == 5000
+
+
+def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
+    """Games with a review should be promoted once a purchase is verified."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PENDING,
+            amount_msats=5000,
+        )
+        session.add(purchase)
+        session.flush()
+
+        reviewer = User(pubkey_hex="reviewer-pubkey")
+        session.add(reviewer)
+        session.flush()
+
+        review = Review(
+            game_id=game_id,
+            user_id=reviewer.id,
+            body_md="Solid gameplay loop",
+            rating=None,
+            is_verified_purchase=False,
+        )
+        session.add(review)
+        session.flush()
+
+        game = session.get(Game, game_id)
+        assert game is not None
+        assert game.status is GameStatus.UNLISTED
+
+    stub = _StubPaymentService()
+    stub.status_responses["hash123"] = ProviderInvoiceStatus(paid=True, pending=False, amount_msats=5000)
+    client = _build_client(stub)
+
+    response = client.post("/v1/purchases/lnbits/webhook", json={"payment_hash": "hash123"})
+
+    assert response.status_code == 200
+
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        assert game.status is GameStatus.DISCOVER
 
 
 def test_webhook_expires_unpaid_invoice() -> None:
