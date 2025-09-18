@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
+from itertools import count
 
 import pytest
 from fastapi.testclient import TestClient
@@ -61,11 +61,14 @@ def _build_client() -> TestClient:
     return TestClient(create_application())
 
 
+_user_pubkey_sequence = count()
+
+
 def _create_user_and_developer(*, with_developer: bool) -> str:
     """Persist a user (and optionally developer profile) returning the user identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-pubkey-{uuid.uuid4().hex}")
+        user = User(pubkey_hex=f"user-pubkey-{next(_user_pubkey_sequence)}")
         session.add(user)
         session.flush()
         user_id = user.id
