@@ -9,7 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
-from proof_of_play_api.db.models import DownloadAuditLog, InvoiceStatus, Purchase
+from proof_of_play_api.db.models import (
+    DownloadAuditLog,
+    InvoiceStatus,
+    Purchase,
+    RefundStatus,
+)
 from proof_of_play_api.schemas.purchase import (
     LnBitsWebhookPayload,
     PurchaseDownloadRequest,
@@ -18,6 +23,7 @@ from proof_of_play_api.schemas.purchase import (
     PurchaseReceipt,
     PurchaseReceiptBuyer,
     PurchaseReceiptGame,
+    PurchaseRefundRequest,
 )
 from proof_of_play_api.services.game_promotion import maybe_promote_game_to_discover
 from proof_of_play_api.services.payments import (
@@ -183,9 +189,51 @@ def create_purchase_download_link(
     return PurchaseDownloadResponse(download_url=download.url, expires_at=download.expires_at)
 
 
+@router.post(
+    "/{purchase_id}/refund",
+    response_model=PurchaseRead,
+    summary="Request a refund for a completed purchase",
+)
+def request_purchase_refund(
+    purchase_id: str,
+    request: PurchaseRefundRequest,
+    session: Session = Depends(get_session),
+) -> PurchaseRead:
+    """Mark a paid purchase as awaiting refund review."""
+
+    purchase = session.get(Purchase, purchase_id)
+    if purchase is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
+
+    if purchase.user_id != request.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this purchase.",
+        )
+
+    if purchase.invoice_status is not InvoiceStatus.PAID:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only paid purchases can be refunded.",
+        )
+
+    if purchase.refund_status in {RefundStatus.PAID, RefundStatus.DENIED}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This purchase is not eligible for a new refund request.",
+        )
+
+    purchase.refund_requested = True
+    purchase.refund_status = RefundStatus.REQUESTED
+    session.flush()
+
+    return PurchaseRead.model_validate(purchase)
+
+
 __all__ = [
     "create_purchase_download_link",
     "handle_lnbits_webhook",
+    "request_purchase_refund",
     "read_purchase_receipt",
     "read_purchase",
 ]
