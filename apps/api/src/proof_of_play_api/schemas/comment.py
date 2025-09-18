@@ -6,12 +6,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from proof_of_play_api.schemas.security import ProofOfWorkSubmission
+
 
 class CommentCreateRequest(BaseModel):
     """Request body for creating a comment on a game listing."""
 
     user_id: str
     body_md: str = Field(..., min_length=1, max_length=10_000)
+    proof_of_work: ProofOfWorkSubmission | None = None
 
     @field_validator("body_md")
     @classmethod

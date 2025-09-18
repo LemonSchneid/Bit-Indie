@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,12 @@ from fastapi.testclient import TestClient
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
 from proof_of_play_api.db.models import Comment, Developer, Game, GameStatus, User
 from proof_of_play_api.main import create_application
+from proof_of_play_api.services.proof_of_work import (
+    PROOF_OF_WORK_DIFFICULTY_BITS,
+    calculate_proof_of_work_hash,
+    count_leading_zero_bits,
+)
+from proof_of_play_api.services.rate_limiting import COMMENT_RATE_LIMIT_MAX_ITEMS
 
 
 @pytest.fixture(autouse=True)
@@ -60,11 +66,11 @@ def _seed_game(*, active: bool = True) -> str:
     return game_id
 
 
-def _create_user() -> str:
+def _create_user(*, reputation_score: int = 0) -> str:
     """Persist a standalone user and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}")
+        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}", reputation_score=reputation_score)
         session.add(user)
         session.flush()
         user_id = user.id
@@ -72,12 +78,28 @@ def _create_user() -> str:
     return user_id
 
 
+def _mine_proof_of_work(*, user_id: str, resource_id: str, body_md: str) -> dict[str, int]:
+    """Return proof-of-work data satisfying the configured difficulty."""
+
+    nonce = 0
+    while True:
+        digest = calculate_proof_of_work_hash(
+            user_id=user_id,
+            resource_id=resource_id,
+            payload=body_md,
+            nonce=nonce,
+        )
+        if count_leading_zero_bits(digest) >= PROOF_OF_WORK_DIFFICULTY_BITS:
+            return {"nonce": nonce}
+        nonce += 1
+
+
 def test_create_comment_persists_and_returns_payload() -> None:
     """Posting a comment should persist the record and return the stored payload."""
 
     _create_schema()
     game_id = _seed_game(active=True)
-    user_id = _create_user()
+    user_id = _create_user(reputation_score=25)
     client = _build_client()
 
     response = client.post(
@@ -117,7 +139,7 @@ def test_create_comment_rejects_inactive_game() -> None:
 
     _create_schema()
     game_id = _seed_game(active=False)
-    user_id = _create_user()
+    user_id = _create_user(reputation_score=25)
     client = _build_client()
 
     response = client.post(
@@ -126,6 +148,81 @@ def test_create_comment_rejects_inactive_game() -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_create_comment_requires_proof_of_work_for_low_reputation() -> None:
+    """Low reputation users must provide proof of work when posting a comment."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user()
+    client = _build_client()
+
+    response = client.post(
+        f"/v1/games/{game_id}/comments",
+        json={"user_id": user_id, "body_md": "Need access"},
+    )
+
+    assert response.status_code == 400
+    assert "proof of work" in response.json()["detail"].lower()
+
+
+def test_create_comment_accepts_valid_proof_of_work() -> None:
+    """Supplying valid proof of work should allow a low reputation comment to post."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user()
+    client = _build_client()
+    body_md = "First impressions"
+    proof = _mine_proof_of_work(
+        user_id=user_id,
+        resource_id=f"comment:{game_id}",
+        body_md=body_md,
+    )
+
+    response = client.post(
+        f"/v1/games/{game_id}/comments",
+        json={
+            "user_id": user_id,
+            "body_md": body_md,
+            "proof_of_work": proof,
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["body_md"] == body_md
+
+
+def test_create_comment_enforces_rate_limit() -> None:
+    """Users exceeding the rate limit should receive a 429 response."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user(reputation_score=50)
+    now = datetime.now(timezone.utc)
+
+    with session_scope() as session:
+        for index in range(COMMENT_RATE_LIMIT_MAX_ITEMS):
+            session.add(
+                Comment(
+                    game_id=game_id,
+                    user_id=user_id,
+                    body_md=f"seed-{index}",
+                    created_at=now - timedelta(seconds=index + 1),
+                )
+            )
+
+    client = _build_client()
+    response = client.post(
+        f"/v1/games/{game_id}/comments",
+        json={"user_id": user_id, "body_md": "One more thought"},
+    )
+
+    assert response.status_code == 429
+    assert "rate limit" in response.json()["detail"].lower()
+    assert "Retry-After" in response.headers
 
 
 def test_list_comments_returns_chronological_order() -> None:
@@ -150,4 +247,29 @@ def test_list_comments_returns_chronological_order() -> None:
     body = response.json()
     assert [item["body_md"] for item in body] == ["First!", "Can't wait"]
     assert body[0]["created_at"] < body[1]["created_at"]
+
+
+def test_list_comments_excludes_hidden_entries() -> None:
+    """Hidden comments should not appear in the public listing."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user()
+
+    with session_scope() as session:
+        visible = Comment(game_id=game_id, user_id=user_id, body_md="Visible note")
+        hidden = Comment(
+            game_id=game_id,
+            user_id=user_id,
+            body_md="Hidden note",
+            is_hidden=True,
+        )
+        session.add_all([visible, hidden])
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["body_md"] for item in body] == ["Visible note"]
 

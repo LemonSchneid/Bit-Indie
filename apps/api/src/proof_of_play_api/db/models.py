@@ -85,6 +85,31 @@ class ZapTargetType(str, enum.Enum):
     PLATFORM = "PLATFORM"
 
 
+class ModerationTargetType(str, enum.Enum):
+    """Types of entities that can be flagged for moderation."""
+
+    GAME = "GAME"
+    COMMENT = "COMMENT"
+    REVIEW = "REVIEW"
+
+
+class ModerationFlagReason(str, enum.Enum):
+    """Reasons provided by users when flagging content."""
+
+    SPAM = "SPAM"
+    TOS = "TOS"
+    DMCA = "DMCA"
+    MALWARE = "MALWARE"
+
+
+class ModerationFlagStatus(str, enum.Enum):
+    """Lifecycle states for moderation flags."""
+
+    OPEN = "OPEN"
+    DISMISSED = "DISMISSED"
+    ACTIONED = "ACTIONED"
+
+
 class User(TimestampMixin, Base):
     """A registered Nostr user in the marketplace."""
 
@@ -270,6 +295,9 @@ class Comment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     game: Mapped[Game] = relationship(back_populates="comments")
     user: Mapped[User] = relationship(back_populates="comments")
@@ -310,6 +338,9 @@ class Review(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     game: Mapped[Game] = relationship(back_populates="reviews")
     user: Mapped[User] = relationship(back_populates="reviews")
@@ -343,6 +374,35 @@ class Zap(TimestampMixin, Base):
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ModerationFlag(TimestampMixin, Base):
+    """User submitted moderation flag for games, comments, or reviews."""
+
+    __tablename__ = "moderation_flags"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    target_type: Mapped[ModerationTargetType] = mapped_column(
+        SqlEnum(ModerationTargetType, name="moderation_target_type", native_enum=False),
+        nullable=False,
+    )
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[ModerationFlagReason] = mapped_column(
+        SqlEnum(ModerationFlagReason, name="moderation_flag_reason", native_enum=False),
+        nullable=False,
+    )
+    status: Mapped[ModerationFlagStatus] = mapped_column(
+        SqlEnum(ModerationFlagStatus, name="moderation_flag_status", native_enum=False),
+        nullable=False,
+        default=ModerationFlagStatus.OPEN,
+        server_default=ModerationFlagStatus.OPEN.value,
+        index=True,
+    )
+
+    reporter: Mapped[User] = relationship()
+
+
 __all__ = [
     "Comment",
     "Developer",
@@ -350,6 +410,10 @@ __all__ = [
     "GameCategory",
     "GameStatus",
     "InvoiceStatus",
+    "ModerationFlag",
+    "ModerationFlagReason",
+    "ModerationFlagStatus",
+    "ModerationTargetType",
     "Purchase",
     "Review",
     "RefundStatus",

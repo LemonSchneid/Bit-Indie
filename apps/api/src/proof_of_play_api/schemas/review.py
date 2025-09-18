@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from proof_of_play_api.schemas.security import ProofOfWorkSubmission
+
 
 class ReviewCreateRequest(BaseModel):
     """Request body for submitting a review on a game listing."""
@@ -14,6 +16,7 @@ class ReviewCreateRequest(BaseModel):
     body_md: str = Field(..., min_length=1, max_length=20_000)
     title: str | None = Field(default=None, max_length=200)
     rating: int | None = Field(default=None, ge=1, le=5)
+    proof_of_work: ProofOfWorkSubmission | None = None
 
     @field_validator("body_md")
     @classmethod
