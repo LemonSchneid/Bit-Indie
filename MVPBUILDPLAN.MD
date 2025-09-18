@@ -252,7 +252,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 ### Milestone 5 — Discovery & Moderation (Week 10)
 
-* **T5-1** Unlisted → Discover auto-promotion. *DoD:* Transition on ≥1 verified purchase + ≥1 review.
+* **T5-1** Unlisted → Discover auto-promotion. *DoD:* Transition on ≥1 verified purchase + ≥1 review. ✅ Done
 * **T5-2** Admin mod queue (flags, takedown). *DoD:* Admin can unlist a game or hide content.
 * **T5-3** Rate limits + PoW for low-rep. *DoD:* Comment spam rate drops; limits logged.
 

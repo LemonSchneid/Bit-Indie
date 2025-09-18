@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, InvoiceStatus, Purchase, Review, User
+from proof_of_play_api.services.game_promotion import maybe_promote_game_to_discover
 from proof_of_play_api.schemas.review import ReviewCreateRequest, ReviewRead
 from proof_of_play_api.services.review_ranking import update_review_helpful_score
 
@@ -89,6 +90,10 @@ def create_game_review(
     update_review_helpful_score(review=review, user=user)
     session.flush()
     session.refresh(review)
+
+    promoted = maybe_promote_game_to_discover(session=session, game=game)
+    if promoted:
+        session.flush()
 
     return ReviewRead.model_validate(review)
 
