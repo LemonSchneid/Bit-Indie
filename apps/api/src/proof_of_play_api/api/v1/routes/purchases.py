@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,32 @@ from proof_of_play_api.services.storage import StorageService, get_storage_servi
 
 
 router = APIRouter(prefix="/v1/purchases", tags=["purchases"])
+
+
+@router.get(
+    "/lookup",
+    response_model=PurchaseRead,
+    summary="Retrieve the most recent purchase for a user and game",
+    name="lookup_purchase",
+)
+def lookup_purchase(
+    *,
+    game_id: str = Query(..., min_length=1, description="Identifier of the purchased game."),
+    user_id: str = Query(..., min_length=1, description="Identifier of the purchasing user."),
+    session: Session = Depends(get_session),
+) -> PurchaseRead:
+    """Return the newest purchase matching the provided user and game identifiers."""
+
+    stmt = (
+        select(Purchase)
+        .where(Purchase.game_id == game_id, Purchase.user_id == user_id)
+        .order_by(Purchase.created_at.desc(), Purchase.id.desc())
+        .limit(1)
+    )
+    purchase = session.scalars(stmt).first()
+    if purchase is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
+    return PurchaseRead.model_validate(purchase)
 
 
 @router.get(
@@ -238,6 +264,7 @@ def request_purchase_refund(
 __all__ = [
     "create_purchase_download_link",
     "handle_lnbits_webhook",
+    "lookup_purchase",
     "request_purchase_refund",
     "read_purchase_receipt",
     "read_purchase",
