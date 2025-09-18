@@ -37,7 +37,10 @@ def maybe_promote_game_to_discover(*, session: Session, game: Game) -> bool:
         return False
 
     has_review = session.scalar(
-        select(Review.id).where(Review.game_id == game.id).limit(1)
+        select(Review.id)
+        .where(Review.game_id == game.id)
+        .where(Review.is_hidden.is_(False))
+        .limit(1)
     )
     if has_review is None:
         return False

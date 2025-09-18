@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -197,6 +198,14 @@ export function LoginCard(): JSX.Element {
               <p className={`mt-3 text-xs ${developerState === "error" ? "text-rose-200" : "text-emerald-100"}`}>
                 {developerMessage}
               </p>
+            ) : null}
+            {profile.is_admin ? (
+              <Link
+                href="/admin/mod"
+                className="mt-4 inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20"
+              >
+                Open moderation queue
+              </Link>
             ) : null}
           </div>
         ) : null}
