@@ -6,11 +6,12 @@ from fastapi.testclient import TestClient
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
 from proof_of_play_api.db.models import (
     Developer,
+    DownloadAuditLog,
     Game,
     GameStatus,
     InvoiceStatus as PurchaseInvoiceStatus,
-    DownloadAuditLog,
     Purchase,
+    RefundStatus,
     Review,
     User,
 )
@@ -156,6 +157,8 @@ def test_create_game_invoice_persists_purchase_and_returns_invoice() -> None:
         assert purchase.invoice_id == "hash123"
         assert purchase.invoice_status is PurchaseInvoiceStatus.PENDING
         assert purchase.amount_msats == 5000
+        assert purchase.refund_requested is False
+        assert purchase.refund_status is RefundStatus.NONE
 
 
 def test_create_game_invoice_rejects_invalid_price() -> None:
@@ -197,6 +200,8 @@ def test_read_purchase_returns_current_state() -> None:
     body = response.json()
     assert body["invoice_status"] == PurchaseInvoiceStatus.PENDING.value
     assert body["amount_msats"] == 5000
+    assert body["refund_requested"] is False
+    assert body["refund_status"] == RefundStatus.NONE.value
 
 
 def test_read_purchase_receipt_includes_related_details() -> None:
@@ -231,6 +236,8 @@ def test_read_purchase_receipt_includes_related_details() -> None:
     body = response.json()
     assert body["purchase"]["id"] == purchase_id
     assert body["purchase"]["invoice_status"] == PurchaseInvoiceStatus.PAID.value
+    assert body["purchase"]["refund_requested"] is False
+    assert body["purchase"]["refund_status"] == RefundStatus.NONE.value
     assert body["game"] == {
         "id": game_id,
         "title": "Synth Runner",
@@ -489,3 +496,108 @@ def test_create_download_link_blocks_other_users() -> None:
     with session_scope() as session:
         log = session.scalar(select(DownloadAuditLog))
         assert log is None
+
+
+def test_request_refund_marks_purchase_as_requested() -> None:
+    """Buyers should be able to flag a paid purchase for refund review."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    client = _build_client(_StubPaymentService())
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/refund",
+        json={"user_id": user_id},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["refund_requested"] is True
+    assert body["refund_status"] == RefundStatus.REQUESTED.value
+
+    with session_scope() as session:
+        refreshed = session.get(Purchase, purchase_id)
+        assert refreshed is not None
+        assert refreshed.refund_requested is True
+        assert refreshed.refund_status is RefundStatus.REQUESTED
+
+
+def test_request_refund_requires_purchase_owner() -> None:
+    """Refund requests should only be accepted from the original buyer."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    client = _build_client(_StubPaymentService())
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/refund",
+        json={"user_id": "someone-else"},
+    )
+
+    assert response.status_code == 403
+
+    with session_scope() as session:
+        refreshed = session.get(Purchase, purchase_id)
+        assert refreshed is not None
+        assert refreshed.refund_requested is False
+        assert refreshed.refund_status is RefundStatus.NONE
+
+
+def test_request_refund_requires_paid_purchase() -> None:
+    """Refund requests should be rejected when the invoice is not paid."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PENDING,
+            amount_msats=5000,
+            download_granted=False,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    client = _build_client(_StubPaymentService())
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/refund",
+        json={"user_id": user_id},
+    )
+
+    assert response.status_code == 400
+
+    with session_scope() as session:
+        refreshed = session.get(Purchase, purchase_id)
+        assert refreshed is not None
+        assert refreshed.refund_requested is False
+        assert refreshed.refund_status is RefundStatus.NONE

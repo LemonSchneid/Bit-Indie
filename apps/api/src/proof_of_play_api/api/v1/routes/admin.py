@@ -31,7 +31,7 @@ from proof_of_play_api.schemas.moderation import (
 router = APIRouter(prefix="/v1/admin/mod", tags=["admin"])
 
 
-def _require_admin_user(*, session: Session, user_id: str) -> User:
+def require_admin_user(*, session: Session, user_id: str) -> User:
     """Return the requested user when they possess admin privileges."""
 
     user = session.get(User, user_id)
@@ -105,7 +105,7 @@ def read_moderation_queue(
 ) -> list[ModerationQueueItem]:
     """Return all open moderation flags for administrators."""
 
-    _require_admin_user(session=session, user_id=user_id)
+    require_admin_user(session=session, user_id=user_id)
 
     stmt = (
         select(ModerationFlag)
@@ -128,7 +128,7 @@ def apply_moderation_takedown(
 ) -> ModerationActionResponse:
     """Hide or unlist flagged content and mark associated flags as actioned."""
 
-    _require_admin_user(session=session, user_id=request.user_id)
+    require_admin_user(session=session, user_id=request.user_id)
 
     target_type = request.target_type
     affected_ids: list[str] = []
@@ -178,4 +178,5 @@ def apply_moderation_takedown(
 __all__ = [
     "apply_moderation_takedown",
     "read_moderation_queue",
+    "require_admin_user",
 ]

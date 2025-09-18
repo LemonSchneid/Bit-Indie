@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 
-from proof_of_play_api.db.models import InvoiceStatus
+from proof_of_play_api.db.models import InvoiceStatus, RefundStatus
 
 
 class InvoiceCreateRequest(BaseModel):
@@ -37,6 +37,8 @@ class PurchaseRead(BaseModel):
     amount_msats: int | None
     paid_at: datetime | None
     download_granted: bool
+    refund_requested: bool
+    refund_status: RefundStatus
     created_at: datetime
     updated_at: datetime
 
@@ -91,6 +93,43 @@ class PurchaseReceipt(BaseModel):
     buyer: PurchaseReceiptBuyer
 
 
+class PurchaseRefundRequest(BaseModel):
+    """Request body for a buyer initiated refund request."""
+
+    user_id: str = Field(..., min_length=1)
+
+
+class RefundPayoutCreate(BaseModel):
+    """Request payload used when an admin records a refund payout."""
+
+    user_id: str = Field(..., min_length=1)
+    amount_msats: int | None = Field(None, ge=0)
+    payment_reference: str | None = Field(None, max_length=255)
+    notes: str | None = Field(None, max_length=2000)
+
+
+class RefundPayoutRead(BaseModel):
+    """Serialized representation of a recorded refund payout."""
+
+    id: str
+    purchase_id: str
+    processed_by_id: str | None
+    amount_msats: int | None
+    payment_reference: str | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RefundPayoutResponse(BaseModel):
+    """Response returned after successfully recording a refund payout."""
+
+    purchase: PurchaseRead
+    payout: RefundPayoutRead
+
+
 __all__ = [
     "InvoiceCreateRequest",
     "InvoiceCreateResponse",
@@ -101,4 +140,8 @@ __all__ = [
     "PurchaseReceipt",
     "PurchaseReceiptBuyer",
     "PurchaseReceiptGame",
+    "PurchaseRefundRequest",
+    "RefundPayoutCreate",
+    "RefundPayoutRead",
+    "RefundPayoutResponse",
 ]

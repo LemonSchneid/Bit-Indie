@@ -264,6 +264,43 @@ class Purchase(TimestampMixin, Base):
 
     user: Mapped[User] = relationship(back_populates="purchases")
     game: Mapped[Game] = relationship(back_populates="purchases")
+    refund_payouts: Mapped[list["RefundPayout"]] = relationship(
+        back_populates="purchase",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
+
+
+class RefundPayout(TimestampMixin, Base):
+    """Record describing a manually processed refund payout."""
+
+    __tablename__ = "refund_payouts"
+
+    __table_args__ = (
+        CheckConstraint(
+            "amount_msats IS NULL OR amount_msats >= 0",
+            name="ck_refund_payouts_amount_msats_positive",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    purchase_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("purchases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    processed_by_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    amount_msats: Mapped[int | None] = mapped_column(BigInteger)
+    payment_reference: Mapped[str | None] = mapped_column(String(255))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    purchase: Mapped[Purchase] = relationship(back_populates="refund_payouts")
+    processed_by: Mapped[User | None] = relationship()
 
 
 class DownloadAuditLog(TimestampMixin, Base):

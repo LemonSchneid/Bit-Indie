@@ -200,12 +200,20 @@ export function LoginCard(): JSX.Element {
               </p>
             ) : null}
             {profile.is_admin ? (
-              <Link
-                href="/admin/mod"
-                className="mt-4 inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20"
-              >
-                Open moderation queue
-              </Link>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/admin/mod"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20"
+                >
+                  Open moderation queue
+                </Link>
+                <Link
+                  href="/admin/stats"
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20"
+                >
+                  View integrity stats
+                </Link>
+              </div>
             ) : null}
           </div>
         ) : null}
