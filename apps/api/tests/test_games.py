@@ -663,3 +663,89 @@ def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
         stored = session.get(Game, game_id)
         assert stored is not None
         assert stored.status is GameStatus.DISCOVER
+
+
+def test_list_featured_games_updates_status_for_results_beyond_limit() -> None:
+    """Games later in the rotation should still be re-evaluated for featured status."""
+
+    _create_schema()
+    client = _build_client()
+    reference = datetime.now(timezone.utc)
+
+    with session_scope() as session:
+        developer_user = User(pubkey_hex="dev-rotation")
+        session.add(developer_user)
+        session.flush()
+
+        developer = Developer(user_id=developer_user.id)
+        session.add(developer)
+        session.flush()
+
+        fresh_game = Game(
+            developer_id=developer.id,
+            title="Stellar Blitz",
+            slug="stellar-blitz",
+            active=True,
+            status=GameStatus.FEATURED,
+            updated_at=reference - timedelta(days=5),
+        )
+        stale_game = Game(
+            developer_id=developer.id,
+            title="Ancient Arena",
+            slug="ancient-arena",
+            active=True,
+            status=GameStatus.FEATURED,
+            updated_at=reference - timedelta(days=40),
+        )
+        session.add_all([fresh_game, stale_game])
+        session.flush()
+
+        for game_index, game in enumerate((fresh_game, stale_game)):
+            for entry_index in range(10):
+                buyer = User(pubkey_hex=f"limit-buyer-{game_index}-{entry_index}")
+                session.add(buyer)
+                session.flush()
+
+                purchase = Purchase(
+                    user_id=buyer.id,
+                    game_id=game.id,
+                    invoice_id=f"limit-inv-{game_index}-{entry_index}",
+                    invoice_status=InvoiceStatus.PAID,
+                    amount_msats=3_000,
+                    paid_at=reference - timedelta(days=2),
+                    refund_status=RefundStatus.NONE,
+                )
+                session.add(purchase)
+
+                review = Review(
+                    game_id=game.id,
+                    user_id=buyer.id,
+                    body_md="Dependably fun matches.",
+                    rating=4,
+                    is_verified_purchase=True,
+                )
+                session.add(review)
+
+        session.flush()
+        session.refresh(fresh_game)
+        session.refresh(stale_game)
+        fresh_game.updated_at = reference - timedelta(days=5)
+        stale_game.updated_at = reference - timedelta(days=40)
+        session.flush()
+        fresh_game_id = fresh_game.id
+        stale_game_id = stale_game.id
+
+    response = client.get("/v1/games/featured", params={"limit": 1})
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    entry = body[0]
+    assert entry["game"]["slug"] == "stellar-blitz"
+
+    with session_scope() as session:
+        fresh = session.get(Game, fresh_game_id)
+        stale = session.get(Game, stale_game_id)
+        assert fresh is not None
+        assert stale is not None
+        assert fresh.status is GameStatus.FEATURED
+        assert stale.status is GameStatus.DISCOVER

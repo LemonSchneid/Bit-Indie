@@ -464,13 +464,10 @@ def list_featured_games(
                 )
             )
 
-        if len(summaries) >= limit:
-            break
-
     if status_changed:
         session.flush()
 
-    return summaries
+    return summaries[:limit]
 
 
 __all__ = [
