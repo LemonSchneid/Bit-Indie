@@ -32,6 +32,7 @@ export interface UserProfile {
   pubkey_hex: string;
   display_name: string | null;
   nip05: string | null;
+  lightning_address: string | null;
   reputation_score: number;
   is_admin: boolean;
   is_developer: boolean;
@@ -77,6 +78,7 @@ export interface GameDraft {
   build_size_bytes: number | null;
   checksum_sha256: string | null;
   active: boolean;
+  developer_lightning_address: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +94,14 @@ export interface GameReview {
   total_zap_msats: number;
   is_verified_purchase: boolean;
   created_at: string;
+  author: GameReviewAuthor;
+}
+
+export interface GameReviewAuthor {
+  id: string;
+  pubkey_hex: string;
+  display_name: string | null;
+  lightning_address: string | null;
 }
 
 export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, InvoiceStatus, Purchase, Review, User
@@ -27,7 +27,12 @@ def list_game_reviews(game_id: str, session: Session = Depends(get_session)) -> 
     if game is None or not game.active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
 
-    stmt = select(Review).where(Review.game_id == game_id).order_by(Review.helpful_score.desc(), Review.created_at.desc())
+    stmt = (
+        select(Review)
+        .options(joinedload(Review.user))
+        .where(Review.game_id == game_id)
+        .order_by(Review.helpful_score.desc(), Review.created_at.desc())
+    )
     reviews = session.scalars(stmt).all()
     return [ReviewRead.model_validate(review) for review in reviews]
 
@@ -76,6 +81,7 @@ def create_game_review(
         rating=request.rating,
         is_verified_purchase=has_verified_purchase,
     )
+    review.user = user
     session.add(review)
     session.flush()
     session.refresh(review)

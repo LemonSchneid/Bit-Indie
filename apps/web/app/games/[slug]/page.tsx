@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { GamePurchaseFlow } from "../../../components/game-purchase-flow";
+import { ZapButton } from "../../../components/zap-button";
 import {
   getGameBySlug,
   getGameReviews,
@@ -276,7 +277,37 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                   link.
                 </p>
               </div>
-            )}
+              )}
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
+                Tip the developer
+              </h2>
+              {game.developer_lightning_address ? (
+                <>
+                  <p className="mt-3 text-sm text-slate-300">
+                    Lightning zaps go straight to the creator&apos;s wallet. Say thanks for the latest build or boost morale for
+                    the next update.
+                  </p>
+                  <div className="mt-4">
+                    <ZapButton
+                      lightningAddress={game.developer_lightning_address}
+                      recipientLabel={`${game.title} developer`}
+                      comment={`Zap for ${game.title}`}
+                    />
+                  </div>
+                  <p className="mt-4 text-[11px] text-slate-400">
+                    Lightning address: {" "}
+                    <span className="font-mono text-slate-300">{game.developer_lightning_address}</span>
+                  </p>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-slate-400">
+                  The developer hasn&apos;t connected a Lightning address yet. Once they do, you&apos;ll be able to send sats
+                  directly from here.
+                </p>
+              )}
+            </div>
 
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Release status</h2>
@@ -324,6 +355,8 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 const displayParagraphs =
                   paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
                 const zapLabel = formatZapAmount(review.total_zap_msats);
+                const reviewerName = review.author.display_name || "the reviewer";
+                const zapComment = `Zap for review ${review.id} on ${game.title}`;
 
                 return (
                   <article
@@ -370,6 +403,12 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                           icon="⚡"
                           tone="amber"
                           tooltip="Lightning zaps tipped to this review. More sats signal that players found it especially helpful."
+                        />
+                        <ZapButton
+                          lightningAddress={review.author.lightning_address}
+                          recipientLabel={reviewerName}
+                          comment={zapComment}
+                          className="inline-block"
                         />
                       </div>
                     </header>

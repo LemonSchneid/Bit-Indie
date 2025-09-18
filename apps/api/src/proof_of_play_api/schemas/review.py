@@ -27,6 +27,17 @@ class ReviewCreateRequest(BaseModel):
         return normalized
 
 
+class ReviewAuthor(BaseModel):
+    """Summary information about a review author for zap interactions."""
+
+    id: str
+    pubkey_hex: str
+    display_name: str | None
+    lightning_address: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ReviewRead(BaseModel):
     """Serialized representation of a stored game review."""
 
@@ -40,9 +51,10 @@ class ReviewRead(BaseModel):
     total_zap_msats: int
     is_verified_purchase: bool
     created_at: datetime
+    author: ReviewAuthor
 
     model_config = ConfigDict(from_attributes=True)
 
 
-__all__ = ["ReviewCreateRequest", "ReviewRead"]
+__all__ = ["ReviewAuthor", "ReviewCreateRequest", "ReviewRead"]
 
