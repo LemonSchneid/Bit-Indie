@@ -599,6 +599,43 @@ export async function createGameInvoice(
   return (await response.json()) as InvoiceCreateResponse;
 }
 
+export async function getLatestPurchaseForGame(
+  gameId: string,
+  userId: string,
+): Promise<PurchaseRecord | null> {
+  const normalizedGameId = gameId.trim();
+  if (!normalizedGameId) {
+    throw new Error("Game ID is required to look up purchases.");
+  }
+
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
+    throw new Error("User ID is required to look up purchases.");
+  }
+
+  const url = new URL(buildApiUrl("/v1/purchases/lookup"));
+  url.searchParams.set("game_id", normalizedGameId);
+  url.searchParams.set("user_id", normalizedUserId);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to load purchase status.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as PurchaseRecord;
+}
+
 export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
   const normalizedId = purchaseId.trim();
   if (!normalizedId) {

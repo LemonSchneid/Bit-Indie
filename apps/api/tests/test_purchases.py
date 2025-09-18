@@ -204,6 +204,65 @@ def test_read_purchase_returns_current_state() -> None:
     assert body["refund_status"] == RefundStatus.NONE.value
 
 
+def test_lookup_purchase_returns_latest_record_for_user_and_game() -> None:
+    """Lookup should return the newest purchase matching the user and game."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        first = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash111",
+            invoice_status=PurchaseInvoiceStatus.EXPIRED,
+            amount_msats=5000,
+        )
+        session.add(first)
+        session.flush()
+        first.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        first.updated_at = first.created_at
+        session.flush()
+
+        latest = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash222",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(latest)
+        session.flush()
+        latest.created_at = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        latest.updated_at = latest.created_at
+        session.flush()
+        latest_id = latest.id
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/lookup?game_id={game_id}&user_id={user_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == latest_id
+    assert body["invoice_status"] == PurchaseInvoiceStatus.PAID.value
+    assert body["download_granted"] is True
+
+
+def test_lookup_purchase_returns_404_when_no_purchase_exists() -> None:
+    """Lookup should return a 404 when the user has not purchased the game."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/lookup?game_id={game_id}&user_id={user_id}")
+
+    assert response.status_code == 404
+
+
 def test_read_purchase_receipt_includes_related_details() -> None:
     """Receipts should include purchase, buyer, and game metadata."""
 

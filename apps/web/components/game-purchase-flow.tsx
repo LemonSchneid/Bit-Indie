@@ -10,6 +10,7 @@ import {
   UserProfile,
   createGameInvoice,
   getGameDownloadUrl,
+  getLatestPurchaseForGame,
   getPurchase,
 } from "../lib/api";
 import {
@@ -81,6 +82,40 @@ export function GamePurchaseFlow({
   const [purchase, setPurchase] = useState<PurchaseRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+
+  useEffect(() => {
+    if (!isPurchasable || !user || purchase || invoice) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const restorePurchase = async () => {
+      try {
+        const existing = await getLatestPurchaseForGame(gameId, user.id);
+        if (cancelled || !existing) {
+          return;
+        }
+
+        setPurchase(existing);
+        if (existing.download_granted) {
+          setFlowState("paid");
+          setErrorMessage(null);
+        }
+      } catch (_error) {
+        if (cancelled) {
+          return;
+        }
+        // Ignore lookup errors and allow the normal purchase flow to proceed.
+      }
+    };
+
+    void restorePurchase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, invoice, isPurchasable, purchase, user]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
