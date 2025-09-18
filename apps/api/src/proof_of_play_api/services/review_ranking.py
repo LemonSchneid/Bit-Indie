@@ -86,6 +86,8 @@ def update_review_helpful_score(
     )
     review.total_zap_msats = zap_msats
     review.helpful_score = score
+    if hasattr(review, "suspicious_zap_pattern"):
+        review.suspicious_zap_pattern = flagged_suspicious
     return score
 
 

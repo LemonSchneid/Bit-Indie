@@ -179,6 +179,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["is_verified_purchase"] is True
     assert body["helpful_score"] == pytest.approx(0.0)
     assert body["total_zap_msats"] == 0
+    assert body["suspicious_zap_pattern"] is False
     assert body["author"]["id"] == user_id
     assert body["author"]["pubkey_hex"].startswith("user-")
     assert body["author"]["lightning_address"].endswith("@zaps.test")
@@ -212,6 +213,7 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     assert body["is_verified_purchase"] is False
     assert body["helpful_score"] == pytest.approx(0.0)
     assert body["total_zap_msats"] == 0
+    assert body["suspicious_zap_pattern"] is False
     assert body["author"]["id"] == user_id
     assert body["author"]["lightning_address"].endswith("@zaps.test")
 

@@ -36,6 +36,8 @@ class ZapTargetNotFoundError(ZapProcessingError):
 
 ZAP_RECEIPT_KIND = 9735
 _REVIEW_TAG = "proof-of-play-review"
+_CORRELATION_MIN_ZAPS = 3
+_CORRELATION_DOMINANCE_SHARE = 0.85
 
 
 def _get_tag_value(tags: Sequence[Sequence[str]], name: str) -> str | None:
@@ -45,6 +47,63 @@ def _get_tag_value(tags: Sequence[Sequence[str]], name: str) -> str | None:
         if len(tag) >= 2 and tag[0] == name:
             return tag[1]
     return None
+
+
+def _gather_excluded_pubkeys(review: Review, to_pubkey: str | None) -> set[str]:
+    """Return pubkeys whose zaps should not influence review totals."""
+
+    excluded: set[str] = set()
+    author = review.user
+    if author is not None and author.pubkey_hex:
+        excluded.add(author.pubkey_hex)
+
+    if to_pubkey:
+        excluded.add(to_pubkey)
+
+    game = getattr(review, "game", None)
+    if game is not None:
+        developer = getattr(game, "developer", None)
+        if developer is not None:
+            developer_user = getattr(developer, "user", None)
+            if developer_user is not None and developer_user.pubkey_hex:
+                excluded.add(developer_user.pubkey_hex)
+
+    return excluded
+
+
+def _fetch_non_self_zap_totals(
+    *, session: Session, review_id: str, excluded_pubkeys: set[str]
+):
+    """Return aggregated zap stats excluding disallowed pubkeys."""
+
+    stmt = (
+        select(
+            Zap.from_pubkey.label("from_pubkey"),
+            func.count().label("zap_count"),
+            func.coalesce(func.sum(Zap.amount_msats), 0).label("total_msats"),
+        )
+        .where(Zap.target_type == ZapTargetType.REVIEW)
+        .where(Zap.target_id == review_id)
+        .group_by(Zap.from_pubkey)
+    )
+    if excluded_pubkeys:
+        stmt = stmt.where(Zap.from_pubkey.notin_(list(excluded_pubkeys)))
+    return session.execute(stmt).all()
+
+
+def _should_flag_correlation(zap_totals, *, total_msats: int) -> bool:
+    """Return ``True`` when zap activity suggests correlated behaviour."""
+
+    if total_msats <= 0:
+        return False
+
+    total_count = sum(int(row.zap_count) for row in zap_totals)
+    if total_count < _CORRELATION_MIN_ZAPS:
+        return False
+
+    top_amount = max(int(row.total_msats) for row in zap_totals)
+    dominance_share = top_amount / total_msats
+    return dominance_share >= _CORRELATION_DOMINANCE_SHARE
 
 
 def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap, Review]:
@@ -95,6 +154,16 @@ def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap,
         msg = "Review not found for zap receipt."
         raise ZapTargetNotFoundError(msg)
 
+    user = review.user
+    if user is None:  # pragma: no cover - defensive
+        session.refresh(review)
+        user = review.user
+        if user is None:
+            msg = "Review author missing for zap receipt."
+            raise ZapTargetNotFoundError(msg)
+
+    excluded_pubkeys = _gather_excluded_pubkeys(review, to_pubkey)
+
     try:
         received_at = datetime.fromtimestamp(event.created_at, tz=timezone.utc)
     except (OverflowError, OSError, ValueError) as exc:  # pragma: no cover - defensive
@@ -112,24 +181,20 @@ def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap,
     session.add(zap)
     session.flush()
 
-    total_msats = session.scalar(
-        select(func.coalesce(func.sum(Zap.amount_msats), 0)).where(
-            Zap.target_type == ZapTargetType.REVIEW,
-            Zap.target_id == review.id,
-        )
+    zap_totals = _fetch_non_self_zap_totals(
+        session=session, review_id=review.id, excluded_pubkeys=excluded_pubkeys
     )
-    if total_msats is None:  # pragma: no cover - defensive
-        total_msats = 0
+    total_msats = sum(int(row.total_msats) for row in zap_totals)
+    flagged_suspicious = _should_flag_correlation(
+        zap_totals, total_msats=total_msats
+    )
 
-    user = review.user
-    if user is None:  # pragma: no cover - defensive
-        session.refresh(review)
-        user = review.user
-        if user is None:
-            msg = "Review author missing for zap receipt."
-            raise ZapTargetNotFoundError(msg)
-
-    update_review_helpful_score(review=review, user=user, total_zap_msats=total_msats)
+    update_review_helpful_score(
+        review=review,
+        user=user,
+        total_zap_msats=total_msats,
+        flagged_suspicious=flagged_suspicious,
+    )
     session.flush()
     session.refresh(review)
 

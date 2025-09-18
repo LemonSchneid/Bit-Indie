@@ -49,6 +49,7 @@ class ReviewRead(BaseModel):
     rating: int | None
     helpful_score: float
     total_zap_msats: int
+    suspicious_zap_pattern: bool
     is_verified_purchase: bool
     created_at: datetime
     author: ReviewAuthor

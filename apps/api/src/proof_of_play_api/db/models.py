@@ -301,6 +301,9 @@ class Review(Base):
     total_zap_msats: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, server_default="0"
     )
+    suspicious_zap_pattern: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     is_verified_purchase: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

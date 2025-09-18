@@ -83,3 +83,28 @@ def test_update_review_helpful_score_records_zap_totals() -> None:
 
     assert score == pytest.approx(math.log1p(0) * 1.0)
     assert review.total_zap_msats == 0
+    assert review.suspicious_zap_pattern is False
+
+
+def test_update_review_helpful_score_marks_suspicious() -> None:
+    """Flagged updates should persist the suspicious zap indicator."""
+
+    user = User(pubkey_hex="dan")
+    review = Review(
+        game_id="game-4",
+        user_id="user-4",
+        body_md="Appreciate the hotfix",
+        rating=4,
+        created_at=datetime.now(timezone.utc),
+    )
+
+    score = update_review_helpful_score(
+        review=review,
+        user=user,
+        total_zap_msats=10_000,
+        flagged_suspicious=True,
+    )
+
+    assert score > 0
+    assert review.total_zap_msats == 10_000
+    assert review.suspicious_zap_pattern is True

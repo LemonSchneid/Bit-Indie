@@ -248,7 +248,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 * **T4-1** Client zap buttons (Lightning Address/LNURL). *DoD:* Wallet opens; payment leaves client. ✅ Done
 * **T4-2** Zap receipts ingestion from relays. *DoD:* On receipt, DB `zaps` row added; review helpful_score recomputed. ✅ Done
-* **T4-3** Anti self-zap + correlation guard. *DoD:* Self zaps excluded; simple correlation rule flagged.
+* **T4-3** Anti self-zap + correlation guard. *DoD:* Self zaps excluded; simple correlation rule flagged. ✅ Done
 
 ### Milestone 5 — Discovery & Moderation (Week 10)
 
