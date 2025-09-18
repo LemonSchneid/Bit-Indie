@@ -8,6 +8,7 @@ from proof_of_play_api.api.v1.routes.comments import router as comments_router
 from proof_of_play_api.api.v1.routes.developers import router as developers_router
 from proof_of_play_api.api.v1.routes.games import router as games_router
 from proof_of_play_api.api.v1.routes.health import router as health_router
+from proof_of_play_api.api.v1.routes.nostr import router as nostr_router
 from proof_of_play_api.api.v1.routes.purchases import router as purchases_router
 from proof_of_play_api.api.v1.routes.reviews import router as reviews_router
 from proof_of_play_api.core.config import get_settings
@@ -32,6 +33,7 @@ def create_application() -> FastAPI:
     application.include_router(comments_router)
     application.include_router(reviews_router)
     application.include_router(purchases_router)
+    application.include_router(nostr_router)
     return application
 
 

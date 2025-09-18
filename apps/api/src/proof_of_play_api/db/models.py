@@ -76,6 +76,15 @@ class RefundStatus(str, enum.Enum):
     PAID = "PAID"
 
 
+class ZapTargetType(str, enum.Enum):
+    """Entities that can receive Lightning zap receipts."""
+
+    REVIEW = "REVIEW"
+    GAME = "GAME"
+    COMMENT = "COMMENT"
+    PLATFORM = "PLATFORM"
+
+
 class User(TimestampMixin, Base):
     """A registered Nostr user in the marketplace."""
 
@@ -309,6 +318,28 @@ class Review(Base):
         return self.user
 
 
+class Zap(TimestampMixin, Base):
+    """Recorded Lightning zap receipt associated with marketplace content."""
+
+    __tablename__ = "zaps"
+
+    __table_args__ = (
+        CheckConstraint("amount_msats > 0", name="ck_zaps_amount_positive"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    target_type: Mapped[ZapTargetType] = mapped_column(
+        SqlEnum(ZapTargetType, name="zap_target_type", native_enum=False),
+        nullable=False,
+    )
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_pubkey: Mapped[str] = mapped_column(String(128), nullable=False)
+    to_pubkey: Mapped[str] = mapped_column(String(128), nullable=False)
+    amount_msats: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 __all__ = [
     "Comment",
     "Developer",
@@ -319,6 +350,8 @@ __all__ = [
     "Purchase",
     "Review",
     "RefundStatus",
+    "Zap",
+    "ZapTargetType",
     "TimestampMixin",
     "User",
     "DownloadAuditLog",
