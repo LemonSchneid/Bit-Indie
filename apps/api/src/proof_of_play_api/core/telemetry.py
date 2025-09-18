@@ -7,10 +7,38 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+except ModuleNotFoundError:  # pragma: no cover - exercised implicitly when Sentry is absent
+    class _SentrySdkStub:
+        """Fallback Sentry stub used when the optional dependency is unavailable."""
+
+        @staticmethod
+        def init(*_args: object, **_kwargs: object) -> None:
+            """Provide a no-op initializer matching ``sentry_sdk.init``."""
+
+    class FastApiIntegration:  # type: ignore[no-redef]
+        """Fallback FastAPI integration stub."""
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:  # noqa: D401
+            """Create a no-op stub."""
+
+    class LoggingIntegration:  # type: ignore[no-redef]
+        """Fallback logging integration stub."""
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:  # noqa: D401
+            """Create a no-op stub."""
+
+    class SqlalchemyIntegration:  # type: ignore[no-redef]
+        """Fallback SQLAlchemy integration stub."""
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:  # noqa: D401
+            """Create a no-op stub."""
+
+    sentry_sdk = _SentrySdkStub()
 
 
 DEFAULT_SENTRY_ENVIRONMENT = "development"

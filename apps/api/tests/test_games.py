@@ -7,8 +7,22 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select
+
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import Developer, Game, GameCategory, GameStatus, User
+from proof_of_play_api.db.models import (
+    Developer,
+    Game,
+    GameCategory,
+    GameStatus,
+    InvoiceStatus,
+    Purchase,
+    RefundStatus,
+    Review,
+    User,
+)
 from proof_of_play_api.main import create_application
 from proof_of_play_api.schemas.game import PublishRequirementCode
 from proof_of_play_api.services.auth import reset_login_challenge_store
@@ -494,3 +508,155 @@ def test_publish_game_activates_listing_and_enables_slug_lookup() -> None:
     slug_body = by_slug.json()
     assert slug_body["id"] == game_id
     assert slug_body["title"] == "Nebula Riders"
+
+def test_list_featured_games_returns_eligible_entries() -> None:
+    """The featured games endpoint should surface games that meet the rotation criteria."""
+
+    _create_schema()
+    client = _build_client()
+    reference = datetime.now(timezone.utc)
+
+    with session_scope() as session:
+        developer_user = User(pubkey_hex="dev-featured")
+        session.add(developer_user)
+        session.flush()
+
+        developer = Developer(user_id=developer_user.id)
+        session.add(developer)
+        session.flush()
+
+        game = Game(
+            developer_id=developer.id,
+            title="Aurora Tactics",
+            slug="aurora-tactics",
+            summary="Command squads across neon-lit arenas.",
+            active=True,
+            status=GameStatus.DISCOVER,
+            updated_at=reference - timedelta(days=10),
+        )
+        session.add(game)
+        session.flush()
+
+        for index in range(10):
+            buyer = User(pubkey_hex=f"buyer-{index}")
+            session.add(buyer)
+            session.flush()
+
+            purchase = Purchase(
+                user_id=buyer.id,
+                game_id=game.id,
+                invoice_id=f"inv-{index}",
+                invoice_status=InvoiceStatus.PAID,
+                amount_msats=2_000,
+                paid_at=reference - timedelta(days=3),
+                refund_status=RefundStatus.NONE,
+            )
+            session.add(purchase)
+
+            review = Review(
+                game_id=game.id,
+                user_id=buyer.id,
+                body_md="Great tactical depth and music.",
+                rating=5,
+                is_verified_purchase=True,
+            )
+            session.add(review)
+
+        session.flush()
+        session.refresh(game)
+        game.updated_at = reference - timedelta(days=10)
+        session.flush()
+        game_id = game.id
+
+    response = client.get("/v1/games/featured")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    entry = body[0]
+    assert entry["game"]["slug"] == "aurora-tactics"
+    assert entry["verified_review_count"] == 10
+    assert entry["paid_purchase_count"] == 10
+    assert entry["refund_rate"] == pytest.approx(0.0)
+    assert entry["updated_within_window"] is True
+
+    with session_scope() as session:
+        stored = session.get(Game, game_id)
+        assert stored is not None
+        assert stored.status is GameStatus.FEATURED
+
+
+def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
+    """Games breaching refund thresholds should be demoted and hidden from the featured list."""
+
+    _create_schema()
+    client = _build_client()
+    reference = datetime.now(timezone.utc)
+
+    with session_scope() as session:
+        developer_user = User(pubkey_hex="dev-demote")
+        session.add(developer_user)
+        session.flush()
+
+        developer = Developer(user_id=developer_user.id)
+        session.add(developer)
+        session.flush()
+
+        game = Game(
+            developer_id=developer.id,
+            title="Spectral Speedway",
+            slug="spectral-speedway",
+            active=True,
+            status=GameStatus.FEATURED,
+            updated_at=reference - timedelta(days=6),
+        )
+        session.add(game)
+        session.flush()
+
+        for index in range(12):
+            buyer = User(pubkey_hex=f"refund-buyer-{index}")
+            session.add(buyer)
+            session.flush()
+
+            purchase = Purchase(
+                user_id=buyer.id,
+                game_id=game.id,
+                invoice_id=f"refund-inv-{index}",
+                invoice_status=InvoiceStatus.PAID,
+                amount_msats=4_000,
+                paid_at=reference - timedelta(days=4),
+                refund_status=RefundStatus.NONE,
+            )
+            session.add(purchase)
+
+            review = Review(
+                game_id=game.id,
+                user_id=buyer.id,
+                body_md="Fast but buggy build.",
+                rating=3,
+                is_verified_purchase=True,
+            )
+            session.add(review)
+
+        refund_ids = session.scalars(
+            select(Purchase.id).where(Purchase.game_id == game.id).limit(3)
+        ).all()
+        for purchase_id in refund_ids:
+            purchase = session.get(Purchase, purchase_id)
+            assert purchase is not None
+            purchase.refund_status = RefundStatus.PAID
+
+        session.flush()
+        session.refresh(game)
+        game.updated_at = reference - timedelta(days=6)
+        session.flush()
+        game_id = game.id
+
+    response = client.get("/v1/games/featured")
+    assert response.status_code == 200
+    body = response.json()
+    assert body == []
+
+    with session_scope() as session:
+        stored = session.get(Game, game_id)
+        assert stored is not None
+        assert stored.status is GameStatus.DISCOVER

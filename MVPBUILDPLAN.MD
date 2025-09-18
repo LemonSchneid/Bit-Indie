@@ -261,7 +261,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 * **T6-1** Refund request flow (manual payout). *DoD:* Admin can mark REFUNDED; payout recorded. ✅ Done
 * **T6-2** Integrity dashboard (refund %, takedown %, mod hours). *DoD:* Stats page for ops. ✅ Done
 * **T6-3** Telemetry & error alerting. *DoD:* Basic logs/alerts wired. ✅ Done
-* **T6-4** First Featured rotation UI. *DoD:* Featured shelf renders; criteria enforced.
+* **T6-4** First Featured rotation UI. *DoD:* Featured shelf renders; criteria enforced. ✅ Done
 
 ---
 

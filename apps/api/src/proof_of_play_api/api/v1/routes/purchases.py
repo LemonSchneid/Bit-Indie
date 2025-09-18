@@ -25,7 +25,10 @@ from proof_of_play_api.schemas.purchase import (
     PurchaseReceiptGame,
     PurchaseRefundRequest,
 )
-from proof_of_play_api.services.game_promotion import maybe_promote_game_to_discover
+from proof_of_play_api.services.game_promotion import (
+    maybe_promote_game_to_discover,
+    update_game_featured_status,
+)
 from proof_of_play_api.services.payments import (
     PaymentService,
     PaymentServiceError,
@@ -131,8 +134,10 @@ def handle_lnbits_webhook(
     session.flush()
 
     if status_info.paid and purchase.game is not None:
-        promoted = maybe_promote_game_to_discover(session=session, game=purchase.game)
-        if promoted:
+        game = purchase.game
+        promoted = maybe_promote_game_to_discover(session=session, game=game)
+        featured_changed, _ = update_game_featured_status(session=session, game=game)
+        if promoted or featured_changed:
             session.flush()
 
     return {"status": "ok"}

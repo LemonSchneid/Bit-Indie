@@ -1,5 +1,7 @@
+import { FeaturedRotation } from "../components/featured-rotation";
 import { LoginCard } from "../components/login-card";
-import { getApiHealth } from "../lib/api";
+import { getApiHealth, getFeaturedGames } from "../lib/api";
+import type { FeaturedGameSummary } from "../lib/api";
 
 type FeatureHighlight = {
   title: string;
@@ -44,6 +46,8 @@ const milestoneCallouts: MilestoneCallout[] = [
 export default async function HomePage() {
   let isApiOnline = false;
   let apiMessage = "Unable to reach the backend API.";
+  let featuredGames: FeaturedGameSummary[] = [];
+  let featuredError: string | null = null;
 
   try {
     const health = await getApiHealth();
@@ -55,6 +59,15 @@ export default async function HomePage() {
     if (error instanceof Error) {
       apiMessage = error.message;
     }
+  }
+
+  try {
+    featuredGames = await getFeaturedGames(6);
+  } catch (error: unknown) {
+    featuredError =
+      error instanceof Error
+        ? error.message
+        : "Featured games are still being selected. Please check back soon.";
   }
 
   return (
@@ -76,6 +89,25 @@ export default async function HomePage() {
             Follow along as we wire up authentication, game publishing flows, and zap-powered reviews across the coming
             milestones.
           </p>
+        </section>
+
+        <section>
+          {featuredGames.length > 0 ? (
+            <FeaturedRotation entries={featuredGames} />
+          ) : (
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
+              <div className="space-y-3">
+                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
+                  Featured rotation warming up
+                </span>
+                <h2 className="text-xl font-semibold text-white">Spotlight coming soon</h2>
+                <p className="text-sm text-slate-300">
+                  {featuredError ??
+                    "We promote games to the featured shelf once they earn verified reviews, keep refund rates healthy, and ship fresh updates."}
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">

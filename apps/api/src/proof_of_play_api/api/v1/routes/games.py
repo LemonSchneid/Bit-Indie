@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -11,6 +13,7 @@ from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Developer, Game, GameStatus, InvoiceStatus, Purchase, User
 from proof_of_play_api.schemas.game import (
     GameCreateRequest,
+    FeaturedGameSummary,
     GamePublishChecklist,
     GamePublishRequest,
     GamePublishRequirement,
@@ -30,6 +33,10 @@ from proof_of_play_api.services.storage import (
     GameAssetKind,
     StorageService,
     get_storage_service,
+)
+from proof_of_play_api.services.game_promotion import (
+    maybe_promote_game_to_discover,
+    update_game_featured_status,
 )
 from proof_of_play_api.services.payments import (
     PaymentService,
@@ -213,6 +220,12 @@ def update_game_draft(
 
     session.flush()
     session.refresh(game)
+
+    changed, _ = update_game_featured_status(session=session, game=game)
+    if changed:
+        session.flush()
+        session.refresh(game)
+
     return GameRead.model_validate(game)
 
 
@@ -371,6 +384,12 @@ def publish_game(
 
     session.flush()
     session.refresh(game)
+
+    changed, _ = update_game_featured_status(session=session, game=game)
+    if changed:
+        session.flush()
+        session.refresh(game)
+
     return GameRead.model_validate(game)
 
 
@@ -398,7 +417,64 @@ def read_game_by_slug(slug: str, session: Session = Depends(get_session)) -> Gam
     return GameRead.model_validate(game)
 
 
+@router.get(
+    "/featured",
+    response_model=list[FeaturedGameSummary],
+    summary="List games eligible for the featured rotation",
+)
+def list_featured_games(
+    limit: int = Query(
+        default=6,
+        ge=1,
+        le=12,
+        description="Maximum number of featured games to return in the rotation.",
+    ),
+    session: Session = Depends(get_session),
+) -> list[FeaturedGameSummary]:
+    """Return featured games along with the metrics that justify their placement."""
+
+    reference = datetime.now(timezone.utc)
+    stmt = (
+        select(Game)
+        .options(joinedload(Game.developer).joinedload(Developer.user))
+        .where(Game.active.is_(True))
+        .where(Game.status.in_([GameStatus.DISCOVER, GameStatus.FEATURED]))
+        .order_by(Game.updated_at.desc())
+    )
+    games = session.scalars(stmt).all()
+
+    summaries: list[FeaturedGameSummary] = []
+    status_changed = False
+
+    for game in games:
+        changed, eligibility = update_game_featured_status(
+            session=session, game=game, reference=reference
+        )
+        status_changed = status_changed or changed
+
+        if game.status == GameStatus.FEATURED and eligibility.meets_thresholds:
+            summaries.append(
+                FeaturedGameSummary(
+                    game=GameRead.model_validate(game),
+                    verified_review_count=eligibility.verified_review_count,
+                    paid_purchase_count=eligibility.paid_purchase_count,
+                    refunded_purchase_count=eligibility.refunded_purchase_count,
+                    refund_rate=eligibility.refund_rate,
+                    updated_within_window=eligibility.updated_within_window,
+                )
+            )
+
+        if len(summaries) >= limit:
+            break
+
+    if status_changed:
+        session.flush()
+
+    return summaries
+
+
 __all__ = [
+    "list_featured_games",
     "create_game_asset_upload",
     "create_game_draft",
     "create_game_invoice",
