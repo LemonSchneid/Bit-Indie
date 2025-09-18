@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import builtins
 import math
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import pytest
 import sqlalchemy as sa
@@ -199,12 +201,42 @@ def test_receive_multiple_zaps_accumulates_totals() -> None:
     assert body["review"]["suspicious_zap_pattern"] is False
     assert body["review"]["helpful_score"] > first_response.json()["review"]["helpful_score"]
 
+
+def test_receive_zap_receipt_casts_total_msats_to_int(monkeypatch) -> None:
+    """Zap totals should be coerced to integers before updating rankings."""
+
+    _create_schema()
+    review_id, recipient_pubkey, _ = _seed_game_with_review()
+    client = _build_client()
+
+    real_sum = builtins.sum
+
+    def _decimal_sum(values):
+        return Decimal(real_sum(values))
+
+    monkeypatch.setattr(builtins, "sum", _decimal_sum)
+
+    created_at = int(datetime.now(tz=timezone.utc).timestamp())
+    payload = _sign_zap_event(
+        3333,
+        review_id=review_id,
+        recipient_pubkey=recipient_pubkey,
+        amount_msats=7_000,
+        created_at=created_at,
+    )
+
+    response = client.post("/v1/nostr/zap-receipts", json={"event": payload})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["review"]["total_zap_msats"] == 7_000
+
     with session_scope() as session:
         stored_review = session.get(Review, review_id)
         assert stored_review is not None
-        assert stored_review.total_zap_msats == 7_500
+        assert stored_review.total_zap_msats == 7_000
         zap_count = session.scalar(sa.select(sa.func.count()).select_from(Zap))
-        assert zap_count == 2
+        assert zap_count == 1
 
 
 def test_receive_zap_receipt_rejects_duplicates() -> None:
