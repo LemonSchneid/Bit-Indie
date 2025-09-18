@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
@@ -54,13 +54,29 @@ def lookup_purchase(
 ) -> PurchaseRead:
     """Return the newest purchase matching the provided user and game identifiers."""
 
-    stmt = (
+    order_by_columns = (Purchase.created_at.desc(), Purchase.id.desc())
+    completed_stmt = (
         select(Purchase)
-        .where(Purchase.game_id == game_id, Purchase.user_id == user_id)
-        .order_by(Purchase.created_at.desc(), Purchase.id.desc())
+        .where(
+            Purchase.game_id == game_id,
+            Purchase.user_id == user_id,
+            or_(
+                Purchase.download_granted.is_(True),
+                Purchase.invoice_status == InvoiceStatus.PAID,
+            ),
+        )
+        .order_by(*order_by_columns)
         .limit(1)
     )
-    purchase = session.scalars(stmt).first()
+    purchase = session.scalars(completed_stmt).first()
+    if purchase is None:
+        fallback_stmt = (
+            select(Purchase)
+            .where(Purchase.game_id == game_id, Purchase.user_id == user_id)
+            .order_by(*order_by_columns)
+            .limit(1)
+        )
+        purchase = session.scalars(fallback_stmt).first()
     if purchase is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
     return PurchaseRead.model_validate(purchase)
