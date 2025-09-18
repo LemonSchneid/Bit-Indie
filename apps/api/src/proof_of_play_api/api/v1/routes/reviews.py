@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from json import JSONDecodeError
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -30,6 +32,27 @@ from proof_of_play_api.services.review_ranking import update_review_helpful_scor
 
 router = APIRouter(prefix="/v1/games/{game_id}/reviews", tags=["reviews"])
 logger = logging.getLogger(__name__)
+
+
+async def _extract_raw_body_md(request: Request) -> str | None:
+    """Return the untrimmed review body from the incoming JSON payload."""
+
+    try:
+        body_bytes = await request.body()
+    except RuntimeError:
+        return None
+    if not body_bytes:
+        return None
+
+    try:
+        payload = json.loads(body_bytes)
+    except JSONDecodeError:
+        return None
+
+    body_md = payload.get("body_md")
+    if isinstance(body_md, str):
+        return body_md
+    return None
 
 
 @router.get(
@@ -64,6 +87,7 @@ def list_game_reviews(game_id: str, session: Session = Depends(get_session)) -> 
 def create_game_review(
     game_id: str,
     request: ReviewCreateRequest,
+    raw_body_md: str | None = Depends(_extract_raw_body_md),
     session: Session = Depends(get_session),
 ) -> ReviewRead:
     """Persist a review while enforcing rating gating for verified purchases."""
@@ -76,11 +100,13 @@ def create_game_review(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
+    pow_payload = raw_body_md if raw_body_md is not None else request.body_md
+
     try:
         enforce_proof_of_work(
             user=user,
             resource_id=f"review:{game_id}",
-            payload=request.body_md,
+            payload=pow_payload,
             proof=request.proof_of_work,
         )
     except ProofOfWorkValidationError as error:
