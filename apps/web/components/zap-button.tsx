@@ -88,14 +88,6 @@ export function ZapButton({
     };
   }, [showSuccess]);
 
-  useEffect(() => {
-    if (!isMenuOpen || payParams || !hasDestination) {
-      return;
-    }
-
-    void loadPayParams();
-  }, [isMenuOpen, payParams, hasDestination, loadPayParams]);
-
   const resetMessages = useCallback(() => {
     setErrorMessage(null);
     setShowSuccess(false);
@@ -118,6 +110,14 @@ export function ZapButton({
       return null;
     }
   }, [payEndpointConfig, resetMessages]);
+
+  useEffect(() => {
+    if (!isMenuOpen || payParams || !hasDestination) {
+      return;
+    }
+
+    void loadPayParams();
+  }, [isMenuOpen, payParams, hasDestination, loadPayParams]);
 
   const isAmountAllowed = useCallback(
     (amount: number) => {
