@@ -185,6 +185,7 @@ def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap,
         session=session, review_id=review.id, excluded_pubkeys=excluded_pubkeys
     )
     total_msats = sum(int(row.total_msats) for row in zap_totals)
+    total_msats = int(total_msats)
     flagged_suspicious = _should_flag_correlation(
         zap_totals, total_msats=total_msats
     )
