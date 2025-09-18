@@ -15,12 +15,19 @@ from proof_of_play_api.api.v1.routes.nostr import router as nostr_router
 from proof_of_play_api.api.v1.routes.purchases import router as purchases_router
 from proof_of_play_api.api.v1.routes.reviews import router as reviews_router
 from proof_of_play_api.core.config import get_settings
+from proof_of_play_api.core.telemetry import (
+    configure_telemetry,
+    get_telemetry_settings,
+)
 
 
 def create_application() -> FastAPI:
     """Build and configure the FastAPI application instance."""
 
     settings = get_settings()
+    telemetry_settings = get_telemetry_settings()
+    configure_telemetry(telemetry_settings)
+
     application = FastAPI(title=settings.title, version=settings.version)
     application.add_middleware(
         CORSMiddleware,
