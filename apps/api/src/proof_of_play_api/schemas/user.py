@@ -14,6 +14,7 @@ class UserRead(BaseModel):
     pubkey_hex: str
     display_name: str | None
     nip05: str | None
+    lightning_address: str | None
     reputation_score: int
     is_admin: bool
     is_developer: bool

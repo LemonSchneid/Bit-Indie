@@ -85,6 +85,7 @@ class User(TimestampMixin, Base):
     pubkey_hex: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     display_name: Mapped[str | None] = mapped_column(String(120))
     nip05: Mapped[str | None] = mapped_column(String(255))
+    lightning_address: Mapped[str | None] = mapped_column(String(255))
     reputation_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
@@ -180,6 +181,20 @@ class Game(TimestampMixin, Base):
         cascade="all,delete-orphan",
         single_parent=True,
     )
+
+    @property
+    def developer_lightning_address(self) -> str | None:
+        """Return the developer's configured Lightning address if available."""
+
+        developer = self.developer
+        if developer is None:
+            return None
+
+        user = developer.user
+        if user is None:
+            return None
+
+        return user.lightning_address
 
 
 class Purchase(TimestampMixin, Base):
@@ -286,6 +301,12 @@ class Review(Base):
 
     game: Mapped[Game] = relationship(back_populates="reviews")
     user: Mapped[User] = relationship(back_populates="reviews")
+
+    @property
+    def author(self) -> User | None:
+        """Expose the associated user for serialization helpers."""
+
+        return self.user
 
 
 __all__ = [

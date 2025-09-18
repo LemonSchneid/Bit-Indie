@@ -47,7 +47,10 @@ def _seed_game(*, active: bool = True) -> str:
     """Persist a developer-owned game and return its identifier."""
 
     with session_scope() as session:
-        developer_user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+        developer_user = User(
+            pubkey_hex=f"dev-{uuid.uuid4().hex}",
+            lightning_address=f"dev{uuid.uuid4().hex[:8]}@zaps.test",
+        )
         session.add(developer_user)
         session.flush()
 
@@ -73,7 +76,10 @@ def _create_user() -> str:
     """Persist a standalone user and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}")
+        user = User(
+            pubkey_hex=f"user-{uuid.uuid4().hex}",
+            lightning_address=f"player{uuid.uuid4().hex[:8]}@zaps.test",
+        )
         session.add(user)
         session.flush()
         user_id = user.id
@@ -173,6 +179,10 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["is_verified_purchase"] is True
     assert body["helpful_score"] == pytest.approx(0.0)
     assert body["total_zap_msats"] == 0
+    assert body["author"]["id"] == user_id
+    assert body["author"]["pubkey_hex"].startswith("user-")
+    assert body["author"]["lightning_address"].endswith("@zaps.test")
+    assert body["author"]["display_name"] is None
 
     with session_scope() as session:
         stored = session.get(Review, body["id"])
@@ -202,6 +212,8 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     assert body["is_verified_purchase"] is False
     assert body["helpful_score"] == pytest.approx(0.0)
     assert body["total_zap_msats"] == 0
+    assert body["author"]["id"] == user_id
+    assert body["author"]["lightning_address"].endswith("@zaps.test")
 
 
 def test_list_reviews_orders_by_helpful_score() -> None:
@@ -256,3 +268,4 @@ def test_list_reviews_orders_by_helpful_score() -> None:
     assert body[0]["created_at"] < body[1]["created_at"]
     assert body[0]["total_zap_msats"] == 50_000
     assert body[1]["total_zap_msats"] == 1_000
+    assert body[0]["author"]["lightning_address"].endswith("@zaps.test")

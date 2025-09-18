@@ -5,10 +5,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import AnyUrl
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db import get_session
-from proof_of_play_api.db.models import Game, GameStatus, InvoiceStatus, Purchase, User
+from proof_of_play_api.db.models import Developer, Game, GameStatus, InvoiceStatus, Purchase, User
 from proof_of_play_api.schemas.game import (
     GameCreateRequest,
     GamePublishChecklist,
@@ -386,7 +386,11 @@ def read_game_by_slug(slug: str, session: Session = Depends(get_session)) -> Gam
     if not normalized_slug:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug cannot be empty.")
 
-    stmt = select(Game).where(Game.slug == normalized_slug, Game.active.is_(True))
+    stmt = (
+        select(Game)
+        .options(joinedload(Game.developer).joinedload(Developer.user))
+        .where(Game.slug == normalized_slug, Game.active.is_(True))
+    )
     game = session.scalar(stmt)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")

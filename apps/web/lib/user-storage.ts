@@ -20,7 +20,8 @@ function isUserProfile(value: unknown): value is UserProfile {
     typeof candidate.reputation_score === "number";
   const hasOptionalFields =
     (candidate.display_name === null || typeof candidate.display_name === "string") &&
-    (candidate.nip05 === null || typeof candidate.nip05 === "string");
+    (candidate.nip05 === null || typeof candidate.nip05 === "string") &&
+    (candidate.lightning_address === null || typeof candidate.lightning_address === "string");
 
   return hasValidStrings && hasValidFlags && hasOptionalFields;
 }

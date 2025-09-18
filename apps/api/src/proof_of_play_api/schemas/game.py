@@ -109,6 +109,7 @@ class GameRead(BaseModel):
     build_size_bytes: int | None
     checksum_sha256: str | None
     active: bool
+    developer_lightning_address: str | None = None
     created_at: datetime
     updated_at: datetime
 
