@@ -485,3 +485,53 @@ def test_release_note_reply_ignores_alias_pubkeys_that_do_not_match_sender() -> 
     assert entry["author"]["user_id"] is None
     assert entry["is_verified_purchase"] is False
 
+
+def test_release_note_reply_ignores_aliases_when_sender_pubkey_invalid() -> None:
+    """Alias tags should be ignored when the reply's pubkey cannot be validated."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    user_id = _create_user(pubkey_hex=purchaser_hex)
+    alias_npub = encode_npub(purchaser_hex)
+    assert alias_npub is not None
+    release_event_id = f"event-{uuid.uuid4().hex}"
+    invalid_pubkey = "not-a-valid-pubkey"
+
+    with session_scope() as session:
+        session.add(
+            Purchase(
+                user_id=user_id,
+                game_id=game_id,
+                invoice_id=f"invoice-{uuid.uuid4().hex}",
+                invoice_status=InvoiceStatus.PAID,
+                amount_msats=1500,
+                paid_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            ReleaseNoteReply(
+                game_id=game_id,
+                release_note_event_id=release_event_id,
+                relay_url="https://relay.alias/replies",
+                event_id=f"reply-{uuid.uuid4().hex}",
+                pubkey=invalid_pubkey,
+                kind=1,
+                event_created_at=datetime(2024, 1, 6, 17, 0, tzinfo=timezone.utc),
+                content="Excited to try this out!",
+                tags_json=json.dumps([["e", release_event_id], ["alias", alias_npub]]),
+            )
+        )
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    comments = response.json()
+    assert len(comments) == 1
+    entry = comments[0]
+    assert entry["source"] == "NOSTR"
+    assert entry["author"]["user_id"] is None
+    assert entry["author"]["pubkey_hex"] is None
+    assert entry["is_verified_purchase"] is False
+
