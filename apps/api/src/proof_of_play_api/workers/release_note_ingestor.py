@@ -169,11 +169,15 @@ class ReleaseNoteReplyIngestor:
             "limit": self._settings.batch_limit,
         }
 
-        response = self._client.post(
-            relay_url,
-            json=payload,
-            timeout=self._settings.request_timeout,
-        )
+        try:
+            response = self._client.post(
+                relay_url,
+                json=payload,
+                timeout=self._settings.request_timeout,
+            )
+        except httpx.HTTPError as exc:
+            msg = f"Relay {relay_url} request failed: {exc}"
+            raise RelayQueryError(msg) from exc
         if response.status_code >= 400:
             msg = (
                 f"Relay {relay_url} responded with status "
