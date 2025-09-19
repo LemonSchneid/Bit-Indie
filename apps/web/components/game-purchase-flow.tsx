@@ -13,6 +13,7 @@ import {
 } from "../lib/api";
 import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
+import { generateQrCodeDataUrl } from "../lib/qr-code";
 
 type FlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
 type CopyState = "idle" | "copied" | "error";
@@ -77,6 +78,9 @@ export function GamePurchaseFlow({
   const [purchase, setPurchase] = useState<PurchaseRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [qrGenerationFailed, setQrGenerationFailed] = useState(false);
 
   useEffect(() => {
     if (!isPurchasable || !user || purchase || invoice) {
@@ -200,20 +204,43 @@ export function GamePurchaseFlow({
     return `/purchases/${invoice.purchase_id}/receipt`;
   }, [invoice]);
 
-  const qrImageUrl = useMemo(() => {
-    if (!invoice) {
-      return null;
+  useEffect(() => {
+    const paymentRequest = invoice?.payment_request;
+    if (!paymentRequest) {
+      setQrCodeDataUrl(null);
+      setIsGeneratingQr(false);
+      setQrGenerationFailed(false);
+      return;
     }
 
-    try {
-      const qrUrl = new URL("https://api.qrserver.com/v1/create-qr-code/");
-      qrUrl.searchParams.set("size", "220x220");
-      qrUrl.searchParams.set("data", invoice.payment_request);
-      return qrUrl.toString();
-    } catch (error) {
-      return null;
-    }
-  }, [invoice]);
+    let cancelled = false;
+    setIsGeneratingQr(true);
+    setQrGenerationFailed(false);
+    setQrCodeDataUrl(null);
+
+    generateQrCodeDataUrl(paymentRequest)
+      .then((dataUrl) => {
+        if (!cancelled) {
+          setQrCodeDataUrl(dataUrl);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        console.error("Failed to generate Lightning invoice QR code.", error);
+        setQrGenerationFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsGeneratingQr(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice?.payment_request]);
 
   const handleCreateInvoice = useCallback(async () => {
     if (!user) {
@@ -372,20 +399,23 @@ export function GamePurchaseFlow({
               <div className="mt-6 space-y-5">
                 <div className="flex justify-center">
                   <div className="rounded-2xl border border-white/10 bg-white p-4 shadow-xl">
-                    {qrImageUrl ? (
+                    {qrCodeDataUrl ? (
                       <Image
-                        src={qrImageUrl}
+                        src={qrCodeDataUrl}
                         alt="Lightning invoice QR code"
                         width={220}
                         height={220}
                         className="h-auto w-auto"
+                        unoptimized
                         priority
                       />
-                    ) : (
+                    ) : isGeneratingQr ? (
+                      <p className="text-center text-xs text-slate-500">Generating QR code…</p>
+                    ) : qrGenerationFailed ? (
                       <p className="text-center text-xs text-slate-500">
-                        Unable to load QR image. Copy the invoice text below into your wallet.
+                        Unable to generate a QR code. Copy the invoice text below into your wallet.
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
                 <p className="text-center text-sm text-slate-300">

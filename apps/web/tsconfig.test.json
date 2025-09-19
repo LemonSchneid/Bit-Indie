@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist-tests",
+    "module": "commonjs",
+    "target": "es2020",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "lib/lightning.ts",
+    "lib/lightning.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

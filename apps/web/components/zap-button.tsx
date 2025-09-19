@@ -50,6 +50,10 @@ export function ZapButton({
   );
 
   useEffect(() => {
+    setPayParams(null);
+  }, [payEndpointConfig]);
+
+  useEffect(() => {
     if (!isMenuOpen) {
       return;
     }

@@ -14,14 +14,6 @@ const nextConfig = {
   experimental: {
     appDir: true,
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "api.qrserver.com",
-      },
-    ],
-  },
 };
 
 const sentryWebpackPluginOptions = {
