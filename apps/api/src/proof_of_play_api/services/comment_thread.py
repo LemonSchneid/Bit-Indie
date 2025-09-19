@@ -354,8 +354,9 @@ def _extract_alias_pubkeys(
 
     aliases: set[str] = set()
     normalized_primary = primary_pubkey.lower() if primary_pubkey else None
-    if normalized_primary:
-        aliases.add(normalized_primary)
+    if normalized_primary is None:
+        return tuple()
+    aliases.add(normalized_primary)
     if not tags_json:
         return tuple(sorted(aliases))
     try:
@@ -373,10 +374,7 @@ def _extract_alias_pubkeys(
             normalized = _normalize_pubkey_value(value)
             if normalized:
                 candidate_aliases.add(normalized)
-    if normalized_primary is not None:
-        aliases.update(alias for alias in candidate_aliases if alias == normalized_primary)
-    else:
-        aliases.update(candidate_aliases)
+    aliases.update(alias for alias in candidate_aliases if alias == normalized_primary)
     return tuple(sorted(aliases))
 
 
