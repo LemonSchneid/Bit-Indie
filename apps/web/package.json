@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npm run test:build && node --test dist-tests/lightning.test.js",
+    "test:build": "tsc --project tsconfig.test.json"
   },
   "dependencies": {
     "@sentry/nextjs": "7.109.0",

@@ -3,6 +3,7 @@ node_modules/
 .npm/
 .pnpm-store/
 .next/
+apps/web/dist-tests/
 *.log
 
 # Python
