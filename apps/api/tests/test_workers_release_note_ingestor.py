@@ -18,6 +18,7 @@ from proof_of_play_api.db.models import (
     GameStatus,
     ReleaseNoteRelayCheckpoint,
     ReleaseNoteReply,
+    ReleaseNoteReplyHiddenReason,
     User,
 )
 from proof_of_play_api.workers.release_note_ingestor import (
@@ -175,6 +176,10 @@ def test_ingestor_persists_replies_and_updates_checkpoint() -> None:
         assert reply.kind == 1
         assert reply.content == "Congrats on the launch!"
         assert json.loads(reply.tags_json) == [["e", job.release_note_event_id], ["p", "b" * 64]]
+        assert reply.is_hidden is False
+        assert reply.hidden_reason is None
+        assert reply.moderation_notes is None
+        assert reply.hidden_at is None
         expected_created = datetime(2024, 7, 1, 12, 10, tzinfo=timezone.utc)
         if reply.event_created_at.tzinfo is None:
             assert reply.event_created_at == expected_created.replace(tzinfo=None)
@@ -203,6 +208,55 @@ def test_ingestor_persists_replies_and_updates_checkpoint() -> None:
     assert first_request[1]["since"] == expected_since
     assert first_request[1]["limit"] == settings.batch_limit
 
+
+def test_ingestor_auto_hides_low_quality_replies() -> None:
+    """Replies containing profanity should be persisted but hidden from storefront views."""
+
+    _create_schema()
+    settings = _build_settings(relays=("https://relay.filter/replies",))
+    metrics = _FakeMetrics()
+
+    with session_scope() as session:
+        game = _seed_game(session)
+        job = ReleaseNoteIngestionJob(
+            job_id="job-filter",
+            game_id=game.id,
+            release_note_event_id=game.release_note_event_id or "",
+            published_at=game.release_note_published_at or datetime.now(timezone.utc),
+        )
+
+    queue = _FakeQueue(jobs=[job])
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        events = [
+            {
+                "id": "reply-filtered",
+                "pubkey": "c" * 64,
+                "created_at": int(datetime(2024, 7, 1, 12, 15, tzinfo=timezone.utc).timestamp()),
+                "kind": 1,
+                "content": "This shit is awful.",
+                "tags": [["e", job.release_note_event_id]],
+            }
+        ]
+        return httpx.Response(200, json=events)
+
+    transport = httpx.MockTransport(_handler)
+    with httpx.Client(transport=transport) as client, session_scope() as session:
+        worker = ReleaseNoteReplyIngestor(
+            client=client,
+            queue=queue,
+            metrics=metrics,
+            settings=settings,
+        )
+
+        processed = worker.process_next(session=session)
+        assert processed is True
+
+        reply = session.scalar(select(ReleaseNoteReply))
+        assert reply is not None
+        assert reply.is_hidden is True
+        assert reply.hidden_reason is ReleaseNoteReplyHiddenReason.AUTOMATED_FILTER
+        assert reply.moderation_notes is not None and "profanity" in reply.moderation_notes.lower()
 
 def test_ingestor_skips_invalid_events_and_records_metrics() -> None:
     """Events without the release note reference should be ignored and logged."""

@@ -204,6 +204,7 @@ class CommentThreadService:
             stmt = (
                 select(ReleaseNoteReply)
                 .where(ReleaseNoteReply.game_id == game.id)
+                .where(ReleaseNoteReply.is_hidden.is_(False))
                 .order_by(
                     ReleaseNoteReply.event_created_at.asc(),
                     ReleaseNoteReply.id.asc(),

@@ -500,6 +500,13 @@ class ReleaseNoteRelayCheckpoint(TimestampMixin, Base):
     last_event_id: Mapped[str | None] = mapped_column(String(128))
 
 
+class ReleaseNoteReplyHiddenReason(str, enum.Enum):
+    """Enumerates why a release note reply has been hidden from storefront views."""
+
+    AUTOMATED_FILTER = "AUTOMATED_FILTER"
+    ADMIN = "ADMIN"
+
+
 class ReleaseNoteReply(TimestampMixin, Base):
     """Replies to published release note events fetched from relays."""
 
@@ -520,6 +527,19 @@ class ReleaseNoteReply(TimestampMixin, Base):
     event_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tags_json: Mapped[str] = mapped_column(Text, nullable=False)
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+    hidden_reason: Mapped[ReleaseNoteReplyHiddenReason | None] = mapped_column(
+        SqlEnum(
+            ReleaseNoteReplyHiddenReason,
+            name="release_note_reply_hidden_reason",
+            native_enum=False,
+        ),
+        nullable=True,
+    )
+    moderation_notes: Mapped[str | None] = mapped_column(Text)
+    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ModerationFlag(TimestampMixin, Base):
@@ -576,4 +596,5 @@ __all__ = [
     "ReleaseNotePublishQueue",
     "ReleaseNoteRelayCheckpoint",
     "ReleaseNoteReply",
+    "ReleaseNoteReplyHiddenReason",
 ]
