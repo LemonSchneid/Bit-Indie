@@ -324,6 +324,49 @@ def test_ingestor_records_failure_when_relays_fail() -> None:
     ]
 
 
+def test_ingestor_converts_http_errors_into_query_failures() -> None:
+    """HTTP client errors should be treated as query failures for consistent handling."""
+
+    _create_schema()
+    settings = _build_settings(relays=("https://relay.down/replies",))
+    metrics = _FakeMetrics()
+
+    with session_scope() as session:
+        game = _seed_game(session)
+        job = ReleaseNoteIngestionJob(
+            job_id="job-network",
+            game_id=game.id,
+            release_note_event_id=game.release_note_event_id or "",
+            published_at=game.release_note_published_at or datetime.now(timezone.utc),
+        )
+
+    queue = _FakeQueue(jobs=[job])
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("network unreachable", request=request)
+
+    transport = httpx.MockTransport(_handler)
+    with httpx.Client(transport=transport) as client, session_scope() as session:
+        worker = ReleaseNoteReplyIngestor(
+            client=client,
+            queue=queue,
+            metrics=metrics,
+            settings=settings,
+        )
+
+        processed = worker.process_next(session=session)
+        assert processed is True
+
+        replies = session.scalars(select(ReleaseNoteReply)).all()
+        assert replies == []
+
+    assert queue.acknowledged == []
+    assert queue.failed == [("job-network", "all-relays-failed")]
+    assert metrics.increments == [
+        ("nostr.replies.ingestion.failures", {"relay": "https://relay.down/replies", "reason": "query"})
+    ]
+
+
 def test_process_next_validates_shard_arguments() -> None:
     """Invalid shard arguments should raise a clear error before queue access."""
 
