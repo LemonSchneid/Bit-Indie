@@ -24,3 +24,9 @@ alembic upgrade head
 ```
 
 Alternatively, set the `PG_*` environment variables shown in `.env.example` before running Alembic.
+
+## Scaling considerations
+
+The comment thread service keeps an in-memory cache of merged first-party comments and ingested Nostr replies. When we scale the
+API to run with multiple worker processes, swap the module-level singleton for a dependency-injected service backed by a shared
+cache (Redis or Memcached) so moderation and publish actions invalidate all workers consistently.

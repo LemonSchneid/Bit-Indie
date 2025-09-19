@@ -10,31 +10,35 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
-from proof_of_play_api.db.models import Comment, Game, User
+from proof_of_play_api.db.models import Game
 from proof_of_play_api.schemas.comment import CommentCreateRequest, CommentRead
-from proof_of_play_api.services.proof_of_work import (
-    ProofOfWorkValidationError,
-    enforce_proof_of_work,
-)
-from proof_of_play_api.services.rate_limiting import (
-    COMMENT_RATE_LIMIT_MAX_ITEMS,
-    COMMENT_RATE_LIMIT_WINDOW_SECONDS,
-    RateLimitExceeded,
-    enforce_rate_limit,
-)
 from proof_of_play_api.services.comment_thread import CommentThreadService
+from proof_of_play_api.services.comment_workflow import (
+    CommentRateLimitExceeded,
+    CommentWorkflow,
+    GameNotFoundError,
+    InvalidProofOfWorkError,
+    UserNotFoundError,
+)
 
 
 router = APIRouter(prefix="/v1/games/{game_id}/comments", tags=["comments"])
 logger = logging.getLogger(__name__)
 
 _comment_thread_service = CommentThreadService()
+_comment_workflow = CommentWorkflow(comment_thread_service=_comment_thread_service)
 
 
 def get_comment_thread_service() -> CommentThreadService:
     """Return the singleton comment thread service used by API handlers."""
 
     return _comment_thread_service
+
+
+def get_comment_workflow() -> CommentWorkflow:
+    """Return the comment workflow orchestrator shared by API handlers."""
+
+    return _comment_workflow
 
 
 async def _extract_raw_body_md(request: Request) -> str | None:
@@ -89,59 +93,45 @@ def create_game_comment(
 ) -> CommentRead:
     """Persist a comment authored by the requesting user on the specified game."""
 
-    game = session.get(Game, game_id)
-    if game is None or not game.active:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-
-    user = session.get(User, request.user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-
-    pow_payload = raw_body_md if raw_body_md is not None else request.body_md
+    workflow = get_comment_workflow()
 
     try:
-        enforce_proof_of_work(
-            user=user,
-            resource_id=f"comment:{game_id}",
-            payload=pow_payload,
-            proof=request.proof_of_work,
-        )
-    except ProofOfWorkValidationError as error:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-
-    try:
-        enforce_rate_limit(
+        dto = workflow.create_comment(
             session=session,
-            model=Comment,
-            user_id=user.id,
-            window_seconds=COMMENT_RATE_LIMIT_WINDOW_SECONDS,
-            max_items=COMMENT_RATE_LIMIT_MAX_ITEMS,
-            action="create_comment",
-            resource_id=game_id,
+            game_id=game_id,
+            request=request,
+            raw_body_md=raw_body_md,
         )
-    except RateLimitExceeded as error:
+    except GameNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game not found.",
+        ) from error
+    except UserNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        ) from error
+    except InvalidProofOfWorkError as error:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    except CommentRateLimitExceeded as error:
         logger.info(
             "comment_rate_limit_triggered",
             extra={
-                "user_id": user.id,
+                "user_id": request.user_id,
                 "game_id": game_id,
                 "retry_after_seconds": error.retry_after_seconds,
             },
         )
+        headers: dict[str, str] | None = None
+        if error.retry_after_seconds is not None:
+            headers = {"Retry-After": str(error.retry_after_seconds)}
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Comment rate limit exceeded. Please wait before posting again.",
-            headers={"Retry-After": str(error.retry_after_seconds)},
+            headers=headers,
         ) from error
 
-    comment = Comment(game_id=game_id, user_id=user.id, body_md=request.body_md)
-    comment.user = user
-    session.add(comment)
-    session.flush()
-    session.refresh(comment)
-
-    service = get_comment_thread_service()
-    dto = service.serialize_comment(session=session, comment=comment)
     return CommentRead.model_validate(dto)
 
 
