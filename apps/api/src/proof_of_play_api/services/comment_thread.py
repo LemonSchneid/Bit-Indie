@@ -24,7 +24,7 @@ from proof_of_play_api.db.models import (
 _BECH32_ALPHABET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 _CACHE_DEFAULT_TTL_SECONDS = 30.0
 _CACHE_DEFAULT_MAX_SIZE = 256
-_ALIAS_TAG_NAMES = {"p", "alias", "npub", "mention"}
+_AUTHOR_ALIAS_TAG_NAMES = {"alias", "npub"}
 
 
 class CommentSource(str, enum.Enum):
@@ -228,12 +228,10 @@ class CommentThreadService:
             matched_user = self._resolve_snapshot_user(
                 snapshot=snapshot, users_by_pubkey=users_by_pubkey
             )
-            matched_user_ids = {
-                users_by_pubkey[alias].id
-                for alias in snapshot.alias_pubkeys
-                if alias in users_by_pubkey
-            }
-            verified = any(user_id in verified_user_ids for user_id in matched_user_ids)
+            verified = (
+                matched_user is not None
+                and matched_user.id in verified_user_ids
+            )
             author = CommentAuthorDTO(
                 user_id=matched_user.id if matched_user else None,
                 pubkey_hex=snapshot.pubkey_hex,
@@ -323,8 +321,12 @@ class CommentThreadService:
             direct = users_by_pubkey.get(snapshot.pubkey_hex.lower())
             if direct is not None:
                 return direct
+        normalized_primary = snapshot.pubkey_hex.lower() if snapshot.pubkey_hex else None
         for alias in snapshot.alias_pubkeys:
-            resolved = users_by_pubkey.get(alias.lower())
+            alias_lower = alias.lower()
+            if normalized_primary is not None and alias_lower != normalized_primary:
+                continue
+            resolved = users_by_pubkey.get(alias_lower)
             if resolved is not None:
                 return resolved
         return None
@@ -351,24 +353,30 @@ def _extract_alias_pubkeys(
     """Return normalized pubkeys referenced by the reply tags."""
 
     aliases: set[str] = set()
-    if primary_pubkey:
-        aliases.add(primary_pubkey)
+    normalized_primary = primary_pubkey.lower() if primary_pubkey else None
+    if normalized_primary:
+        aliases.add(normalized_primary)
     if not tags_json:
         return tuple(sorted(aliases))
     try:
         tags = json.loads(tags_json)
     except (TypeError, json.JSONDecodeError):
         return tuple(sorted(aliases))
+    candidate_aliases: set[str] = set()
     for tag in tags:
         if not isinstance(tag, Sequence) or len(tag) < 2:
             continue
         name = tag[0]
-        if not isinstance(name, str) or name.lower() not in _ALIAS_TAG_NAMES:
+        if not isinstance(name, str) or name.lower() not in _AUTHOR_ALIAS_TAG_NAMES:
             continue
         for value in tag[1:]:
             normalized = _normalize_pubkey_value(value)
             if normalized:
-                aliases.add(normalized)
+                candidate_aliases.add(normalized)
+    if normalized_primary is not None:
+        aliases.update(alias for alias in candidate_aliases if alias == normalized_primary)
+    else:
+        aliases.update(candidate_aliases)
     return tuple(sorted(aliases))
 
 
