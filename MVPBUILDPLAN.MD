@@ -263,6 +263,13 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 * **T6-3** Telemetry & error alerting. *DoD:* Basic logs/alerts wired. ✅ Done
 * **T6-4** First Featured rotation UI. *DoD:* Featured shelf renders; criteria enforced. ✅ Done
 
+### Milestone 7 — Nostr Release Notes & Relay Sync (Week 13–14)
+
+* **T7-1** Platform release-note publisher pipeline. *DoD:* Publishing a game assembles a kind 30023 event with title/summary/image/url plus LNURL tags, signs it with the platform key pulled from secure storage, posts to every configured relay, and persists the resulting `release_note_event_id` + publish timestamp on the game; retries/logging covered and tests verify payload + signature.
+* **T7-2** Relay reply ingestion service. *DoD:* Background worker (or scheduled job) queries relays for replies tagging each stored `release_note_event_id`, saves them in a new table keyed by event id + game, dedupes on re-fetch, and surfaces failure metrics; unit tests cover parsing, dedupe, and bad-event handling.
+* **T7-3** Storefront comments merge. *DoD:* API endpoint merges cached Nostr replies with first-party comments, respecting moderation flags and marking verified purchasers; game page renders the combined thread with `npub` display + timestamps, and tests cover sorting + verified badge logic.
+* **T7-4** Zap accounting & landing-page widgets. *DoD:* Zap ingestion records `target_type='GAME'` and `target_type='PLATFORM'` totals from NIP-57 receipts, API exposes per-game and platform aggregates, and the web app renders dev zap totals on game pages plus platform zap/tip buttons on the landing page sourced from configured LNURL; tests cover zap parsing and aggregation.
+
 ---
 
 ## 10) Acceptance criteria (examples)
