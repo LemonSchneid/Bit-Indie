@@ -5,7 +5,9 @@ import { GamePurchaseFlow } from "../../../components/game-purchase-flow";
 import { ZapButton } from "../../../components/zap-button";
 import {
   getGameBySlug,
+  getGameComments,
   getGameReviews,
+  type GameComment,
   type GameDraft,
   type GameReview,
 } from "../../../lib/api";
@@ -81,6 +83,45 @@ function formatReviewDate(timestamp: string): string {
   });
 }
 
+function formatCommentDate(timestamp: string): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Just now";
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatNpub(value: string | null): string {
+  if (!value) {
+    return "npub unknown";
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length <= 16) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 10)}…${trimmed.slice(-6)}`;
+}
+
+function formatPubkeyHex(value: string | null): string {
+  if (!value) {
+    return "unknown";
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length <= 12) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
+}
+
 function formatZapAmount(msats: number): string {
   if (!Number.isFinite(msats) || msats <= 0) {
     return "0 sats";
@@ -110,6 +151,27 @@ function getReviewParagraphs(body: string): string[] {
     .split(/\r?\n\r?\n/)
     .map((paragraph) => paragraph.trim())
     .filter((paragraph) => paragraph.length > 0);
+}
+
+function getCommentParagraphs(body: string): string[] {
+  return body
+    .split(/\r?\n\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+}
+
+function getCommentAuthorLabel(comment: GameComment): string {
+  const displayName = comment.author.display_name?.trim();
+  if (displayName) {
+    return displayName;
+  }
+
+  const npubLabel = comment.author.npub;
+  if (npubLabel) {
+    return formatNpub(npubLabel);
+  }
+
+  return formatPubkeyHex(comment.author.pubkey_hex);
 }
 
 const BADGE_TONE_CLASSES = {
@@ -166,8 +228,23 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const hasPaidPrice = game.price_msats != null && game.price_msats > 0;
   const buildAvailable = Boolean(game.build_object_key);
   const checkoutAvailable = hasPaidPrice && game.active;
+  let comments: GameComment[] = [];
+  let commentsError: string | null = null;
   let reviews: GameReview[] = [];
   let reviewsError: string | null = null;
+
+  try {
+    comments = await getGameComments(game.id);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Comments are not available for this game.") {
+      comments = [];
+    } else {
+      commentsError =
+        error instanceof Error
+          ? error.message
+          : "Unable to load community comments right now.";
+    }
+  }
 
   try {
     reviews = await getGameReviews(game.id);
@@ -323,6 +400,89 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               </div>
             </div>
           </aside>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
+                Community thread
+              </h2>
+              <p className="mt-2 text-xl font-semibold text-white">
+                Comments from Proof of Play and Nostr
+              </p>
+            </div>
+            <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
+              First-party comments appear alongside replies to the release note on public relays.
+              Verified purchase badges highlight players who bought the build.
+            </p>
+          </div>
+
+          {commentsError ? (
+            <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">
+              {commentsError}
+            </p>
+          ) : comments.length === 0 ? (
+            <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
+              No comments yet. Share the release note or invite players to leave feedback here.
+            </p>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {comments.map((comment) => {
+                const paragraphs = getCommentParagraphs(comment.body_md);
+                const trimmedBody = comment.body_md.trim();
+                const displayParagraphs =
+                  paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
+                const authorLabel = getCommentAuthorLabel(comment);
+                const authorTitle = comment.author.npub ?? comment.author.pubkey_hex ?? undefined;
+                const isNostrReply = comment.source === "NOSTR";
+
+                return (
+                  <article
+                    key={comment.id}
+                    className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-lg shadow-emerald-500/10"
+                  >
+                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-2">
+                        <p className="font-semibold text-white" title={authorTitle}>
+                          {authorLabel}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                          <time dateTime={comment.created_at} className="text-slate-400">
+                            {formatCommentDate(comment.created_at)}
+                          </time>
+                          {isNostrReply ? (
+                            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
+                              Nostr reply
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                              Proof of Play
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {comment.is_verified_purchase ? (
+                          <ReviewBadge
+                            label="Verified Purchase"
+                            icon="✓"
+                            tone="emerald"
+                            tooltip="This commenter purchased the build through Proof of Play."
+                          />
+                        ) : null}
+                      </div>
+                    </header>
+                    <div className="mt-4 space-y-3 text-base leading-7 text-slate-200">
+                      {displayParagraphs.map((paragraph, index) => (
+                        <p key={`${comment.id}-paragraph-${index}`}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8">
