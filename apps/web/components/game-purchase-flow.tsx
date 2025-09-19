@@ -13,7 +13,7 @@ import {
 } from "../lib/api";
 import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
-import { generateQrCodeDataUrl } from "../lib/qr-code";
+import { buildQrCodeUrl } from "../lib/qr-code";
 
 type FlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
 type CopyState = "idle" | "copied" | "error";
@@ -78,8 +78,7 @@ export function GamePurchaseFlow({
   const [purchase, setPurchase] = useState<PurchaseRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<CopyState>("idle");
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
-  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrGenerationFailed, setQrGenerationFailed] = useState(false);
 
   useEffect(() => {
@@ -207,39 +206,21 @@ export function GamePurchaseFlow({
   useEffect(() => {
     const paymentRequest = invoice?.payment_request;
     if (!paymentRequest) {
-      setQrCodeDataUrl(null);
-      setIsGeneratingQr(false);
+      setQrCodeUrl(null);
       setQrGenerationFailed(false);
       return;
     }
 
-    let cancelled = false;
-    setIsGeneratingQr(true);
+    setQrCodeUrl(null);
     setQrGenerationFailed(false);
-    setQrCodeDataUrl(null);
 
-    generateQrCodeDataUrl(paymentRequest)
-      .then((dataUrl) => {
-        if (!cancelled) {
-          setQrCodeDataUrl(dataUrl);
-        }
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-        console.error("Failed to generate Lightning invoice QR code.", error);
-        setQrGenerationFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsGeneratingQr(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const url = buildQrCodeUrl(paymentRequest);
+      setQrCodeUrl(url);
+    } catch (error) {
+      console.error("Failed to generate Lightning invoice QR code.", error);
+      setQrGenerationFailed(true);
+    }
   }, [invoice?.payment_request]);
 
   const handleCreateInvoice = useCallback(async () => {
@@ -399,9 +380,9 @@ export function GamePurchaseFlow({
               <div className="mt-6 space-y-5">
                 <div className="flex justify-center">
                   <div className="rounded-2xl border border-white/10 bg-white p-4 shadow-xl">
-                    {qrCodeDataUrl ? (
+                    {qrCodeUrl ? (
                       <Image
-                        src={qrCodeDataUrl}
+                        src={qrCodeUrl}
                         alt="Lightning invoice QR code"
                         width={220}
                         height={220}
@@ -409,13 +390,13 @@ export function GamePurchaseFlow({
                         unoptimized
                         priority
                       />
-                    ) : isGeneratingQr ? (
-                      <p className="text-center text-xs text-slate-500">Generating QR code…</p>
                     ) : qrGenerationFailed ? (
                       <p className="text-center text-xs text-slate-500">
                         Unable to generate a QR code. Copy the invoice text below into your wallet.
                       </p>
-                    ) : null}
+                    ) : (
+                      <p className="text-center text-xs text-slate-500">Generating QR code…</p>
+                    )}
                   </div>
                 </div>
                 <p className="text-center text-sm text-slate-300">
