@@ -3,15 +3,27 @@
 from __future__ import annotations
 
 import os
+
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Tuple
+
+from proof_of_play_api.services.nostr import SECP256K1_N
 
 
 DEFAULT_STORAGE_PROVIDER = "s3"
 DEFAULT_S3_PRESIGN_EXPIRATION_SECONDS = 3600
 DEFAULT_S3_REGION = "us-east-1"
 DEFAULT_PAYMENT_PROVIDER = "lnbits"
+DEFAULT_PUBLIC_WEB_URL = "http://localhost:3000"
+DEFAULT_NOSTR_REQUEST_TIMEOUT_SECONDS = 10.0
+DEFAULT_NOSTR_BACKOFF_SECONDS = 60
+DEFAULT_NOSTR_BACKOFF_CAP_SECONDS = 3600
+DEFAULT_NOSTR_CIRCUIT_BREAKER_ATTEMPTS = 5
+DEFAULT_NOSTR_INGESTION_TIMEOUT_SECONDS = 10.0
+DEFAULT_NOSTR_INGESTION_BATCH_LIMIT = 200
+DEFAULT_NOSTR_INGESTION_LOOKBACK_SECONDS = 86_400
 
 
 DEFAULT_ALLOWED_ORIGINS: Tuple[str, ...] = ("http://localhost:3000",)
@@ -44,6 +56,18 @@ def _parse_int(value: str | None, *, default: int) -> int:
 
     try:
         return int(value)
+    except ValueError:
+        return default
+
+
+def _parse_float(value: str | None, *, default: float) -> float:
+    """Convert an environment variable to a float, returning the default on errors."""
+
+    if value is None:
+        return default
+
+    try:
+        return float(value)
     except ValueError:
         return default
 
@@ -285,3 +309,210 @@ def clear_payment_settings_cache() -> None:
     """Reset cached payment provider configuration. Intended for tests."""
 
     get_payment_settings.cache_clear()
+
+
+class NostrPublisherConfigurationError(RuntimeError):
+    """Raised when release note publisher settings cannot be loaded."""
+
+
+@dataclass(frozen=True)
+class NostrPublisherSettings:
+    """Configuration describing how release notes are published to relays."""
+
+    relays: Tuple[str, ...]
+    platform_pubkey: str
+    private_key: int
+    public_web_url: str
+    platform_lnurl: str | None
+    request_timeout: float
+    backoff_seconds: int
+    backoff_cap_seconds: int
+    circuit_breaker_attempts: int
+
+    @classmethod
+    def from_environment(cls) -> "NostrPublisherSettings":
+        """Build release note publisher settings from environment variables."""
+
+        relays = cls._parse_relays(os.getenv("NOSTR_RELAYS"))
+        pubkey = cls._parse_pubkey(os.getenv("PLATFORM_PUBKEY"))
+        private_key = cls._load_private_key()
+
+        web_url = os.getenv("PUBLIC_WEB_URL", DEFAULT_PUBLIC_WEB_URL)
+        web_url = web_url.strip() or DEFAULT_PUBLIC_WEB_URL
+        web_url = web_url.rstrip("/")
+
+        lnurl = os.getenv("PLATFORM_LNURL")
+        lnurl_value = lnurl.strip() if lnurl and lnurl.strip() else None
+
+        timeout = _parse_float(
+            os.getenv("NOSTR_PUBLISHER_TIMEOUT"),
+            default=DEFAULT_NOSTR_REQUEST_TIMEOUT_SECONDS,
+        )
+        backoff = max(
+            1,
+            _parse_int(
+                os.getenv("NOSTR_PUBLISHER_BACKOFF_SECONDS"),
+                default=DEFAULT_NOSTR_BACKOFF_SECONDS,
+            ),
+        )
+        backoff_cap = max(
+            backoff,
+            _parse_int(
+                os.getenv("NOSTR_PUBLISHER_BACKOFF_CAP_SECONDS"),
+                default=DEFAULT_NOSTR_BACKOFF_CAP_SECONDS,
+            ),
+        )
+        circuit_attempts = max(
+            1,
+            _parse_int(
+                os.getenv("NOSTR_PUBLISHER_CIRCUIT_BREAKER_ATTEMPTS"),
+                default=DEFAULT_NOSTR_CIRCUIT_BREAKER_ATTEMPTS,
+            ),
+        )
+
+        return cls(
+            relays=relays,
+            platform_pubkey=pubkey,
+            private_key=private_key,
+            public_web_url=web_url,
+            platform_lnurl=lnurl_value,
+            request_timeout=timeout,
+            backoff_seconds=backoff,
+            backoff_cap_seconds=backoff_cap,
+            circuit_breaker_attempts=circuit_attempts,
+        )
+
+    @staticmethod
+    def _parse_relays(raw_relays: str | None) -> Tuple[str, ...]:
+        """Return a normalised tuple of relay URLs or raise when missing."""
+
+        if not raw_relays:
+            msg = "NOSTR_RELAYS must define at least one relay URL."
+            raise NostrPublisherConfigurationError(msg)
+
+        relays = tuple(item.strip() for item in raw_relays.split(",") if item.strip())
+        if not relays:
+            msg = "NOSTR_RELAYS must define at least one relay URL."
+            raise NostrPublisherConfigurationError(msg)
+        return relays
+
+    @staticmethod
+    def _parse_pubkey(raw_pubkey: str | None) -> str:
+        """Validate that the configured platform public key is hex encoded."""
+
+        if not raw_pubkey:
+            msg = "PLATFORM_PUBKEY must be configured as a 64 character hex string."
+            raise NostrPublisherConfigurationError(msg)
+
+        candidate = raw_pubkey.strip().lower()
+        if len(candidate) != 64 or any(char not in "0123456789abcdef" for char in candidate):
+            msg = "PLATFORM_PUBKEY must be configured as a 64 character hex string."
+            raise NostrPublisherConfigurationError(msg)
+        return candidate
+
+    @staticmethod
+    def _load_private_key() -> int:
+        """Return the platform signing key as an integer suitable for Schnorr signing."""
+
+        path_value = os.getenv("PLATFORM_SIGNING_KEY_PATH")
+        if path_value:
+            try:
+                raw = Path(path_value).read_text(encoding="utf-8")
+            except OSError as exc:  # pragma: no cover - defensive
+                msg = "Failed to read platform signing key file."
+                raise NostrPublisherConfigurationError(msg) from exc
+            candidate = raw.strip()
+        else:
+            candidate = (os.getenv("PLATFORM_SIGNING_KEY_HEX") or "").strip()
+            if not candidate:
+                msg = (
+                    "Provide PLATFORM_SIGNING_KEY_PATH or PLATFORM_SIGNING_KEY_HEX with a 64 character hex value."
+                )
+                raise NostrPublisherConfigurationError(msg)
+
+        lowered = candidate.lower()
+        if lowered.startswith("nsec"):
+            msg = "Platform signing key must be provided as hex, not an nsec bech32 string."
+            raise NostrPublisherConfigurationError(msg)
+
+        if len(lowered) != 64 or any(char not in "0123456789abcdef" for char in lowered):
+            msg = "Platform signing key must be a 64 character hexadecimal string."
+            raise NostrPublisherConfigurationError(msg)
+
+        try:
+            key_int = int(lowered, 16)
+        except ValueError as exc:  # pragma: no cover - defensive
+            msg = "Platform signing key must be a 64 character hexadecimal string."
+            raise NostrPublisherConfigurationError(msg) from exc
+
+        if not 1 <= key_int < SECP256K1_N:
+            msg = "Platform signing key is outside the valid secp256k1 range."
+            raise NostrPublisherConfigurationError(msg)
+
+        return key_int
+
+
+@lru_cache(maxsize=1)
+def get_nostr_publisher_settings() -> NostrPublisherSettings:
+    """Return cached release note publisher configuration."""
+
+    return NostrPublisherSettings.from_environment()
+
+
+def clear_nostr_publisher_settings_cache() -> None:
+    """Reset cached release note publisher settings. Intended for tests."""
+
+    get_nostr_publisher_settings.cache_clear()
+
+
+@dataclass(frozen=True)
+class NostrIngestorSettings:
+    """Configuration describing how release note replies are ingested from relays."""
+
+    relays: Tuple[str, ...]
+    request_timeout: float
+    batch_limit: int
+    lookback_seconds: int
+
+    @classmethod
+    def from_environment(cls) -> "NostrIngestorSettings":
+        """Build release note ingestion settings from environment variables."""
+
+        relays = NostrPublisherSettings._parse_relays(os.getenv("NOSTR_RELAYS"))
+        timeout = _parse_float(
+            os.getenv("NOSTR_INGESTION_TIMEOUT"),
+            default=DEFAULT_NOSTR_INGESTION_TIMEOUT_SECONDS,
+        )
+        batch_limit = max(
+            1,
+            _parse_int(
+                os.getenv("NOSTR_INGESTION_BATCH_LIMIT"),
+                default=DEFAULT_NOSTR_INGESTION_BATCH_LIMIT,
+            ),
+        )
+        lookback = max(
+            0,
+            _parse_int(
+                os.getenv("NOSTR_INGESTION_LOOKBACK_SECONDS"),
+                default=DEFAULT_NOSTR_INGESTION_LOOKBACK_SECONDS,
+            ),
+        )
+        return cls(
+            relays=relays,
+            request_timeout=timeout,
+            batch_limit=batch_limit,
+            lookback_seconds=lookback,
+        )
+
+
+@lru_cache(maxsize=1)
+def get_nostr_ingestor_settings() -> NostrIngestorSettings:
+    """Return cached release note ingestion configuration."""
+
+    return NostrIngestorSettings.from_environment()
+
+
+def clear_nostr_ingestor_settings_cache() -> None:
+    """Reset cached release note ingestor settings. Intended for tests."""
+
+    get_nostr_ingestor_settings.cache_clear()
