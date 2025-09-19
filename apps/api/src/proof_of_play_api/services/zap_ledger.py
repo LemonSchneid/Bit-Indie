@@ -10,6 +10,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.core.metrics import get_metrics_client, MetricsClient
 from proof_of_play_api.db.models import (
     Game,
     ZapLedgerEvent,
@@ -25,6 +26,7 @@ from proof_of_play_api.services.nostr import (
 )
 
 logger = logging.getLogger(__name__)
+_metrics: MetricsClient = get_metrics_client()
 
 _ZAP_TARGET_TAG = "proof-of-play-zap-target"
 _DEFAULT_PLATFORM_TARGET_ID = "platform"
@@ -231,7 +233,13 @@ class ZapLedger:
     def _log_parse_error(self, *, event_id: str, reason: str) -> None:
         """Emit a structured warning when zap events cannot be parsed."""
 
-        logger.warning("zap_ledger_parse_error", extra={"event_id": event_id, "reason": reason})
+        logger.warning(
+            "zap_ledger_parse_error", extra={"event_id": event_id, "reason": reason}
+        )
+        _metrics.increment(
+            "nostr.zaps.parse_errors",
+            tags={"reason": reason, "source": "ledger"},
+        )
 
 
 __all__ = ["ZapLedger", "ZapLedgerError", "ZapLedgerParseError"]

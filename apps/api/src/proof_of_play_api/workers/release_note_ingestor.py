@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Any, Mapping, Protocol
 
 from sqlalchemy import select
@@ -16,11 +18,18 @@ from proof_of_play_api.core.config import (
     NostrIngestorSettings,
     get_nostr_ingestor_settings,
 )
+from proof_of_play_api.core.metrics import MetricsClient, get_metrics_client
 from proof_of_play_api.db.models import (
     ReleaseNoteRelayCheckpoint,
     ReleaseNoteReply,
 )
 from proof_of_play_api.services.release_note_moderation import evaluate_reply_moderation
+
+
+INGESTION_BACKLOG_ALERT_THRESHOLD = 100
+
+
+logger = logging.getLogger(__name__)
 
 
 class RelayIngestionError(RuntimeError):
@@ -33,13 +42,6 @@ class RelayQueryError(RelayIngestionError):
 
 class RelayEventParseError(RelayIngestionError):
     """Raised when a relay event payload is missing required data."""
-
-
-class MetricsRecorder(Protocol):
-    """Protocol describing a simple counter-based metrics interface."""
-
-    def increment(self, metric: str, *, tags: Mapping[str, str] | None = None) -> None:
-        """Increment the named metric with optional tag metadata."""
 
 
 class ReleaseNoteIngestionQueue(Protocol):
@@ -103,12 +105,12 @@ class ReleaseNoteReplyIngestor:
         *,
         client: _RelayClient,
         queue: ReleaseNoteIngestionQueue,
-        metrics: MetricsRecorder,
+        metrics: MetricsClient | None = None,
         settings: NostrIngestorSettings,
     ) -> None:
         self._client = client
         self._queue = queue
-        self._metrics = metrics
+        self._metrics = metrics or get_metrics_client()
         self._settings = settings
 
     def process_next(
@@ -127,31 +129,92 @@ class ReleaseNoteReplyIngestor:
             msg = "shard_id must be within [0, total_shards)"
             raise ValueError(msg)
 
+        self._record_backlog_depth()
         job = self._queue.dequeue(shard_id=shard_id, total_shards=total_shards)
         if job is None:
             return False
 
         any_success = False
         for relay_url in self._settings.relays:
+            relay_start = perf_counter()
             try:
                 self._ingest_from_relay(
                     session=session,
                     job=job,
                     relay_url=relay_url,
                 )
-            except RelayQueryError:
+            except RelayQueryError as exc:
                 self._metrics.increment(
                     "nostr.replies.ingestion.failures",
                     tags={"relay": relay_url, "reason": "query"},
                 )
+                self._metrics.increment(
+                    "nostr.replies.ingestion.relay_failures",
+                    tags={"relay": relay_url},
+                )
+                self._metrics.observe(
+                    "nostr.replies.ingestion.relay_latency_ms",
+                    value=(perf_counter() - relay_start) * 1000.0,
+                    tags={"relay": relay_url, "status": "error"},
+                )
+                logger.warning(
+                    "release_note_ingest.relay_failed",
+                    extra={
+                        "relay_url": relay_url,
+                        "job_id": job.job_id,
+                        "error": str(exc),
+                    },
+                )
             else:
                 any_success = True
+                elapsed_ms = (perf_counter() - relay_start) * 1000.0
+                self._metrics.increment(
+                    "nostr.replies.ingestion.relay_success",
+                    tags={"relay": relay_url},
+                )
+                self._metrics.observe(
+                    "nostr.replies.ingestion.relay_latency_ms",
+                    value=elapsed_ms,
+                    tags={"relay": relay_url, "status": "success"},
+                )
 
         if any_success:
             self._queue.acknowledge(job.job_id)
         else:
             self._queue.record_failure(job.job_id, reason="all-relays-failed")
         return True
+
+    def _record_backlog_depth(self) -> None:
+        """Record metrics describing the current ingestion backlog when possible."""
+
+        approx_callable = getattr(self._queue, "approx_size", None)
+        if not callable(approx_callable):
+            return
+
+        try:
+            depth = approx_callable()
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            logger.warning(
+                "release_note_ingest.backlog_probe_failed",
+                extra={"error": str(exc)},
+            )
+            return
+
+        if depth is None:
+            return
+
+        self._metrics.gauge(
+            "nostr.replies.ingestion.backlog",
+            value=float(depth),
+        )
+        if depth >= INGESTION_BACKLOG_ALERT_THRESHOLD:
+            logger.warning(
+                "release_note_ingest.backlog_high",
+                extra={
+                    "depth": depth,
+                    "threshold": INGESTION_BACKLOG_ALERT_THRESHOLD,
+                },
+            )
 
     def _ingest_from_relay(
         self,
@@ -395,7 +458,7 @@ class ReleaseNoteReplyIngestor:
 def build_release_note_reply_ingestor(
     *,
     queue: ReleaseNoteIngestionQueue,
-    metrics: MetricsRecorder,
+    metrics: MetricsClient | None = None,
     client: _RelayClient | None = None,
     settings: NostrIngestorSettings | None = None,
 ) -> ReleaseNoteReplyIngestor:
