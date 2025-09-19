@@ -52,31 +52,38 @@ export default async function HomePage() {
   let zapSummary: ZapSummary | null = null;
   let zapError: string | null = null;
 
-  try {
-    const health = await getApiHealth();
+  const toErrorMessage = (reason: unknown, fallback: string): string =>
+    reason instanceof Error ? reason.message : fallback;
+
+  const [healthResult, featuredResult, zapResult] = await Promise.allSettled([
+    getApiHealth(),
+    getFeaturedGames(6),
+    getZapSummary(),
+  ]);
+
+  if (healthResult.status === "fulfilled") {
+    const health = healthResult.value;
     isApiOnline = health.status.toLowerCase() === "ok";
     apiMessage = isApiOnline
       ? "The backend API is responding normally."
       : `The API responded with "${health.status}".`;
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      apiMessage = error.message;
-    }
+  } else {
+    apiMessage = toErrorMessage(healthResult.reason, apiMessage);
   }
 
-  try {
-    featuredGames = await getFeaturedGames(6);
-  } catch (error: unknown) {
-    featuredError =
-      error instanceof Error
-        ? error.message
-        : "Featured games are still being selected. Please check back soon.";
+  if (featuredResult.status === "fulfilled") {
+    featuredGames = featuredResult.value;
+  } else {
+    featuredError = toErrorMessage(
+      featuredResult.reason,
+      "Featured games are still being selected. Please check back soon.",
+    );
   }
 
-  try {
-    zapSummary = await getZapSummary();
-  } catch (error: unknown) {
-    zapError = error instanceof Error ? error.message : "Zap activity is still loading.";
+  if (zapResult.status === "fulfilled") {
+    zapSummary = zapResult.value;
+  } else {
+    zapError = toErrorMessage(zapResult.reason, "Zap activity is still loading.");
   }
 
   const totalDeveloperSats = zapSummary ? Math.floor(zapSummary.games.total_msats / 1000) : null;

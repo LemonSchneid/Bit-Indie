@@ -1,4 +1,4 @@
-import { buildApiUrl, parseErrorMessage } from "./core";
+import { requestJson } from "./core";
 
 export type ZapSource = "DIRECT" | "FORWARDED";
 
@@ -37,17 +37,8 @@ export interface ZapSummary {
 }
 
 export async function getZapSummary(): Promise<ZapSummary> {
-  const response = await fetch(buildApiUrl("/v1/zaps/summary"), {
-    headers: {
-      Accept: "application/json",
-    },
+  return requestJson<ZapSummary>("/v1/zaps/summary", {
     cache: "no-store",
+    errorMessage: "Unable to load zap summary.",
   });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load zap summary.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as ZapSummary;
 }

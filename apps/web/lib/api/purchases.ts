@@ -1,4 +1,4 @@
-import { buildApiUrl, parseErrorMessage } from "./core";
+import { buildApiUrl, requestJson } from "./core";
 
 export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
 export type RefundStatus = "NONE" | "REQUESTED" | "APPROVED" | "DENIED" | "PAID";
@@ -61,24 +61,14 @@ export async function createGameInvoice(
     throw new Error("Game ID is required to create an invoice.");
   }
 
-  const response = await fetch(
-    buildApiUrl(`/v1/games/${encodeURIComponent(normalizedId)}/invoice`),
+  return requestJson<InvoiceCreateResponse>(
+    `/v1/games/${encodeURIComponent(normalizedId)}/invoice`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
       body: JSON.stringify(payload),
+      errorMessage: "Unable to create Lightning invoice.",
     },
   );
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to create Lightning invoice.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as InvoiceCreateResponse;
 }
 
 export async function getLatestPurchaseForGame(
@@ -99,23 +89,11 @@ export async function getLatestPurchaseForGame(
   url.searchParams.set("game_id", normalizedGameId);
   url.searchParams.set("user_id", normalizedUserId);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-    },
+  return requestJson<PurchaseRecord>(url.toString(), {
     cache: "no-store",
+    treat404AsNull: true,
+    errorMessage: "Unable to load purchase status.",
   });
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load purchase status.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as PurchaseRecord;
 }
 
 export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
@@ -124,26 +102,11 @@ export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
     throw new Error("Purchase ID is required.");
   }
 
-  const response = await fetch(
-    buildApiUrl(`/v1/purchases/${encodeURIComponent(normalizedId)}`),
-    {
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    },
-  );
-
-  if (response.status === 404) {
-    throw new Error("Purchase not found.");
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load purchase status.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as PurchaseRecord;
+  return requestJson<PurchaseRecord>(`/v1/purchases/${encodeURIComponent(normalizedId)}`, {
+    cache: "no-store",
+    notFoundMessage: "Purchase not found.",
+    errorMessage: "Unable to load purchase status.",
+  });
 }
 
 export async function getPurchaseReceipt(purchaseId: string): Promise<PurchaseReceipt> {
@@ -152,26 +115,14 @@ export async function getPurchaseReceipt(purchaseId: string): Promise<PurchaseRe
     throw new Error("Purchase ID is required.");
   }
 
-  const response = await fetch(
-    buildApiUrl(`/v1/purchases/${encodeURIComponent(normalizedId)}/receipt`),
+  return requestJson<PurchaseReceipt>(
+    `/v1/purchases/${encodeURIComponent(normalizedId)}/receipt`,
     {
-      headers: {
-        Accept: "application/json",
-      },
       cache: "no-store",
+      notFoundMessage: "Purchase not found.",
+      errorMessage: "Unable to load purchase receipt.",
     },
   );
-
-  if (response.status === 404) {
-    throw new Error("Purchase not found.");
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load purchase receipt.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as PurchaseReceipt;
 }
 
 export function getGameDownloadUrl(gameId: string): string {

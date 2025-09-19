@@ -7,17 +7,12 @@ import {
   InvoiceCreateResponse,
   InvoiceStatus,
   PurchaseRecord,
-  UserProfile,
   createGameInvoice,
   getGameDownloadUrl,
   getLatestPurchaseForGame,
-  getPurchase,
 } from "../lib/api";
-import {
-  USER_PROFILE_STORAGE_EVENT,
-  USER_PROFILE_STORAGE_KEY,
-  loadStoredUserProfile,
-} from "../lib/user-storage";
+import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
+import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
 
 type FlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
 type CopyState = "idle" | "copied" | "error";
@@ -75,7 +70,7 @@ export function GamePurchaseFlow({
 }: GamePurchaseFlowProps): JSX.Element | null {
   const isPurchasable = Number.isFinite(priceMsats) && priceMsats > 0;
 
-  const [user, setUser] = useState<UserProfile | null>(() => loadStoredUserProfile());
+  const user = useStoredUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
@@ -118,37 +113,6 @@ export function GamePurchaseFlow({
   }, [gameId, invoice, isPurchasable, purchase, user]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleProfileChange = () => {
-      setUser(loadStoredUserProfile());
-    };
-
-    window.addEventListener(
-      USER_PROFILE_STORAGE_EVENT,
-      handleProfileChange as EventListener,
-    );
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === USER_PROFILE_STORAGE_KEY) {
-        handleProfileChange();
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      window.removeEventListener(
-        USER_PROFILE_STORAGE_EVENT,
-        handleProfileChange as EventListener,
-      );
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!isModalOpen) {
       return;
     }
@@ -166,60 +130,34 @@ export function GamePurchaseFlow({
     };
   }, [isModalOpen]);
 
-  useEffect(() => {
-    if (flowState !== "polling" || !invoice) {
-      return;
+  const handlePurchaseUpdate = useCallback((latest: PurchaseRecord) => {
+    setPurchase(latest);
+    setErrorMessage(null);
+
+    if (latest.download_granted) {
+      setFlowState("paid");
     }
+  }, []);
 
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const handleInvoiceExpired = useCallback(() => {
+    setFlowState("expired");
+    setErrorMessage(
+      "The Lightning invoice is no longer payable. Generate a new invoice to try again.",
+    );
+  }, []);
 
-    const poll = async () => {
-      try {
-        const next = await getPurchase(invoice.purchase_id);
-        if (cancelled) {
-          return;
-        }
+  const handlePollingError = useCallback((message: string) => {
+    setErrorMessage(message);
+  }, []);
 
-        setPurchase(next);
-        if (next.download_granted) {
-          setFlowState("paid");
-          setErrorMessage(null);
-          return;
-        }
-
-        if (next.invoice_status === "EXPIRED" || next.invoice_status === "REFUNDED") {
-          setFlowState("expired");
-          setErrorMessage(
-            "The Lightning invoice is no longer payable. Generate a new invoice to try again.",
-          );
-          return;
-        }
-
-        timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to refresh the purchase status. Retrying…",
-        );
-        timeoutId = setTimeout(poll, POLL_INTERVAL_MS * 2);
-      }
-    };
-
-    poll();
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [invoice, flowState]);
+  useInvoicePolling({
+    invoiceId: invoice?.purchase_id ?? null,
+    enabled: flowState === "polling" && Boolean(invoice),
+    pollIntervalMs: POLL_INTERVAL_MS,
+    onPurchase: handlePurchaseUpdate,
+    onExpired: handleInvoiceExpired,
+    onError: handlePollingError,
+  });
 
   useEffect(() => {
     if (copyState !== "copied") {

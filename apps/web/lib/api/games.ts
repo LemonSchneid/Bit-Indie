@@ -1,4 +1,4 @@
-import { buildApiUrl, parseErrorMessage } from "./core";
+import { requestJson } from "./core";
 
 export type GameCategory = "PROTOTYPE" | "EARLY_ACCESS" | "FINISHED";
 
@@ -77,42 +77,22 @@ export interface PublishGameRequest {
 }
 
 export async function createGameDraft(payload: CreateGameDraftRequest): Promise<GameDraft> {
-  const response = await fetch(buildApiUrl("/v1/games"), {
+  return requestJson<GameDraft>("/v1/games", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
     body: JSON.stringify(payload),
+    errorMessage: "Unable to create game draft.",
   });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to create game draft.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as GameDraft;
 }
 
 export async function updateGameDraft(
   gameId: string,
   payload: UpdateGameDraftRequest,
 ): Promise<GameDraft> {
-  const response = await fetch(buildApiUrl(`/v1/games/${gameId}`), {
+  return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
     body: JSON.stringify(payload),
+    errorMessage: "Unable to update game draft.",
   });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to update game draft.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as GameDraft;
 }
 
 export async function getGamePublishChecklist(
@@ -120,56 +100,28 @@ export async function getGamePublishChecklist(
   userId: string,
 ): Promise<GamePublishChecklist> {
   const query = new URLSearchParams({ user_id: userId });
-  const response = await fetch(buildApiUrl(`/v1/games/${gameId}/publish-checklist?${query.toString()}`), {
-    headers: {
-      Accept: "application/json",
+  return requestJson<GamePublishChecklist>(
+    `/v1/games/${encodeURIComponent(gameId)}/publish-checklist?${query.toString()}`,
+    {
+      cache: "no-store",
+      notFoundMessage: "Game not found.",
+      forbiddenMessage: "You do not have permission to view this checklist.",
+      errorMessage: "Unable to load publish checklist.",
     },
-    cache: "no-store",
-  });
-
-  if (response.status === 404) {
-    throw new Error("Game not found.");
-  }
-
-  if (response.status === 403) {
-    throw new Error("You do not have permission to view this checklist.");
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load publish checklist.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as GamePublishChecklist;
+  );
 }
 
 export async function publishGame(
   gameId: string,
   payload: PublishGameRequest,
 ): Promise<GameDraft> {
-  const response = await fetch(buildApiUrl(`/v1/games/${gameId}/publish`), {
+  return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}/publish`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
     body: JSON.stringify(payload),
+    notFoundMessage: "Game not found.",
+    forbiddenMessage: "You do not have permission to publish this game.",
+    errorMessage: "Unable to publish game.",
   });
-
-  if (response.status === 404) {
-    throw new Error("Game not found.");
-  }
-
-  if (response.status === 403) {
-    throw new Error("You do not have permission to publish this game.");
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to publish game.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as GameDraft;
 }
 
 export async function getGameBySlug(slug: string): Promise<GameDraft> {
@@ -178,23 +130,11 @@ export async function getGameBySlug(slug: string): Promise<GameDraft> {
     throw new Error("Slug is required.");
   }
 
-  const response = await fetch(buildApiUrl(`/v1/games/slug/${encodeURIComponent(normalized)}`), {
-    headers: {
-      Accept: "application/json",
-    },
+  return requestJson<GameDraft>(`/v1/games/slug/${encodeURIComponent(normalized)}`, {
     cache: "no-store",
+    notFoundMessage: "Game not found.",
+    errorMessage: "Unable to load game.",
   });
-
-  if (response.status === 404) {
-    throw new Error("Game not found.");
-  }
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(response, "Unable to load game.");
-    throw new Error(message);
-  }
-
-  return (await response.json()) as GameDraft;
 }
 
 export async function getFeaturedGames(limit?: number): Promise<FeaturedGameSummary[]> {
@@ -206,20 +146,8 @@ export async function getFeaturedGames(limit?: number): Promise<FeaturedGameSumm
 
   const path = params.size > 0 ? `/v1/games/featured?${params.toString()}` : "/v1/games/featured";
 
-  const response = await fetch(buildApiUrl(path), {
-    headers: {
-      Accept: "application/json",
-    },
+  return requestJson<FeaturedGameSummary[]>(path, {
     cache: "no-store",
+    errorMessage: "Unable to load featured games right now.",
   });
-
-  if (!response.ok) {
-    const message = await parseErrorMessage(
-      response,
-      "Unable to load featured games right now.",
-    );
-    throw new Error(message);
-  }
-
-  return (await response.json()) as FeaturedGameSummary[];
 }

@@ -47,3 +47,78 @@ export async function parseErrorMessage(
   }
 }
 
+interface RequestJsonOptions extends RequestInit {
+  errorMessage?: string;
+  treat404AsNull?: boolean;
+  notFoundMessage?: string;
+  forbiddenMessage?: string;
+}
+
+export async function requestJson<T>(
+  path: string,
+  options: RequestJsonOptions & { treat404AsNull: true },
+): Promise<T | null>;
+export async function requestJson<T>(path: string, options?: RequestJsonOptions): Promise<T>;
+export async function requestJson<T>(
+  path: string,
+  options: RequestJsonOptions = {},
+): Promise<T | null> {
+  const {
+    errorMessage,
+    treat404AsNull = false,
+    notFoundMessage,
+    forbiddenMessage,
+    headers,
+    ...init
+  } = options;
+
+  const url = path.startsWith("http://") || path.startsWith("https://") ? path : buildApiUrl(path);
+
+  const finalHeaders = new Headers({ Accept: "application/json" });
+  if (headers) {
+    const provided = new Headers(headers);
+    provided.forEach((value, key) => {
+      finalHeaders.set(key, value);
+    });
+  }
+
+  if (init.body !== undefined && typeof init.body === "string" && !finalHeaders.has("Content-Type")) {
+    finalHeaders.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    headers: finalHeaders,
+  });
+
+  if (response.status === 404) {
+    if (treat404AsNull) {
+      return null;
+    }
+    if (notFoundMessage) {
+      throw new Error(notFoundMessage);
+    }
+  }
+
+  if (response.status === 403 && forbiddenMessage) {
+    throw new Error(forbiddenMessage);
+  }
+
+  if (!response.ok) {
+    const fallback =
+      errorMessage ?? `Request to ${url} failed with status ${response.status}.`;
+    const message = await parseErrorMessage(response, fallback);
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch (error) {
+    throw new Error("Failed to parse JSON response.");
+  }
+}
+

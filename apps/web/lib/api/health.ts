@@ -1,22 +1,11 @@
-import { buildApiUrl } from "./core";
+import { requestJson } from "./core";
 
 export interface HealthResponse {
   status: string;
 }
 
 export async function getApiHealth(): Promise<HealthResponse> {
-  const response = await fetch(buildApiUrl("/health"), {
+  return requestJson<HealthResponse>("/health", {
     cache: "no-store",
-    headers: {
-      Accept: "application/json",
-    },
   });
-
-  if (!response.ok) {
-    throw new Error(`API health check failed with status ${response.status}.`);
-  }
-
-  const payload = (await response.json()) as HealthResponse;
-
-  return payload;
 }
