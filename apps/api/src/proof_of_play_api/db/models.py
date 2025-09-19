@@ -86,6 +86,13 @@ class ZapTargetType(str, enum.Enum):
     PLATFORM = "PLATFORM"
 
 
+class ZapSource(str, enum.Enum):
+    """Origin classification for Lightning zap receipts."""
+
+    DIRECT = "DIRECT"
+    FORWARDED = "FORWARDED"
+
+
 class ModerationTargetType(str, enum.Enum):
     """Types of entities that can be flagged for moderation."""
 
@@ -418,6 +425,46 @@ class Zap(TimestampMixin, Base):
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ZapLedgerEvent(TimestampMixin, Base):
+    """Deduplicated zap receipt representing a parsed Nostr event."""
+
+    __tablename__ = "zap_ledger_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    sender_pubkey: Mapped[str] = mapped_column(String(128), nullable=False)
+    total_msats: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    part_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    event_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ZapLedgerTotal(TimestampMixin, Base):
+    """Aggregated zap totals grouped by target and source classification."""
+
+    __tablename__ = "zap_ledger_totals"
+    __table_args__ = (
+        UniqueConstraint(
+            "target_type",
+            "target_id",
+            "zap_source",
+            name="ux_zap_ledger_target_source",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    target_type: Mapped[ZapTargetType] = mapped_column(
+        SqlEnum(ZapTargetType, name="zap_target_type", native_enum=False), nullable=False
+    )
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    zap_source: Mapped[ZapSource] = mapped_column(
+        SqlEnum(ZapSource, name="zap_source", native_enum=False), nullable=False
+    )
+    total_msats: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    zap_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_event_id: Mapped[str | None] = mapped_column(String(128))
+
+
 class ReleaseNotePublishQueue(TimestampMixin, Base):
     """Durable queue entries for release notes awaiting relay publication."""
 
@@ -520,6 +567,9 @@ __all__ = [
     "RefundStatus",
     "Zap",
     "ZapTargetType",
+    "ZapLedgerEvent",
+    "ZapLedgerTotal",
+    "ZapSource",
     "TimestampMixin",
     "User",
     "DownloadAuditLog",
