@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.core.metrics import get_metrics_client, MetricsClient
 from proof_of_play_api.db.models import Review, Zap, ZapTargetType
 from proof_of_play_api.services.nostr import (
     InvalidNostrEventError,
@@ -16,6 +18,11 @@ from proof_of_play_api.services.nostr import (
     verify_signed_event,
 )
 from proof_of_play_api.services.review_ranking import update_review_helpful_score
+
+
+logger = logging.getLogger(__name__)
+
+_metrics: MetricsClient = get_metrics_client()
 
 
 class ZapProcessingError(RuntimeError):
@@ -106,43 +113,75 @@ def _should_flag_correlation(zap_totals, *, total_msats: int) -> bool:
     return dominance_share >= _CORRELATION_DOMINANCE_SHARE
 
 
+def _record_zap_error(*, reason: str, event: NostrEventLike) -> None:
+    """Increment metrics and emit structured logs for zap parsing issues."""
+
+    event_id = getattr(event, "id", None)
+    _metrics.increment(
+        "nostr.zaps.parse_errors",
+        tags={"reason": reason, "source": "receipt"},
+    )
+    logger.warning(
+        "zap.receipt.invalid",
+        extra={"reason": reason, "event_id": event_id},
+    )
+
+
+def _invalid_receipt(
+    message: str,
+    *,
+    reason: str,
+    event: NostrEventLike,
+) -> InvalidZapReceiptError:
+    """Return a consistently instrumented zap receipt error."""
+
+    _record_zap_error(reason=reason, event=event)
+    return InvalidZapReceiptError(message)
+
+
 def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap, Review]:
     """Persist a zap receipt and recompute the helpful score for the review."""
 
     if event.kind != ZAP_RECEIPT_KIND:
         msg = "Unsupported event kind for zap receipts."
-        raise InvalidZapReceiptError(msg)
+        raise _invalid_receipt(msg, reason="unsupported_kind", event=event)
 
     try:
         verify_signed_event(event)
     except InvalidNostrEventError as exc:
+        _record_zap_error(reason="invalid_event", event=event)
         raise InvalidZapReceiptError(str(exc)) from exc
-    except SignatureVerificationError:
+    except SignatureVerificationError as exc:
+        _record_zap_error(reason="invalid_signature", event=event)
         raise
 
     amount_raw = _get_tag_value(event.tags, "amount")
     if amount_raw is None:
         msg = "Zap receipt missing amount tag."
-        raise InvalidZapReceiptError(msg)
+        raise _invalid_receipt(msg, reason="missing_amount", event=event)
 
     try:
         amount_msats = int(amount_raw)
     except ValueError as exc:  # pragma: no cover - defensive
-        raise InvalidZapReceiptError("Zap amount must be an integer.") from exc
+        raise _invalid_receipt(
+            "Zap amount must be an integer.",
+            reason="invalid_amount",
+            event=event,
+        ) from exc
 
     if amount_msats <= 0:
         msg = "Zap amount must be positive."
-        raise InvalidZapReceiptError(msg)
+        raise _invalid_receipt(msg, reason="non_positive_amount", event=event)
 
     review_id = _get_tag_value(event.tags, _REVIEW_TAG)
     if review_id is None:
         msg = "Zap receipt missing review reference tag."
-        raise InvalidZapReceiptError(msg)
+        raise _invalid_receipt(msg, reason="missing_review_tag", event=event)
 
     to_pubkey = _get_tag_value(event.tags, "p")
     if to_pubkey is None:
         msg = "Zap receipt missing recipient pubkey tag."
-        raise InvalidZapReceiptError(msg)
+        raise _invalid_receipt(msg, reason="missing_recipient", event=event)
 
     existing = session.scalar(select(Zap).where(Zap.event_id == event.id))
     if existing is not None:
@@ -167,7 +206,11 @@ def ingest_zap_receipt(*, session: Session, event: NostrEventLike) -> tuple[Zap,
     try:
         received_at = datetime.fromtimestamp(event.created_at, tz=timezone.utc)
     except (OverflowError, OSError, ValueError) as exc:  # pragma: no cover - defensive
-        raise InvalidZapReceiptError("Zap receipt timestamp is invalid.") from exc
+        raise _invalid_receipt(
+            "Zap receipt timestamp is invalid.",
+            reason="invalid_timestamp",
+            event=event,
+        ) from exc
 
     zap = Zap(
         target_type=ZapTargetType.REVIEW,

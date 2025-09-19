@@ -105,15 +105,40 @@ class _FakeQueue:
     def record_failure(self, job_id: str, *, reason: str) -> None:
         self.failed.append((job_id, reason))
 
+    def approx_size(self) -> int:
+        return len(self.jobs)
+
 
 @dataclass
 class _FakeMetrics:
     """In-memory metrics collector recording increments for assertions."""
 
     increments: list[tuple[str, dict[str, str] | None]] = field(default_factory=list)
+    gauges: list[tuple[str, float, dict[str, str] | None]] = field(default_factory=list)
+    observations: list[tuple[str, float, dict[str, str] | None]] = field(
+        default_factory=list
+    )
 
     def increment(self, metric: str, *, tags: dict[str, str] | None = None) -> None:
         self.increments.append((metric, tags))
+
+    def gauge(
+        self,
+        metric: str,
+        *,
+        value: float,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.gauges.append((metric, float(value), tags))
+
+    def observe(
+        self,
+        metric: str,
+        *,
+        value: float,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.observations.append((metric, float(value), tags))
 
 
 def test_ingestor_persists_replies_and_updates_checkpoint() -> None:
@@ -198,7 +223,16 @@ def test_ingestor_persists_replies_and_updates_checkpoint() -> None:
     assert queue.acknowledged == ["job-1"]
     assert queue.failed == []
     assert queue.last_request == (1, 2)
-    assert metrics.increments == []
+
+    success_records = [
+        entry for entry in metrics.increments if entry[0] == "nostr.replies.ingestion.relay_success"
+    ]
+    assert {record[1]["relay"] for record in success_records} == {
+        "https://relay.one/replies",
+        "https://relay.two/replies",
+    }
+    assert metrics.gauges[0] == ("nostr.replies.ingestion.backlog", 1.0, None)
+    assert len(metrics.observations) == 2
 
     assert len(captured_requests) == 2
     first_request = captured_requests[0]
@@ -329,8 +363,23 @@ def test_ingestor_skips_invalid_events_and_records_metrics() -> None:
 
     assert queue.acknowledged == ["job-parse"]
     assert queue.failed == []
-    assert metrics.increments == [
-        ("nostr.replies.ingestion.failures", {"relay": "https://relay.test/replies", "reason": "parse"})
+    parse_failures = [
+        entry for entry in metrics.increments if entry[0] == "nostr.replies.ingestion.failures"
+    ]
+    assert parse_failures == [
+        (
+            "nostr.replies.ingestion.failures",
+            {"relay": "https://relay.test/replies", "reason": "parse"},
+        )
+    ]
+    success_records = [
+        entry for entry in metrics.increments if entry[0] == "nostr.replies.ingestion.relay_success"
+    ]
+    assert success_records == [
+        (
+            "nostr.replies.ingestion.relay_success",
+            {"relay": "https://relay.test/replies"},
+        )
     ]
 
 
@@ -372,10 +421,26 @@ def test_ingestor_records_failure_when_relays_fail() -> None:
 
     assert queue.acknowledged == []
     assert queue.failed == [("job-fail", "all-relays-failed")]
-    assert metrics.increments == [
-        ("nostr.replies.ingestion.failures", {"relay": "https://relay.one/replies", "reason": "query"}),
-        ("nostr.replies.ingestion.failures", {"relay": "https://relay.two/replies", "reason": "query"}),
+    query_failures = [
+        entry for entry in metrics.increments if entry[0] == "nostr.replies.ingestion.failures"
     ]
+    assert query_failures == [
+        (
+            "nostr.replies.ingestion.failures",
+            {"relay": "https://relay.one/replies", "reason": "query"},
+        ),
+        (
+            "nostr.replies.ingestion.failures",
+            {"relay": "https://relay.two/replies", "reason": "query"},
+        ),
+    ]
+    relay_failures = [
+        entry for entry in metrics.increments if entry[0] == "nostr.replies.ingestion.relay_failures"
+    ]
+    assert {record[1]["relay"] for record in relay_failures} == {
+        "https://relay.one/replies",
+        "https://relay.two/replies",
+    }
 
 
 def test_ingestor_converts_http_errors_into_query_failures() -> None:
@@ -416,8 +481,25 @@ def test_ingestor_converts_http_errors_into_query_failures() -> None:
 
     assert queue.acknowledged == []
     assert queue.failed == [("job-network", "all-relays-failed")]
-    assert metrics.increments == [
-        ("nostr.replies.ingestion.failures", {"relay": "https://relay.down/replies", "reason": "query"})
+    assert [
+        entry
+        for entry in metrics.increments
+        if entry[0] == "nostr.replies.ingestion.failures"
+    ] == [
+        (
+            "nostr.replies.ingestion.failures",
+            {"relay": "https://relay.down/replies", "reason": "query"},
+        )
+    ]
+    assert [
+        entry
+        for entry in metrics.increments
+        if entry[0] == "nostr.replies.ingestion.relay_failures"
+    ] == [
+        (
+            "nostr.replies.ingestion.relay_failures",
+            {"relay": "https://relay.down/replies"},
+        )
     ]
 
 
