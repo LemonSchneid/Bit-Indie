@@ -1,14 +1,26 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
+from proof_of_play_api.api.v1.routes.comments import get_comment_thread_service
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import Comment, Developer, Game, GameStatus, User
+from proof_of_play_api.db.models import (
+    Comment,
+    Developer,
+    Game,
+    GameStatus,
+    InvoiceStatus,
+    Purchase,
+    ReleaseNoteReply,
+    User,
+)
 from proof_of_play_api.main import create_application
+from proof_of_play_api.services.comment_thread import encode_npub
 from proof_of_play_api.services.proof_of_work import (
     PROOF_OF_WORK_DIFFICULTY_BITS,
     calculate_proof_of_work_hash,
@@ -23,8 +35,10 @@ def _reset_state(monkeypatch):
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
+    get_comment_thread_service().clear_cache()
     yield
     reset_database_state()
+    get_comment_thread_service().clear_cache()
 
 
 def _create_schema() -> None:
@@ -66,16 +80,25 @@ def _seed_game(*, active: bool = True) -> str:
     return game_id
 
 
-def _create_user(*, reputation_score: int = 0) -> str:
+def _create_user(*, reputation_score: int = 0, pubkey_hex: str | None = None) -> str:
     """Persist a standalone user and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}", reputation_score=reputation_score)
+        user = User(pubkey_hex=pubkey_hex or f"user-{uuid.uuid4().hex}", reputation_score=reputation_score)
         session.add(user)
         session.flush()
         user_id = user.id
 
     return user_id
+
+
+def _get_user_pubkey(user_id: str) -> str:
+    """Return the hex-encoded pubkey for the referenced user."""
+
+    with session_scope() as session:
+        user = session.get(User, user_id)
+        assert user is not None
+        return user.pubkey_hex
 
 
 def _mine_proof_of_work(*, user_id: str, resource_id: str, body_md: str) -> dict[str, int]:
@@ -110,8 +133,10 @@ def test_create_comment_persists_and_returns_payload() -> None:
     assert response.status_code == 201
     body = response.json()
     assert body["game_id"] == game_id
-    assert body["user_id"] == user_id
     assert body["body_md"] == "Excited to play this build!"
+    assert body["source"] == "FIRST_PARTY"
+    assert body["author"]["user_id"] == user_id
+    assert body["is_verified_purchase"] is False
 
     with session_scope() as session:
         stored = session.get(Comment, body["id"])
@@ -272,4 +297,145 @@ def test_list_comments_excludes_hidden_entries() -> None:
     assert response.status_code == 200
     body = response.json()
     assert [item["body_md"] for item in body] == ["Visible note"]
+
+
+def test_list_comments_merges_release_note_replies() -> None:
+    """Release note replies should appear alongside first-party comments."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user()
+    comment_created = datetime(2024, 1, 5, 9, 0, tzinfo=timezone.utc)
+    reply_created = datetime(2024, 1, 5, 10, 30, tzinfo=timezone.utc)
+    release_event_id = f"event-{uuid.uuid4().hex}"
+    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+
+    with session_scope() as session:
+        session.add(
+            Comment(
+                game_id=game_id,
+                user_id=user_id,
+                body_md="Original note",
+                created_at=comment_created,
+            )
+        )
+        session.add(
+            ReleaseNoteReply(
+                game_id=game_id,
+                release_note_event_id=release_event_id,
+                relay_url="https://relay.one/replies",
+                event_id=f"reply-{uuid.uuid4().hex}",
+                pubkey=relay_pubkey,
+                kind=1,
+                event_created_at=reply_created,
+                content="Congrats on the launch!",
+                tags_json=json.dumps([["e", release_event_id]]),
+            )
+        )
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [entry["source"] for entry in body] == ["FIRST_PARTY", "NOSTR"]
+    assert body[1]["body_md"] == "Congrats on the launch!"
+    assert body[1]["author"]["npub"].startswith("npub1")
+
+
+def test_release_note_reply_marks_verified_purchase_via_hex_alias() -> None:
+    """Alias tags referencing a purchaser should mark the reply as verified."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    user_id = _create_user(pubkey_hex=purchaser_hex)
+    purchaser_pubkey = _get_user_pubkey(user_id)
+    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    release_event_id = f"event-{uuid.uuid4().hex}"
+
+    with session_scope() as session:
+        session.add(
+            Purchase(
+                user_id=user_id,
+                game_id=game_id,
+                invoice_id=f"invoice-{uuid.uuid4().hex}",
+                invoice_status=InvoiceStatus.PAID,
+                amount_msats=1000,
+                paid_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            ReleaseNoteReply(
+                game_id=game_id,
+                release_note_event_id=release_event_id,
+                relay_url="https://relay.alias/replies",
+                event_id=f"reply-{uuid.uuid4().hex}",
+                pubkey=relay_pubkey,
+                kind=1,
+                event_created_at=datetime(2024, 1, 6, 14, 0, tzinfo=timezone.utc),
+                content="Purchased and loved it!",
+                tags_json=json.dumps([["p", purchaser_pubkey]]),
+            )
+        )
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    comments = response.json()
+    assert len(comments) == 1
+    entry = comments[0]
+    assert entry["source"] == "NOSTR"
+    assert entry["is_verified_purchase"] is True
+    assert entry["author"]["user_id"] == user_id
+
+
+def test_release_note_reply_alias_from_npub_string() -> None:
+    """Bech32 aliases should resolve to purchasers for verification."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    user_id = _create_user(pubkey_hex=purchaser_hex)
+    purchaser_pubkey = _get_user_pubkey(user_id)
+    alias_npub = encode_npub(purchaser_pubkey)
+    assert alias_npub is not None
+    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    release_event_id = f"event-{uuid.uuid4().hex}"
+
+    with session_scope() as session:
+        session.add(
+            Purchase(
+                user_id=user_id,
+                game_id=game_id,
+                invoice_id=f"invoice-{uuid.uuid4().hex}",
+                invoice_status=InvoiceStatus.PAID,
+                amount_msats=500,
+                paid_at=datetime.now(timezone.utc),
+            )
+        )
+        session.add(
+            ReleaseNoteReply(
+                game_id=game_id,
+                release_note_event_id=release_event_id,
+                relay_url="https://relay.alias/replies",
+                event_id=f"reply-{uuid.uuid4().hex}",
+                pubkey=relay_pubkey,
+                kind=1,
+                event_created_at=datetime(2024, 1, 6, 16, 0, tzinfo=timezone.utc),
+                content="Zap sent!",
+                tags_json=json.dumps([["alias", alias_npub or ""]]),
+            )
+        )
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    comments = response.json()
+    assert len(comments) == 1
+    entry = comments[0]
+    assert entry["author"]["user_id"] == user_id
+    assert entry["is_verified_purchase"] is True
 

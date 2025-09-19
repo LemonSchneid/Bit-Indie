@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from proof_of_play_api.schemas.security import ProofOfWorkSubmission
+from proof_of_play_api.services.comment_thread import CommentSource
 
 
 class CommentCreateRequest(BaseModel):
@@ -28,17 +29,30 @@ class CommentCreateRequest(BaseModel):
         return normalized
 
 
+class CommentAuthor(BaseModel):
+    """Public-facing metadata for a comment author."""
+
+    user_id: str | None
+    pubkey_hex: str | None
+    npub: str | None
+    display_name: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CommentRead(BaseModel):
     """Serialized representation of a game comment."""
 
     id: str
     game_id: str
-    user_id: str
     body_md: str
     created_at: datetime
+    source: CommentSource
+    author: CommentAuthor
+    is_verified_purchase: bool
 
     model_config = ConfigDict(from_attributes=True)
 
 
-__all__ = ["CommentCreateRequest", "CommentRead"]
+__all__ = ["CommentAuthor", "CommentCreateRequest", "CommentRead"]
 

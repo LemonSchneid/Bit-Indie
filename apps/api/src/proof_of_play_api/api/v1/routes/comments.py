@@ -7,7 +7,6 @@ import logging
 from json import JSONDecodeError
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from proof_of_play_api.db import get_session
@@ -23,10 +22,19 @@ from proof_of_play_api.services.rate_limiting import (
     RateLimitExceeded,
     enforce_rate_limit,
 )
+from proof_of_play_api.services.comment_thread import CommentThreadService
 
 
 router = APIRouter(prefix="/v1/games/{game_id}/comments", tags=["comments"])
 logger = logging.getLogger(__name__)
+
+_comment_thread_service = CommentThreadService()
+
+
+def get_comment_thread_service() -> CommentThreadService:
+    """Return the singleton comment thread service used by API handlers."""
+
+    return _comment_thread_service
 
 
 async def _extract_raw_body_md(request: Request) -> str | None:
@@ -62,14 +70,9 @@ def list_game_comments(game_id: str, session: Session = Depends(get_session)) ->
     if game is None or not game.active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
 
-    stmt = (
-        select(Comment)
-        .where(Comment.game_id == game_id)
-        .where(Comment.is_hidden.is_(False))
-        .order_by(Comment.created_at.asc())
-    )
-    comments = session.scalars(stmt).all()
-    return [CommentRead.model_validate(comment) for comment in comments]
+    service = get_comment_thread_service()
+    dtos = service.list_for_game(session=session, game=game)
+    return [CommentRead.model_validate(dto) for dto in dtos]
 
 
 @router.post(
@@ -132,11 +135,14 @@ def create_game_comment(
         ) from error
 
     comment = Comment(game_id=game_id, user_id=user.id, body_md=request.body_md)
+    comment.user = user
     session.add(comment)
     session.flush()
     session.refresh(comment)
 
-    return CommentRead.model_validate(comment)
+    service = get_comment_thread_service()
+    dto = service.serialize_comment(session=session, comment=comment)
+    return CommentRead.model_validate(dto)
 
 
 __all__ = ["create_game_comment", "list_game_comments"]
