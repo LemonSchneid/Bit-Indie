@@ -124,3 +124,25 @@ def test_zap_summary_endpoint_returns_totals(monkeypatch: pytest.MonkeyPatch) ->
     assert platform_sources["FORWARDED"]["total_msats"] == 4_000
     assert payload["platform"]["total_msats"] == 4_000
     assert payload["platform"]["zap_count"] == 1
+
+
+def test_zap_summary_endpoint_handles_missing_nostr_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The zap summary endpoint should return null LNURL when settings are absent."""
+
+    monkeypatch.delenv("NOSTR_RELAYS", raising=False)
+    monkeypatch.delenv("PLATFORM_PUBKEY", raising=False)
+    monkeypatch.delenv("PLATFORM_SIGNING_KEY_HEX", raising=False)
+    monkeypatch.delenv("PLATFORM_SIGNING_KEY_PATH", raising=False)
+    monkeypatch.delenv("PLATFORM_LNURL", raising=False)
+    clear_nostr_publisher_settings_cache()
+
+    _create_schema()
+
+    client = TestClient(create_application())
+    response = client.get("/v1/zaps/summary")
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["platform"]["lnurl"] is None

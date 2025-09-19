@@ -8,7 +8,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from proof_of_play_api.core.config import get_nostr_publisher_settings
+from proof_of_play_api.core.config import (
+    NostrPublisherConfigurationError,
+    get_nostr_publisher_settings,
+)
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game, ZapLedgerTotal, ZapSource, ZapTargetType
 from proof_of_play_api.schemas.zap import (
@@ -138,11 +141,16 @@ def read_zap_summary(session: Session = Depends(get_session)) -> ZapSummaryRespo
 
     total_platform_msats = sum(values["total_msats"] for values in platform_source_totals.values())
     total_platform_count = sum(values["zap_count"] for values in platform_source_totals.values())
+    try:
+        lnurl = get_nostr_publisher_settings().platform_lnurl
+    except NostrPublisherConfigurationError:
+        lnurl = None
+
     platform_summary = PlatformZapSummary(
         total_msats=total_platform_msats,
         zap_count=total_platform_count,
         source_totals=_build_source_totals(platform_source_totals),
-        lnurl=get_nostr_publisher_settings().platform_lnurl,
+        lnurl=lnurl,
     )
 
     return ZapSummaryResponse(games=games_summary, platform=platform_summary)
