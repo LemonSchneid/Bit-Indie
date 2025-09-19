@@ -20,6 +20,7 @@ from proof_of_play_api.db.models import (
     ReleaseNoteRelayCheckpoint,
     ReleaseNoteReply,
 )
+from proof_of_play_api.services.release_note_moderation import evaluate_reply_moderation
 
 
 class RelayIngestionError(RuntimeError):
@@ -346,6 +347,8 @@ class ReleaseNoteReplyIngestor:
             return False
 
         event_timestamp = datetime.fromtimestamp(parsed.created_at, tz=timezone.utc)
+        decision = evaluate_reply_moderation(parsed.content)
+        hidden_at = datetime.now(timezone.utc) if decision.is_hidden else None
         reply = ReleaseNoteReply(
             game_id=job.game_id,
             release_note_event_id=job.release_note_event_id,
@@ -356,6 +359,10 @@ class ReleaseNoteReplyIngestor:
             event_created_at=event_timestamp,
             content=parsed.content,
             tags_json=json.dumps(parsed.tags, ensure_ascii=False, separators=(",", ":")),
+            is_hidden=decision.is_hidden,
+            hidden_reason=decision.reason,
+            moderation_notes=decision.notes,
+            hidden_at=hidden_at,
         )
         session.add(reply)
         session.flush()

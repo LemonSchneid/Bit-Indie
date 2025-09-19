@@ -535,3 +535,34 @@ def test_release_note_reply_ignores_aliases_when_sender_pubkey_invalid() -> None
     assert entry["author"]["pubkey_hex"] is None
     assert entry["is_verified_purchase"] is False
 
+
+def test_hidden_release_note_replies_are_not_listed() -> None:
+    """Replies marked as hidden should be excluded from storefront responses."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    release_event_id = f"event-{uuid.uuid4().hex}"
+
+    with session_scope() as session:
+        session.add(
+            ReleaseNoteReply(
+                game_id=game_id,
+                release_note_event_id=release_event_id,
+                relay_url="https://relay.hidden/replies",
+                event_id=f"reply-{uuid.uuid4().hex}",
+                pubkey=f"{uuid.uuid4().hex}{uuid.uuid4().hex}",
+                kind=1,
+                event_created_at=datetime(2024, 1, 7, 12, 0, tzinfo=timezone.utc),
+                content="Hidden reply",
+                tags_json=json.dumps([["e", release_event_id]]),
+                is_hidden=True,
+                moderation_notes="Hidden during audit.",
+            )
+        )
+
+    client = _build_client()
+    response = client.get(f"/v1/games/{game_id}/comments")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
