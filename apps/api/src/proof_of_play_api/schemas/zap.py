@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from proof_of_play_api.schemas.auth import NostrEvent
 from proof_of_play_api.schemas.review import ReviewRead
@@ -38,4 +38,57 @@ class ZapReceiptResponse(BaseModel):
     review: ReviewRead
 
 
-__all__ = ["ZapRead", "ZapReceiptIngestRequest", "ZapReceiptResponse"]
+class ZapSourceTotals(BaseModel):
+    """Aggregated zap totals grouped by source classification."""
+
+    source: str
+    total_msats: int
+    zap_count: int
+
+
+class GameZapBreakdown(BaseModel):
+    """Per-game zap totals with source breakdown for leaderboard displays."""
+
+    game_id: str
+    title: str
+    slug: str
+    total_msats: int
+    zap_count: int
+    source_totals: list[ZapSourceTotals] = Field(default_factory=list)
+
+
+class GamesZapSummary(BaseModel):
+    """Aggregated zap totals across all games and leading recipients."""
+
+    total_msats: int
+    zap_count: int
+    source_totals: list[ZapSourceTotals] = Field(default_factory=list)
+    top_games: list[GameZapBreakdown] = Field(default_factory=list)
+
+
+class PlatformZapSummary(BaseModel):
+    """Zap totals supporting the Proof of Play platform infrastructure."""
+
+    total_msats: int
+    zap_count: int
+    source_totals: list[ZapSourceTotals] = Field(default_factory=list)
+    lnurl: str | None
+
+
+class ZapSummaryResponse(BaseModel):
+    """Response payload describing zap momentum across the marketplace."""
+
+    games: GamesZapSummary
+    platform: PlatformZapSummary
+
+
+__all__ = [
+    "GameZapBreakdown",
+    "GamesZapSummary",
+    "PlatformZapSummary",
+    "ZapRead",
+    "ZapReceiptIngestRequest",
+    "ZapReceiptResponse",
+    "ZapSourceTotals",
+    "ZapSummaryResponse",
+]

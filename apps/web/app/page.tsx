@@ -1,7 +1,8 @@
 import { FeaturedRotation } from "../components/featured-rotation";
 import { LoginCard } from "../components/login-card";
-import { getApiHealth, getFeaturedGames } from "../lib/api";
-import type { FeaturedGameSummary } from "../lib/api";
+import { ZapButton } from "../components/zap-button";
+import { getApiHealth, getFeaturedGames, getZapSummary } from "../lib/api";
+import type { FeaturedGameSummary, ZapSummary } from "../lib/api";
 
 type FeatureHighlight = {
   title: string;
@@ -48,6 +49,8 @@ export default async function HomePage() {
   let apiMessage = "Unable to reach the backend API.";
   let featuredGames: FeaturedGameSummary[] = [];
   let featuredError: string | null = null;
+  let zapSummary: ZapSummary | null = null;
+  let zapError: string | null = null;
 
   try {
     const health = await getApiHealth();
@@ -69,6 +72,23 @@ export default async function HomePage() {
         ? error.message
         : "Featured games are still being selected. Please check back soon.";
   }
+
+  try {
+    zapSummary = await getZapSummary();
+  } catch (error: unknown) {
+    zapError = error instanceof Error ? error.message : "Zap activity is still loading.";
+  }
+
+  const totalDeveloperSats = zapSummary ? Math.floor(zapSummary.games.total_msats / 1000) : null;
+  const forwardedDeveloperSats = zapSummary
+    ? Math.floor(
+        (zapSummary.games.source_totals.find((item) => item.source === "FORWARDED")?.total_msats ?? 0) /
+          1000,
+      )
+    : null;
+  const platformSats = zapSummary ? Math.floor(zapSummary.platform.total_msats / 1000) : null;
+  const platformLnurl = zapSummary?.platform.lnurl ?? null;
+  const topZapGames = zapSummary?.games.top_games ?? [];
 
   return (
     <main className="relative isolate overflow-hidden">
@@ -129,6 +149,69 @@ export default async function HomePage() {
                 {isApiOnline ? "Online" : "Offline"}
               </p>
               <p className="mt-3 text-sm text-slate-300">{apiMessage}</p>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Zap momentum</h3>
+              {zapSummary ? (
+                <>
+                  <p className="mt-4 text-3xl font-semibold text-amber-300">
+                    {totalDeveloperSats?.toLocaleString() ?? "0"} sats
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Players have zapped indie developers across Proof of Play.
+                  </p>
+                  {forwardedDeveloperSats && forwardedDeveloperSats > 0 ? (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Includes {forwardedDeveloperSats.toLocaleString()} sats forwarded through multi-hop payments.
+                    </p>
+                  ) : null}
+                  {topZapGames.length > 0 ? (
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Top recipients</p>
+                      <ul className="mt-2 space-y-2 text-sm text-slate-300">
+                        {topZapGames.map((entry) => {
+                          const href = entry.slug ? `/games/${entry.slug}` : "#";
+                          const totalSats = Math.floor(entry.total_msats / 1000);
+                          return (
+                            <li
+                              key={entry.game_id}
+                              className="flex items-center justify-between rounded-2xl border border-white/5 bg-slate-950/60 px-4 py-3"
+                            >
+                              <a
+                                href={href}
+                                className="font-medium text-white transition hover:text-amber-200 hover:underline"
+                              >
+                                {entry.title}
+                              </a>
+                              <span>{totalSats.toLocaleString()} sats</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <div className="mt-5 rounded-2xl border border-white/5 bg-slate-950/60 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Platform support</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      {platformSats !== null
+                        ? `${platformSats.toLocaleString()} sats have been tipped to keep Proof of Play running.`
+                        : "Help keep Proof of Play online with a quick zap."}
+                    </p>
+                    {platformLnurl ? (
+                      <ZapButton
+                        lnurl={platformLnurl}
+                        recipientLabel="Proof of Play"
+                        comment="Thanks for building the open marketplace!"
+                        className="mt-3"
+                      />
+                    ) : (
+                      <p className="mt-3 text-xs text-slate-500">Platform zap address coming soon.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-4 text-sm text-slate-300">{zapError ?? "Zap totals will appear once activity begins."}</p>
+              )}
             </div>
             <LoginCard />
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
