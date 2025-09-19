@@ -5,9 +5,10 @@ from __future__ import annotations
 from itertools import count
 
 import pytest
-from fastapi.testclient import TestClient
-
 from datetime import datetime, timedelta, timezone
+import uuid
+
+from fastapi.testclient import TestClient
 
 from sqlalchemy import select
 
@@ -32,6 +33,10 @@ from proof_of_play_api.services.storage import (
     get_storage_service,
     reset_storage_service,
 )
+from proof_of_play_api.services.nostr_publisher import (
+    PublishOutcome,
+    get_release_note_publisher,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -55,10 +60,13 @@ def _create_schema() -> None:
     Base.metadata.create_all(engine)
 
 
-def _build_client() -> TestClient:
+def _build_client() -> tuple[TestClient, _DummyReleaseNotePublisher]:
     """Return a FastAPI test client bound to a fresh application instance."""
 
-    return TestClient(create_application())
+    app = create_application()
+    publisher = _DummyReleaseNotePublisher()
+    app.dependency_overrides[get_release_note_publisher] = lambda: publisher
+    return TestClient(app), publisher
 
 
 _user_pubkey_sequence = count()
@@ -112,12 +120,46 @@ class _DummyStorageService:
         )
 
 
+class _DummyReleaseNotePublisher:
+    """Test double that simulates release note publication."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def publish_release_note(
+        self,
+        *,
+        session,
+        game,
+        reference: datetime | None = None,
+    ) -> PublishOutcome:
+        published_at = reference or datetime.now(timezone.utc)
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+
+        event_id = f"event-{uuid.uuid4().hex}"
+        event = {
+            "id": event_id,
+            "pubkey": "stub-pubkey",
+            "created_at": int(published_at.timestamp()),
+            "kind": 30023,
+            "tags": [],
+            "content": game.description_md or "",
+        }
+
+        game.release_note_event_id = event_id
+        game.release_note_published_at = published_at
+        self.calls.append({"game_id": game.id, "event": event})
+        session.flush()
+        return PublishOutcome(event=event, successful_relays=("stub",), failed_relays=())
+
+
 def test_create_game_draft_requires_developer_profile() -> None:
     """Posting a game draft should fail when the user lacks a developer profile."""
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=False)
-    client = _build_client()
+    client, release_publisher = _build_client()
 
     response = client.post(
         "/v1/games",
@@ -136,7 +178,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     response = client.post(
         "/v1/games",
@@ -173,7 +215,7 @@ def test_create_game_draft_rejects_duplicate_slug() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     first = client.post(
         "/v1/games",
@@ -202,7 +244,7 @@ def test_update_game_draft_applies_changes() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -257,7 +299,7 @@ def test_update_game_draft_rejects_invalid_build_key() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -287,7 +329,7 @@ def test_update_game_draft_rejects_other_developers() -> None:
     _create_schema()
     owner_id = _create_user_and_developer(with_developer=True)
     intruder_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -316,7 +358,7 @@ def test_create_game_asset_upload_returns_presigned_payload() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, _ = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -343,6 +385,8 @@ def test_create_game_asset_upload_returns_presigned_payload() -> None:
     )
 
     client.app.dependency_overrides.clear()
+    client.app.dependency_overrides[get_release_note_publisher] = lambda: release_publisher
+    client.app.dependency_overrides[get_release_note_publisher] = lambda: release_publisher
 
     assert response.status_code == 200
     body = response.json()
@@ -364,7 +408,7 @@ def test_create_game_asset_upload_rejects_other_developers() -> None:
     _create_schema()
     owner_id = _create_user_and_developer(with_developer=True)
     intruder_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, release_publisher = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -399,7 +443,7 @@ def test_get_publish_checklist_returns_missing_requirements() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, release_publisher = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -432,7 +476,7 @@ def test_publish_game_rejects_incomplete_draft() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, release_publisher = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -464,7 +508,7 @@ def test_publish_game_activates_listing_and_enables_slug_lookup() -> None:
 
     _create_schema()
     user_id = _create_user_and_developer(with_developer=True)
-    client = _build_client()
+    client, release_publisher = _build_client()
 
     created = client.post(
         "/v1/games",
@@ -505,18 +549,28 @@ def test_publish_game_activates_listing_and_enables_slug_lookup() -> None:
     published_body = publish.json()
     assert published_body["active"] is True
     assert published_body["status"] == GameStatus.UNLISTED.value
+    assert published_body["release_note_event_id"] is not None
+    assert published_body["release_note_published_at"] is not None
+    assert release_publisher.calls
 
     by_slug = client.get("/v1/games/slug/Nebula-Riders")
     assert by_slug.status_code == 200
     slug_body = by_slug.json()
     assert slug_body["id"] == game_id
     assert slug_body["title"] == "Nebula Riders"
+    assert slug_body["release_note_event_id"] == published_body["release_note_event_id"]
+
+    with session_scope() as session:
+        stored = session.get(Game, game_id)
+        assert stored is not None
+        assert stored.release_note_event_id == published_body["release_note_event_id"]
+        assert stored.release_note_published_at is not None
 
 def test_list_featured_games_returns_eligible_entries() -> None:
     """The featured games endpoint should surface games that meet the rotation criteria."""
 
     _create_schema()
-    client = _build_client()
+    client, release_publisher = _build_client()
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:
@@ -592,7 +646,7 @@ def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
     """Games breaching refund thresholds should be demoted and hidden from the featured list."""
 
     _create_schema()
-    client = _build_client()
+    client, release_publisher = _build_client()
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:
@@ -669,7 +723,7 @@ def test_list_featured_games_updates_status_for_results_beyond_limit() -> None:
     """Games later in the rotation should still be re-evaluated for featured status."""
 
     _create_schema()
-    client = _build_client()
+    client, release_publisher = _build_client()
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:

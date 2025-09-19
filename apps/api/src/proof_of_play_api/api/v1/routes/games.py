@@ -43,6 +43,11 @@ from proof_of_play_api.services.payments import (
     PaymentServiceError,
     get_payment_service,
 )
+from proof_of_play_api.services.nostr_publisher import (
+    ReleaseNotePublishError,
+    ReleaseNotePublisher,
+    get_release_note_publisher,
+)
 
 
 router = APIRouter(prefix="/v1/games", tags=["games"])
@@ -354,6 +359,7 @@ def publish_game(
     game_id: str,
     request: GamePublishRequest,
     session: Session = Depends(get_session),
+    publisher: ReleaseNotePublisher = Depends(get_release_note_publisher),
 ) -> GameRead:
     """Promote a game draft to the unlisted catalog if all requirements are satisfied."""
 
@@ -389,6 +395,13 @@ def publish_game(
     if changed:
         session.flush()
         session.refresh(game)
+
+    try:
+        publisher.publish_release_note(session=session, game=game)
+    except ReleaseNotePublishError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    session.refresh(game)
 
     return GameRead.model_validate(game)
 

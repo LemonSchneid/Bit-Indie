@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -198,6 +199,12 @@ class Game(TimestampMixin, Base):
     build_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     checksum_sha256: Mapped[str | None] = mapped_column(String(64))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    release_note_event_id: Mapped[str | None] = mapped_column(
+        String(128), unique=True
+    )
+    release_note_published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     developer: Mapped[Developer] = relationship(back_populates="games")
     purchases: Mapped[list[Purchase]] = relationship(
@@ -411,6 +418,63 @@ class Zap(TimestampMixin, Base):
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ReleaseNotePublishQueue(TimestampMixin, Base):
+    """Durable queue entries for release notes awaiting relay publication."""
+
+    __tablename__ = "release_note_publish_queue"
+    __table_args__ = (
+        UniqueConstraint("game_id", "relay_url", name="ux_release_note_queue_game_relay"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    game_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    relay_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    last_error: Mapped[str | None] = mapped_column(Text)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ReleaseNoteRelayCheckpoint(TimestampMixin, Base):
+    """Per-relay high-water marks for release note reply ingestion."""
+
+    __tablename__ = "release_note_relay_checkpoints"
+    __table_args__ = (
+        UniqueConstraint("relay_url", name="ux_release_note_relay_checkpoint_url"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    relay_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    last_event_created_at: Mapped[int | None] = mapped_column(BigInteger)
+    last_event_id: Mapped[str | None] = mapped_column(String(128))
+
+
+class ReleaseNoteReply(TimestampMixin, Base):
+    """Replies to published release note events fetched from relays."""
+
+    __tablename__ = "release_note_replies"
+    __table_args__ = (
+        UniqueConstraint("game_id", "event_id", name="ux_release_note_replies_game_event"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    game_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    release_note_event_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    relay_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    pubkey: Mapped[str] = mapped_column(String(128), nullable=False)
+    kind: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class ModerationFlag(TimestampMixin, Base):
     """User submitted moderation flag for games, comments, or reviews."""
 
@@ -459,4 +523,7 @@ __all__ = [
     "TimestampMixin",
     "User",
     "DownloadAuditLog",
+    "ReleaseNotePublishQueue",
+    "ReleaseNoteRelayCheckpoint",
+    "ReleaseNoteReply",
 ]
