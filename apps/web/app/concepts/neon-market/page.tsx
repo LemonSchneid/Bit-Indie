@@ -345,8 +345,8 @@ function LiveMetricsColumn() {
   };
 
   return (
-    <div className="space-y-4">
-      <NeonCard className="p-5">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+      <NeonCard className="flex-1 p-5">
         <MicroLabel>Live operations feed</MicroLabel>
         <div className="mt-4 space-y-4 text-sm text-slate-200">
           <div className="flex justify-between">
@@ -367,7 +367,7 @@ function LiveMetricsColumn() {
           </div>
         </div>
       </NeonCard>
-      <NeonCard className="p-5">
+      <NeonCard className="flex-1 p-5">
         <MicroLabel>Nostr relay sync</MicroLabel>
         <div className="mt-4 space-y-3 text-sm">
           {liveMetrics.nostrRelays.map((relay) => (
@@ -384,7 +384,7 @@ function LiveMetricsColumn() {
 
 function StorefrontScreen() {
   return (
-    <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="space-y-12">
       <div className="space-y-10">
         <section>
           <FeaturedCarousel />
@@ -393,9 +393,9 @@ function StorefrontScreen() {
           <DiscoverGrid />
         </section>
       </div>
-      <aside>
+      <section className="border-t border-emerald-500/20 pt-10">
         <LiveMetricsColumn />
-      </aside>
+      </section>
     </div>
   );
 }
