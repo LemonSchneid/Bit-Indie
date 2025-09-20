@@ -7,6 +7,7 @@ export interface GameCommentAuthor {
   pubkey_hex: string | null;
   npub: string | null;
   display_name: string | null;
+  lightning_address: string | null;
 }
 
 export interface GameComment {
@@ -17,6 +18,7 @@ export interface GameComment {
   source: CommentSource;
   author: GameCommentAuthor;
   is_verified_purchase: boolean;
+  total_zap_msats: number;
 }
 
 export async function getGameComments(gameId: string): Promise<GameComment[]> {

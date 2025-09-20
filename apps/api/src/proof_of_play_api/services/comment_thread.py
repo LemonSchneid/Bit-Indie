@@ -9,13 +9,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable, Mapping, Sequence
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db.models import (
     Comment,
     Game,
     InvoiceStatus,
+    Zap,
+    ZapTargetType,
     Purchase,
     ReleaseNoteReply,
     User,
@@ -42,6 +44,7 @@ class CommentAuthorDTO:
     pubkey_hex: str | None
     npub: str | None
     display_name: str | None
+    lightning_address: str | None
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,7 @@ class CommentDTO:
     source: CommentSource
     author: CommentAuthorDTO
     is_verified_purchase: bool
+    total_zap_msats: int
 
 
 @dataclass(frozen=True)
@@ -146,7 +150,27 @@ class CommentThreadService:
         nostr = self._load_release_note_replies(session=session, game=game)
         merged = [*first_party, *nostr]
         merged.sort(key=lambda item: (item.created_at, item.id))
-        return merged
+        if not merged:
+            return merged
+
+        zap_totals = self._load_comment_zap_totals(
+            session=session, comment_ids=[comment.id for comment in merged]
+        )
+        enriched: list[CommentDTO] = []
+        for comment in merged:
+            enriched.append(
+                CommentDTO(
+                    id=comment.id,
+                    game_id=comment.game_id,
+                    body_md=comment.body_md,
+                    created_at=comment.created_at,
+                    source=comment.source,
+                    author=comment.author,
+                    is_verified_purchase=comment.is_verified_purchase,
+                    total_zap_msats=zap_totals.get(comment.id, 0),
+                )
+            )
+        return enriched
 
     def serialize_comment(self, *, session: Session, comment: Comment) -> CommentDTO:
         """Return a DTO representation for a freshly created comment."""
@@ -238,6 +262,7 @@ class CommentThreadService:
                 pubkey_hex=snapshot.pubkey_hex,
                 npub=encode_npub(snapshot.pubkey_hex) if snapshot.pubkey_hex else None,
                 display_name=matched_user.display_name if matched_user else None,
+                lightning_address=matched_user.lightning_address if matched_user else None,
             )
             dto = CommentDTO(
                 id=snapshot.comment_id,
@@ -247,6 +272,7 @@ class CommentThreadService:
                 source=CommentSource.NOSTR,
                 author=author,
                 is_verified_purchase=verified,
+                total_zap_msats=0,
             )
             dtos.append(dto)
         return dtos
@@ -263,6 +289,7 @@ class CommentThreadService:
             pubkey_hex=user.pubkey_hex,
             npub=encode_npub(user.pubkey_hex),
             display_name=user.display_name,
+            lightning_address=user.lightning_address,
         )
         created_at = comment.created_at
         if created_at.tzinfo is None:
@@ -275,6 +302,7 @@ class CommentThreadService:
             source=CommentSource.FIRST_PARTY,
             author=author,
             is_verified_purchase=verified,
+            total_zap_msats=0,
         )
 
     def _has_verified_purchase(
@@ -311,6 +339,25 @@ class CommentThreadService:
             return {}
         stmt = select(User).where(User.pubkey_hex.in_(normalized))
         return {user.pubkey_hex.lower(): user for user in session.scalars(stmt)}
+
+    def _load_comment_zap_totals(
+        self, *, session: Session, comment_ids: Iterable[str]
+    ) -> dict[str, int]:
+        identifiers = {comment_id for comment_id in comment_ids if comment_id}
+        if not identifiers:
+            return {}
+
+        stmt = (
+            select(
+                Zap.target_id,
+                func.coalesce(func.sum(Zap.amount_msats), 0).label("total_msats"),
+            )
+            .where(Zap.target_type == ZapTargetType.COMMENT)
+            .where(Zap.target_id.in_(identifiers))
+            .group_by(Zap.target_id)
+        )
+        rows = session.execute(stmt).all()
+        return {row.target_id: int(row.total_msats) for row in rows}
 
     def _resolve_snapshot_user(
         self,

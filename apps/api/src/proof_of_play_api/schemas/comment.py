@@ -36,6 +36,7 @@ class CommentAuthor(BaseModel):
     pubkey_hex: str | None
     npub: str | None
     display_name: str | None
+    lightning_address: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,9 +51,9 @@ class CommentRead(BaseModel):
     source: CommentSource
     author: CommentAuthor
     is_verified_purchase: bool
+    total_zap_msats: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
 __all__ = ["CommentAuthor", "CommentCreateRequest", "CommentRead"]
-
