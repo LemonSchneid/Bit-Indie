@@ -339,3 +339,9 @@ Enable only if for 2 consecutive weeks: takedowns >1% of new listings, or mod ho
 * **F1-18** in landing-page mocks, pass a fake Lightning address/LNURL for all but one comment so the zap button shows both states (active vs. fallback). ✅ Done
 * **F1-19** reduce ZapButton quick amounts to [1, 10, 21, 50] sats and ensure the zap menu positions as a fixed overlay so it never gets clipped or hidden. ✅ Done
 * **F1-20** change the ZapButton menu to open as a centered modal with backdrop, staying put until closed. ✅ Done
+* **F1-21** redesign the Lightning checkout modal opened by the landing/game button so it presents a polished, centered layout. ✅ Done
+* **F1-22** adjust Lightning checkout modal backdrop gradients so the fade covers the very top corners without harsh edges. ✅ Done
+* **F1-23** allow Lightning checkout modal content to scroll internally so nothing gets clipped on smaller viewports. ✅ Done
+* **F1-24** refine Lightning checkout modal backdrop using the provided radial gradient overlay. ✅ Done
+* **F1-25** render Lightning checkout modals through document-level portals so their backdrops cover the full viewport. ✅ Done
+* **F1-26** revert the Lightning checkout modal backdrop to a neutral slate gradient without emerald overlays. ✅ Done
