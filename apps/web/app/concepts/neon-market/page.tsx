@@ -386,17 +386,6 @@ function StorefrontScreen() {
   return (
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="space-y-10">
-        <section className="space-y-5">
-          <MicroLabel>Proof of Play marketplace</MicroLabel>
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Neon storefront for indie worlds powered by Lightning.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
-              Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
-            </p>
-          </div>
-        </section>
         <section>
           <FeaturedCarousel />
         </section>
@@ -711,20 +700,19 @@ export default function NeonMarketConceptPage() {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
       <div className="absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
-        <header className="space-y-6">
-          <MicroLabel>Concept drop</MicroLabel>
-          <div className="flex flex-wrap items-end justify-between gap-6">
+        <header className="space-y-8">
+          <div className="space-y-4">
+            <MicroLabel>Proof of Play marketplace</MicroLabel>
             <div className="max-w-3xl space-y-4">
               <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                Dark neon marketplace exploration — Lightning-native storefront concepts.
+                Neon storefront for indie worlds powered by Lightning.
               </h1>
-              <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/70">
-                Glassy navy cards, emerald glows, uppercase microcopy, and pill badges showcase bitcoin lightning commerce with
-                Nostr identity at the core.
+              <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
+                Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
               </p>
             </div>
-            <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
           </div>
+          <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
         </header>
         <main className="space-y-10 pb-16">
           {activeScreen === 1 && <StorefrontScreen />}
