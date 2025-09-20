@@ -1,554 +1,775 @@
-import Link from "next/link";
+"use client";
 
-import { FeaturedRotation } from "../components/featured-rotation";
-import { LoginCard } from "../components/login-card";
-import { ZapButton } from "../components/zap-button";
-import { getApiHealth, getFeaturedGames, getZapSummary } from "../lib/api";
-import type { FeaturedGameSummary, ZapSummary } from "../lib/api";
+import { useState } from "react";
+import type { ReactNode } from "react";
 
-type FeatureHighlight = {
-  title: string;
-  description: string;
-  icon: string;
+function cn(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+const featuredGames = [
+  {
+    title: "Starforge Signal",
+    category: "EARLY ACCESS",
+    priceSats: 14500,
+    updatedAt: "2024-03-14",
+    summary: "Mining roguelike with co-op beacon hacking and lightning-fast updates.",
+  },
+  {
+    title: "Neon Drift Syndicate",
+    category: "FINISHED",
+    priceSats: 22000,
+    updatedAt: "2024-02-27",
+    summary: "Synthwave street racing where your crew funds upgrades with zaps.",
+  },
+  {
+    title: "Afterlight Archives",
+    category: "PROTOTYPE",
+    priceSats: null,
+    updatedAt: "2024-03-04",
+    summary: "Lore-driven exploration puzzler discovering lost Nostr relays.",
+  },
+];
+
+const discoverGames = [
+  {
+    title: "Circuitbreak Courier",
+    developer: "Relay Rockets",
+    status: "DISCOVER",
+    category: "ACTION",
+    priceSats: 12500,
+    reviewCount: 142,
+    zapTotal: 92000,
+  },
+  {
+    title: "Glacia Overdrive",
+    developer: "Icefield Guild",
+    status: "FEATURED",
+    category: "STRATEGY",
+    priceSats: 18900,
+    reviewCount: 214,
+    zapTotal: 134500,
+  },
+  {
+    title: "Echoes of Meridian",
+    developer: "Solar Weave",
+    status: "DISCOVER",
+    category: "RPG",
+    priceSats: 9900,
+    reviewCount: 98,
+    zapTotal: 78500,
+  },
+  {
+    title: "Farside Bloom",
+    developer: "Studio Perigee",
+    status: "FEATURED",
+    category: "ADVENTURE",
+    priceSats: 15800,
+    reviewCount: 63,
+    zapTotal: 56000,
+  },
+  {
+    title: "Boltwork Siege",
+    developer: "Signal Foundry",
+    status: "DISCOVER",
+    category: "TACTICS",
+    priceSats: 20500,
+    reviewCount: 171,
+    zapTotal: 99000,
+  },
+  {
+    title: "Satellite Lullaby",
+    developer: "Liminal Tea",
+    status: "FEATURED",
+    category: "SIM",
+    priceSats: 7500,
+    reviewCount: 47,
+    zapTotal: 42000,
+  },
+];
+
+const liveMetrics = {
+  apiLatency: "142 ms",
+  uptime: "99.98%",
+  invoicesToday: 483,
+  zapsLastHour: 178000,
+  nostrRelays: [
+    { name: "relay.damus.io", status: "healthy" },
+    { name: "relay.snort.social", status: "syncing" },
+    { name: "nostr.wine", status: "healthy" },
+  ],
 };
 
-type QuickStartItem = {
-  title: string;
-  detail: string;
+const detailGame = {
+  title: "Neon Drift Syndicate",
+  status: "FEATURED",
+  category: "FINISHED",
+  version: "1.2.5",
+  lastUpdated: "2024-02-27",
+  description: [
+    "Lead a crew of underground street racers financing upgrades with Lightning zaps.",
+    "Sync loadouts to your Nostr identity so garages and achievements follow your pubkey.",
+    "Weekly events rotate tracks, enforce anti-sybil checkpoints, and surface top zap-backed highlights.",
+  ],
+  coverArt: "/images/concepts/neon-drift-cover.png",
+  developer: "Chroma Flux",
+  lightningAddress: "pay@chromaflux.games",
+  priceSats: 22000,
+  tipRecommended: 5000,
 };
 
-type JourneyStep = {
-  badge: string;
-  title: string;
-  description: string;
+const communityComments = [
+  {
+    author: "npub1k6...h2v9",
+    timeAgo: "2h ago",
+    body: "Garage sync works flawlessly with my Nostr profile. Crew invites in seconds!",
+    verified: true,
+  },
+  {
+    author: "npub1qr...8l7x",
+    timeAgo: "6h ago",
+    body: "Would love to see more neon night variants of the Harbor Circuit.",
+    verified: false,
+  },
+  {
+    author: "npub1lc...m5dw",
+    timeAgo: "1d ago",
+    body: "Paid with Zeus in under five seconds. Handling model is dialed in now.",
+    verified: true,
+  },
+];
+
+const zapReviews = [
+  {
+    author: "npub1xf...av3e",
+    rating: 5,
+    zapTotal: 18500,
+    summary: "Nightfall league finally feels balanced",
+    body: "The new drift assist patch fixed rubber banding. Crew tournaments with zap pools are peak adrenaline.",
+  },
+  {
+    author: "npub1ra...s4kj",
+    rating: 4,
+    zapTotal: 9200,
+    summary: "Soundtrack unlocked",
+    body: "Unlocked the hidden synth pack by tipping the devs. Worth every sat for the extra tracks.",
+  },
+];
+
+const invoiceSteps = [
+  { label: "Invoice created", status: "done", timestamp: "18:41:07" },
+  { label: "Waiting for payment", status: "active", timestamp: "18:41:08" },
+  { label: "Payment confirmed", status: "pending", timestamp: "--" },
+  { label: "Download unlocked", status: "pending", timestamp: "--" },
+];
+
+const receipt = {
+  status: "Settled",
+  amountSats: 22000,
+  buyerPubkey: "npub1k6q8n6c9r7w5f7h2v9x3k0z4l8p2d4s6m8a7u9c3f1",
+  orderId: "POP-20240314-8842",
+  nextStepLabel: "Download build + leave a zap",
 };
 
-type MilestoneStatus = "shipped" | "in-progress";
+const npubBenefits = [
+  {
+    title: "Send & receive zaps",
+    description: "Back creators instantly and pull tips into your wallet without leaving the flow.",
+  },
+  {
+    title: "Seamless checkout",
+    description: "Invoices autofill from your Nostr profile so purchases clear in seconds.",
+  },
+  {
+    title: "Portable progress",
+    description: "Achievements and saves follow your npub across every Lightning-ready world.",
+  },
+];
 
-type MilestoneCallout = {
-  label: string;
-  title: string;
-  detail: string;
-  status: MilestoneStatus;
+type MetricStatus = "healthy" | "syncing" | "degraded";
+
+type RelayMetric = {
+  name: string;
+  status: MetricStatus;
 };
 
-const featureHighlights: FeatureHighlight[] = [
-  {
-    title: "Lightning-first checkout",
-    description:
-      "Spin up invoices, unlock downloads instantly, and let zaps roll in from any compatible wallet.",
-    icon: "⚡",
-  },
-  {
-    title: "Creators own their listings",
-    description:
-      "Draft games, upload builds, and publish once the checklist confirms covers, pricing, and downloadable builds.",
-    icon: "🛠️",
-  },
-  {
-    title: "Community-powered reputation",
-    description:
-      "Verified-purchase reviews and zap-weighted helpfulness keep the catalog fresh without locking feedback into a silo.",
-    icon: "🌐",
-  },
-];
-
-const creatorQuickstart: QuickStartItem[] = [
-  {
-    title: "Draft your listing",
-    detail: "Create a game draft tied to your Nostr pubkey and add the high-level pitch.",
-  },
-  {
-    title: "Upload builds & pricing",
-    detail: "Attach downloadable builds, choose a category, and set sats for Lightning checkout.",
-  },
-  {
-    title: "Publish with confidence",
-    detail: "Checklist enforcement ensures every listing ships with a summary, cover, and verified download.",
-  },
-];
-
-const creatorJourney: JourneyStep[] = [
-  {
-    badge: "Step 1",
-    title: "Connect your Nostr identity",
-    description: "Use NIP-07 sign-in to pull your pubkey into Proof of Play and unlock the creator tooling.",
-  },
-  {
-    badge: "Step 2",
-    title: "Build the draft",
-    description:
-      "Upload builds, artwork, and pricing in msats. The publish checklist keeps you honest about store-quality details.",
-  },
-  {
-    badge: "Step 3",
-    title: "Publish & iterate",
-    description:
-      "Go live once requirements are satisfied, then track purchases, refunds, and player sentiment in one place.",
-  },
-];
-
-const playerJourney: JourneyStep[] = [
-  {
-    badge: "Step 1",
-    title: "Browse Lightning-ready games",
-    description:
-      "Featured and discover shelves promote builds with healthy refund rates, fresh updates, and active zaps.",
-  },
-  {
-    badge: "Step 2",
-    title: "Checkout in seconds",
-    description:
-      "Lightning invoices unlock downloads as soon as they settle, and receipts stay tied to your Nostr identity.",
-  },
-  {
-    badge: "Step 3",
-    title: "Shape the conversation",
-    description:
-      "Post comments, leave verified-purchase reviews, and zap the content that deserves more visibility.",
-  },
-];
-
-const milestoneCallouts: MilestoneCallout[] = [
-  {
-    label: "Milestone 1",
-    title: "Creator onboarding",
-    detail: "NIP-07 login, developer claims, and draft tooling are live so teams can ship builds.",
-    status: "shipped",
-  },
-  {
-    label: "Milestone 2",
-    title: "Lightning checkout",
-    detail: "LNbits invoices, webhook verification, and download gating keep purchases seamless.",
-    status: "shipped",
-  },
-  {
-    label: "Milestone 3",
-    title: "Community feedback",
-    detail: "Comments, verified-purchase reviews, and zap-weighted ranking are rolling out next.",
-    status: "in-progress",
-  },
-];
-
-function formatPriceMsats(value: number | null): string {
+function formatSats(value: number | null): string {
   if (value === null) {
-    return "Free download";
+    return "FREE";
   }
 
-  const sats = value / 1000;
-  if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
-  }
-
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+  return `${value.toLocaleString()} SATS`;
 }
 
-function formatRefundRate(rate: number): string {
-  if (!Number.isFinite(rate) || rate <= 0) {
-    return "Refund rate under 1%";
-  }
-
-  const bounded = Math.max(0, Math.min(rate, 1));
-  const percentage = bounded * 100;
-  const fractionDigits = percentage >= 10 ? 0 : 1;
-  return `${percentage.toLocaleString(undefined, { maximumFractionDigits: fractionDigits })}% refund rate`;
+function formatStatus(status: string): string {
+  return status.replaceAll("_", " ");
 }
 
-function formatUpdatedAt(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Recently updated";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function MicroLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.55em] text-emerald-300/70">{children}</p>
+  );
 }
 
-function formatCategory(category: FeaturedGameSummary["game"]["category"]): string {
-  switch (category) {
-    case "PROTOTYPE":
-      return "Prototype";
-    case "EARLY_ACCESS":
-      return "Early Access";
-    case "FINISHED":
-      return "Finished";
-    default:
-      return category.replaceAll("_", " ").toLowerCase();
-  }
-}
-
-function formatStatus(status: FeaturedGameSummary["game"]["status"]): string {
-  switch (status) {
-    case "FEATURED":
-      return "Featured";
-    case "DISCOVER":
-      return "Discover";
-    case "UNLISTED":
-      return "Unlisted preview";
-    default:
-      return status.toLowerCase();
-  }
-}
-
-export default async function HomePage() {
-  let isApiOnline = false;
-  let apiMessage = "Unable to reach the backend API.";
-  let featuredGames: FeaturedGameSummary[] = [];
-  let featuredError: string | null = null;
-  let zapSummary: ZapSummary | null = null;
-  let zapError: string | null = null;
-
-  const toErrorMessage = (reason: unknown, fallback: string): string =>
-    reason instanceof Error ? reason.message : fallback;
-
-  const [healthResult, featuredResult, zapResult] = await Promise.allSettled([
-    getApiHealth(),
-    getFeaturedGames(6),
-    getZapSummary(),
-  ]);
-
-  if (healthResult.status === "fulfilled") {
-    const health = healthResult.value;
-    isApiOnline = health.status.toLowerCase() === "ok";
-    apiMessage = isApiOnline
-      ? "The backend API is responding normally."
-      : `The API responded with "${health.status}".`;
-  } else {
-    apiMessage = toErrorMessage(healthResult.reason, apiMessage);
-  }
-
-  if (featuredResult.status === "fulfilled") {
-    featuredGames = featuredResult.value;
-  } else {
-    featuredError = toErrorMessage(
-      featuredResult.reason,
-      "Featured games are still being selected. Please check back soon.",
-    );
-  }
-
-  if (zapResult.status === "fulfilled") {
-    zapSummary = zapResult.value;
-  } else {
-    zapError = toErrorMessage(zapResult.reason, "Zap activity is still loading.");
-  }
-
-  const totalDeveloperSats = zapSummary ? Math.floor(zapSummary.games.total_msats / 1000) : null;
-  const forwardedDeveloperSats = zapSummary
-    ? Math.floor(
-        (zapSummary.games.source_totals.find((item) => item.source === "FORWARDED")?.total_msats ?? 0) /
-          1000,
-      )
-    : null;
-  const platformSats = zapSummary ? Math.floor(zapSummary.platform.total_msats / 1000) : null;
-  const platformLnurl = zapSummary?.platform.lnurl ?? null;
-  const topZapGames = zapSummary?.games.top_games ?? [];
+function Pill({
+  children,
+  intent = "emerald",
+}: {
+  children: ReactNode;
+  intent?: "emerald" | "magenta" | "slate";
+}) {
+  const intentClasses = {
+    emerald: "text-emerald-200 border-emerald-400/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.25)]",
+    magenta: "text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/10 shadow-[0_0_20px_rgba(232,121,249,0.25)]",
+    slate: "text-slate-200 border-slate-500/40 bg-slate-500/10 shadow-[0_0_20px_rgba(148,163,184,0.12)]",
+  } as const;
 
   return (
-    <main className="relative isolate overflow-hidden">
-      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,_rgba(94,234,212,0.18),_transparent_65%)]" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_bottom,_rgba(14,165,233,0.12),_transparent_60%)]" />
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-6 py-16 sm:py-24 lg:gap-24">
-        <section className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <span className="inline-flex w-fit items-center rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                Proof of Play · Lightning-native store
-              </span>
-              <h1 className="text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-                Launch your indie game on a marketplace that speaks Nostr and Lightning.
-              </h1>
-              <p className="text-lg text-slate-200 lg:text-xl">
-                Publish builds, price them in sats, and let the community power discovery through verified-purchase reviews and zap-weighted reputation.
-              </p>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.35em]",
+        intentClasses[intent],
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function NeonCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-3xl border border-emerald-500/10 bg-slate-950/60 p-6 shadow-[0_0_45px_rgba(16,185,129,0.18)] backdrop-blur-xl",
+        "before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-emerald-500/20 before:opacity-60",
+        className,
+      )}
+    >
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function ScreenSwitcher({
+  activeScreen,
+  onSelect,
+}: {
+  activeScreen: number;
+  onSelect: (screen: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {["STOREFRONT", "SELL YOUR GAME", "INFO FOR PLAYERS"].map((label, index) => {
+        const screenIndex = index + 1;
+        const isActive = activeScreen === screenIndex;
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onSelect(screenIndex)}
+            className={cn(
+              "rounded-full border px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
+              isActive
+                ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-[0_0_24px_rgba(16,185,129,0.35)]"
+                : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-emerald-400/60 hover:text-emerald-200",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FeaturedCarousel() {
+  return (
+    <div className="space-y-4">
+      <MicroLabel>Featured rotation</MicroLabel>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] via-[#020617]/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] via-[#020617]/80 to-transparent" />
+        <div className="flex gap-4 overflow-x-auto pb-4 pr-2">
+          {featuredGames.map((game) => (
+            <NeonCard key={game.title} className="min-w-[18rem] max-w-[18rem]">
+              <div className="mb-4 h-36 rounded-2xl bg-gradient-to-br from-emerald-400/30 via-transparent to-emerald-500/10 shadow-[0_0_40px_rgba(16,185,129,0.35)]" />
+              <div className="flex flex-wrap gap-2">
+                <Pill>{formatStatus(game.category)}</Pill>
+                <Pill intent="magenta">{game.priceSats ? formatSats(game.priceSats) : "FREE"}</Pill>
+                <Pill intent="slate">Updated {new Date(game.updatedAt).toLocaleDateString()}</Pill>
+              </div>
+              <h3 className="mt-4 text-lg font-semibold tracking-tight text-slate-50">{game.title}</h3>
+              <p className="mt-2 text-sm text-slate-300">{game.summary}</p>
+            </NeonCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscoverGrid() {
+  return (
+    <div className="space-y-4">
+      <MicroLabel>Discover new worlds</MicroLabel>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {discoverGames.map((game) => (
+          <NeonCard key={game.title} className="p-5">
+            <div className="flex items-center justify-between">
+              <Pill intent={game.status === "FEATURED" ? "magenta" : "emerald"}>{game.status}</Pill>
+              <span className="text-[0.7rem] uppercase tracking-[0.35em] text-emerald-200/70">{game.category}</span>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {featureHighlights.map((highlight) => (
-                <div
-                  key={highlight.title}
-                  className="rounded-3xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur"
-                >
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
-                    <span aria-hidden className="mr-2 text-lg">{highlight.icon}</span>
-                    {highlight.title}
-                  </p>
-                  <p className="mt-3 text-sm text-slate-300">{highlight.description}</p>
+            <h3 className="mt-3 text-base font-semibold tracking-tight text-slate-50">{game.title}</h3>
+            <p className="text-xs uppercase tracking-[0.4em] text-slate-400">{game.developer}</p>
+            <div className="mt-6 flex items-center justify-between text-xs text-slate-300">
+              <div className="flex flex-col gap-1">
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-300/80">REVIEWS</span>
+                <span className="text-sm font-semibold text-slate-100">{game.reviewCount.toLocaleString()}</span>
+              </div>
+              <div className="flex flex-col gap-1 text-right">
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-300/80">PRICE</span>
+                <span className="text-sm font-semibold text-slate-100">{formatSats(game.priceSats)}</span>
+              </div>
+              <div className="flex flex-col gap-1 text-right">
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-300/80">ZAPS</span>
+                <span className="text-sm font-semibold text-emerald-300">{game.zapTotal.toLocaleString()} SATS</span>
+              </div>
+            </div>
+          </NeonCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LiveMetricsColumn() {
+  const relayStatusClasses: Record<MetricStatus, string> = {
+    healthy: "text-emerald-300",
+    syncing: "text-amber-300",
+    degraded: "text-rose-300",
+  };
+
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+      <NeonCard className="flex-1 p-5">
+        <MicroLabel>Live operations feed</MicroLabel>
+        <div className="mt-4 space-y-4 text-sm text-slate-200">
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.4em] text-emerald-200/70">API LATENCY</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.apiLatency}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.4em] text-emerald-200/70">UPTIME</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.uptime}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.4em] text-emerald-200/70">INVOICES</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.invoicesToday.toLocaleString()} today</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.4em] text-emerald-200/70">ZAPS / HR</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.zapsLastHour.toLocaleString()} sats</span>
+          </div>
+        </div>
+      </NeonCard>
+      <NeonCard className="flex-1 p-5">
+        <MicroLabel>Nostr relay sync</MicroLabel>
+        <div className="mt-4 space-y-3 text-sm">
+          {liveMetrics.nostrRelays.map((relay: RelayMetric) => (
+            <div key={relay.name} className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-slate-400">{relay.name}</span>
+              <span className={cn("font-semibold", relayStatusClasses[relay.status])}>{relay.status}</span>
+            </div>
+          ))}
+        </div>
+      </NeonCard>
+    </div>
+  );
+}
+
+function NpubIdentityWidget() {
+  return (
+    <NeonCard className="w-full max-w-sm p-6 lg:ml-10">
+      <MicroLabel>Bring your npub</MicroLabel>
+      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Sign in or create one</h3>
+      <p className="mt-2 text-sm text-emerald-200/80">
+        Use your Nostr public key as a universal login for Lightning-charged adventures.
+      </p>
+      <ul className="mt-5 space-y-4 text-sm text-slate-200">
+        {npubBenefits.map((benefit) => (
+          <li key={benefit.title} className="flex gap-3">
+            <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-emerald-400/60 bg-emerald-500/10 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-emerald-100">
+              ✶
+            </span>
+            <div>
+              <p className="font-semibold text-slate-100">{benefit.title}</p>
+              <p className="text-xs leading-relaxed text-slate-400">{benefit.description}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 flex flex-col gap-3">
+        <button
+          type="button"
+          className="w-full rounded-full border border-emerald-400/70 bg-emerald-500/20 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-50"
+        >
+          Sign in with npub
+        </button>
+        <button
+          type="button"
+          className="w-full rounded-full border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
+        >
+          Create a new npub
+        </button>
+      </div>
+    </NeonCard>
+  );
+}
+
+function StorefrontScreen() {
+  return (
+    <div className="space-y-12">
+      <div className="space-y-10">
+        <section>
+          <FeaturedCarousel />
+        </section>
+        <section>
+          <DiscoverGrid />
+        </section>
+      </div>
+      <section className="border-t border-emerald-500/20 pt-10">
+        <LiveMetricsColumn />
+      </section>
+    </div>
+  );
+}
+
+function GameDetailScreen() {
+  return (
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <NeonCard className="p-8">
+        <div className="flex flex-wrap items-center gap-3">
+          <Pill>{detailGame.status}</Pill>
+          <Pill intent="magenta">{detailGame.category}</Pill>
+          <Pill intent="slate">Version {detailGame.version}</Pill>
+        </div>
+        <h2 className="mt-6 text-3xl font-semibold tracking-tight text-white">{detailGame.title}</h2>
+        <p className="text-xs uppercase tracking-[0.4em] text-emerald-200/70">{detailGame.developer}</p>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+          <div className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-400/10 p-4 shadow-[0_0_40px_rgba(16,185,129,0.35)]">
+            <div className="h-56 rounded-xl bg-slate-900/80" />
+            <p className="mt-3 text-[0.7rem] uppercase tracking-[0.4em] text-emerald-200/80">cover art placeholder</p>
+          </div>
+          <div className="space-y-6 text-sm text-slate-200">
+            <p className="text-base text-slate-100">
+              Neon Drift Syndicate pairs synthwave racing with Lightning-backed crew economies.
+            </p>
+            <div className="space-y-3">
+              {detailGame.description.map((line) => (
+                <p key={line} className="leading-relaxed text-slate-300">
+                  {line}
+                </p>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="rounded-full border border-emerald-400/60 bg-emerald-500/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-100"
+              >
+                Launch Lightning purchase modal
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-fuchsia-400/60 bg-fuchsia-500/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-fuchsia-100 shadow-[0_0_30px_rgba(232,121,249,0.3)] transition hover:border-fuchsia-300"
+              >
+                Share crew invite
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          <NeonCard className="p-6">
+            <MicroLabel>Tip the developer</MicroLabel>
+            <p className="mt-3 text-sm text-slate-300">
+              Send instant support via Lightning Address
+              <span className="ml-2 font-semibold text-emerald-200">{detailGame.lightningAddress}</span>
+            </p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.4em] text-emerald-200/70">Suggested</span>
+              <span className="text-lg font-semibold text-emerald-200">{detailGame.tipRecommended.toLocaleString()} sats</span>
+            </div>
+            <button
+              type="button"
+              className="mt-6 w-full rounded-full border border-emerald-400/60 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+            >
+              Send zap
+            </button>
+          </NeonCard>
+          <NeonCard className="p-6">
+            <MicroLabel>Release cadence</MicroLabel>
+            <div className="mt-4 space-y-4 text-sm text-slate-300">
+              <div className="flex items-center justify-between">
+                <span className="uppercase tracking-[0.35em] text-emerald-200/70">Last update</span>
+                <span className="font-semibold text-emerald-200">{new Date(detailGame.lastUpdated).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="uppercase tracking-[0.35em] text-emerald-200/70">Patch notes</span>
+                <span className="font-semibold text-emerald-200">Nightfall balance + crew pass</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="uppercase tracking-[0.35em] text-emerald-200/70">Refund rate</span>
+                <span className="font-semibold text-emerald-200">0.8%</span>
+              </div>
+            </div>
+          </NeonCard>
+        </div>
+        <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <NeonCard className="p-6">
+            <MicroLabel>Community comments</MicroLabel>
+            <div className="mt-4 space-y-4">
+              {communityComments.map((comment) => (
+                <div key={comment.author} className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4">
+                  <div className="flex flex-wrap items-center gap-3 text-[0.7rem] uppercase tracking-[0.35em] text-slate-400">
+                    <span>{comment.author}</span>
+                    <span className="text-slate-600">•</span>
+                    <span>{comment.timeAgo}</span>
+                    {comment.verified ? (
+                      <span className="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-[0.6rem] font-semibold tracking-[0.35em] text-emerald-200">
+                        Verified purchase
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-sm text-slate-200">{comment.body}</p>
                 </div>
               ))}
             </div>
-          </div>
-          <aside className="space-y-6">
-            <LoginCard />
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Creator quickstart</h2>
-              <p className="mt-3 text-sm text-slate-300">
-                Everything you need to open your storefront is already wired in. Follow the flow and you&apos;re ready to sell.
-              </p>
-              <ul className="mt-5 space-y-4 text-sm text-slate-200">
-                {creatorQuickstart.map((item) => (
-                  <li key={item.title} className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-                    <p className="font-semibold text-white">{item.title}</p>
-                    <p className="mt-2 text-xs text-slate-400">{item.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </aside>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Platform health</h3>
-            <div className="mt-6 flex items-baseline gap-3">
-              <span
-                className={`inline-flex h-3 w-3 rounded-full ${
-                  isApiOnline ? "bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.7)]" : "bg-rose-400 shadow-[0_0_10px_rgba(248,113,113,0.6)]"
-                }`}
-              />
-              <p className={`text-2xl font-semibold ${isApiOnline ? "text-emerald-300" : "text-rose-300"}`}>
-                {isApiOnline ? "API online" : "API offline"}
-              </p>
-            </div>
-            <p className="mt-3 text-sm text-slate-300">{apiMessage}</p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Zap momentum</h3>
-            {zapSummary ? (
-              <div className="mt-5 space-y-4">
-                <div>
-                  <p className="text-3xl font-semibold text-amber-300">{totalDeveloperSats?.toLocaleString() ?? "0"} sats</p>
-                  <p className="mt-1 text-xs text-slate-400">Total tipped directly to developers.</p>
-                  {forwardedDeveloperSats && forwardedDeveloperSats > 0 ? (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Includes {forwardedDeveloperSats.toLocaleString()} sats forwarded through multi-hop payments.
-                    </p>
-                  ) : null}
-                </div>
-                {topZapGames.length > 0 ? (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Top recipients</p>
-                    <ul className="mt-2 space-y-2 text-sm text-slate-200">
-                      {topZapGames.slice(0, 4).map((entry) => {
-                        const href = entry.slug ? `/games/${entry.slug}` : "#";
-                        const totalSats = Math.floor(entry.total_msats / 1000);
-                        return (
-                          <li
-                            key={entry.game_id}
-                            className="flex items-center justify-between rounded-2xl border border-white/5 bg-slate-950/70 px-4 py-3"
-                          >
-                            <Link
-                              href={href}
-                              className="font-medium text-white transition hover:text-amber-200 hover:underline"
-                            >
-                              {entry.title}
-                            </Link>
-                            <span>{totalSats.toLocaleString()} sats</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
+          </NeonCard>
+          <NeonCard className="p-6">
+            <MicroLabel>Zap-powered reviews</MicroLabel>
+            <div className="mt-4 space-y-4">
+              {zapReviews.map((review) => (
+                <div key={review.author} className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-400">{review.author}</p>
+                      <p className="mt-2 text-base font-semibold text-slate-100">{review.summary}</p>
+                      <p className="mt-1 text-sm text-slate-300">{review.body}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className="text-sm font-semibold text-emerald-200">{review.zapTotal.toLocaleString()} sats</span>
+                      <button
+                        type="button"
+                        className="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+                      >
+                        Tip review
+                      </button>
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm text-slate-300">{zapError ?? "Zap totals will appear once activity begins."}</p>
-            )}
+                </div>
+              ))}
+            </div>
+          </NeonCard>
+        </div>
+      </NeonCard>
+      <div className="space-y-6">
+        <NeonCard className="p-6">
+          <MicroLabel>Purchase status</MicroLabel>
+          <div className="mt-4 space-y-3 text-sm text-slate-200">
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Price</span>
+              <span className="font-semibold text-emerald-200">{detailGame.priceSats.toLocaleString()} sats</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Lightning ready</span>
+              <span className="font-semibold text-emerald-200">Instant</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Verified zaps</span>
+              <span className="font-semibold text-emerald-200">312,400 sats</span>
+            </div>
           </div>
+        </NeonCard>
+        <NeonCard className="p-6">
+          <MicroLabel>Player sentiment</MicroLabel>
+          <div className="mt-4 space-y-4 text-sm text-slate-300">
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Rating</span>
+              <span className="font-semibold text-emerald-200">4.8 / 5</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Verified reviews</span>
+              <span className="font-semibold text-emerald-200">124</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="uppercase tracking-[0.35em] text-emerald-200/70">Latest zap</span>
+              <span className="font-semibold text-emerald-200">2 min ago</span>
+            </div>
+          </div>
+        </NeonCard>
+      </div>
+    </div>
+  );
+}
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Support the platform</h3>
-            <p className="mt-4 text-sm text-slate-300">
-              {platformSats !== null
-                ? `${platformSats.toLocaleString()} sats have been tipped to keep Proof of Play running.`
-                : "Help keep Proof of Play online with a quick zap."}
-            </p>
-            {platformLnurl ? (
-              <ZapButton
-                lnurl={platformLnurl}
-                recipientLabel="Proof of Play"
-                comment="Thanks for building the open marketplace!"
-                className="mt-5"
+function LightningCheckoutScreen() {
+  return (
+    <div className="flex justify-center">
+      <NeonCard className="w-full max-w-3xl p-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <MicroLabel>Lightning checkout</MicroLabel>
+          <Pill>Invoice active</Pill>
+        </div>
+        <div className="mt-6 grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-64 w-64 items-center justify-center rounded-3xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-400/10 shadow-[0_0_45px_rgba(16,185,129,0.35)]">
+              <span className="text-sm uppercase tracking-[0.3em] text-emerald-200/80">QR Code</span>
+            </div>
+            <p className="text-[0.7rem] uppercase tracking-[0.4em] text-emerald-300/70">Scan with a Lightning wallet</p>
+          </div>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <MicroLabel>BOLT11 invoice</MicroLabel>
+              <textarea
+                readOnly
+                className="h-32 w-full rounded-2xl border border-emerald-400/30 bg-slate-950/70 p-4 text-xs text-emerald-200 shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+                value="lnbc220u1pj3zsyapp5j42rfq3p63t0m4pq6smef7u66n4vz8yq5n3y5c0q3zd4l8p2d4sdp6xysxxatzd3skxct5ypmkxmmwypmk7mf5yppk7mfqgcqzpgxqyz5vqsp5rgl5e3qg7syeu4j6q9zw7u4m5c5d6f62mdla9qurcgr7yp3ynq9qyyssq0lf7ne9cfp3nd5s4jn4zxr3c0e7jfk8p0s8e0kaxsf6k9c3w7xjnk5d76v0ydf8tlyfmlc2j7a"
               />
-            ) : (
-              <p className="mt-5 text-xs text-slate-500">Platform zap address coming soon.</p>
-            )}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)]"
+                >
+                  Copy invoice
+                </button>
+                <span className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Expires in 14:32</span>
+              </div>
+            </div>
+            <div>
+              <MicroLabel>Status timeline</MicroLabel>
+              <div className="mt-4 space-y-4">
+                {invoiceSteps.map((step) => (
+                  <div key={step.label} className="flex items-center gap-4">
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full border text-[0.6rem] uppercase tracking-[0.35em]",
+                        step.status === "done"
+                          ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200"
+                          : step.status === "active"
+                          ? "border-emerald-400/60 text-emerald-200"
+                          : "border-slate-700 text-slate-500",
+                      )}
+                    >
+                      {step.status === "pending" ? "" : step.timestamp}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{step.label}</p>
+                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                        {step.status === "done"
+                          ? "Captured"
+                          : step.status === "active"
+                          ? "Awaiting payment"
+                          : "Pending"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
+      </NeonCard>
+    </div>
+  );
+}
 
-        <section>
-          {featuredGames.length > 0 ? (
-            <FeaturedRotation entries={featuredGames} />
-          ) : (
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-              <div className="space-y-3">
-                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-                  Featured rotation warming up
-                </span>
-                <h2 className="text-xl font-semibold text-white">Spotlight coming soon</h2>
-                <p className="text-sm text-slate-300">
-                  {featuredError ??
-                    "Games earn the featured slot once they deliver verified reviews, healthy refund performance, and recent updates."}
+function ReceiptScreen() {
+  return (
+    <div className="flex justify-center">
+      <NeonCard className="w-full max-w-3xl p-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <MicroLabel>Payment receipt</MicroLabel>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Thank you for supporting indie worlds.</h2>
+          </div>
+          <Pill>{receipt.status}</Pill>
+        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-400/10 p-4 shadow-[0_0_40px_rgba(16,185,129,0.35)]">
+            <div className="h-52 rounded-xl bg-slate-900/80" />
+            <p className="mt-3 text-[0.7rem] uppercase tracking-[0.4em] text-emerald-200/80">Game cover art</p>
+          </div>
+          <div className="space-y-6">
+            <div className="grid gap-4 text-sm text-slate-200 sm:grid-cols-2">
+              <div>
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-200/70">Amount paid</span>
+                <p className="mt-2 text-lg font-semibold text-emerald-200">{receipt.amountSats.toLocaleString()} sats</p>
+              </div>
+              <div>
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-200/70">Order</span>
+                <p className="mt-2 text-lg font-semibold text-slate-100">{receipt.orderId}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-200/70">Buyer pubkey</span>
+                <p className="mt-2 break-all text-lg font-semibold text-slate-100">{receipt.buyerPubkey}</p>
+              </div>
+            </div>
+            <NeonCard className="p-6">
+              <MicroLabel>Next steps</MicroLabel>
+              <p className="mt-3 text-sm text-slate-300">
+                Jump back into Neon Drift Syndicate, download the latest build, and drop a zap-backed review for the crew.
+              </p>
+              <button
+                type="button"
+                className="mt-6 w-full rounded-full border border-emerald-400/60 bg-emerald-500/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)]"
+              >
+                {receipt.nextStepLabel}
+              </button>
+            </NeonCard>
+          </div>
+        </div>
+      </NeonCard>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const [activeScreen, setActiveScreen] = useState(1);
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
+      <div className="absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
+        <header className="space-y-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <MicroLabel>Proof of Play marketplace</MicroLabel>
+              <div className="max-w-3xl space-y-4">
+                <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                  Neon storefront for indie worlds powered by Lightning.
+                </h1>
+                <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
+                  Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
                 </p>
               </div>
             </div>
-          )}
-        </section>
-
-        <section className="space-y-8">
-          <div className="space-y-3">
-            <span className="inline-flex w-fit items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Discover the catalog
-            </span>
-            <h2 className="text-3xl font-semibold text-white sm:text-4xl">Built for the long tail of indie releases</h2>
-            <p className="text-sm text-slate-300 sm:text-base">
-              Featured listings highlight the full purchase and feedback loop—Lightning sales, refund telemetry, and community reviews.
-            </p>
+            <NpubIdentityWidget />
           </div>
-
-          {featuredGames.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {featuredGames.map((entry) => {
-                const { game } = entry;
-                const href = game.slug ? `/games/${game.slug}` : "#";
-                const priceLabel = formatPriceMsats(game.price_msats);
-                const refundLabel = formatRefundRate(entry.refund_rate);
-                const updatedLabel = formatUpdatedAt(game.updated_at);
-                const topStat = `${entry.paid_purchase_count.toLocaleString()} paid purchases`;
-                const reviewStat = `${entry.verified_review_count.toLocaleString()} verified reviews`;
-
-                return (
-                  <article
-                    key={game.id}
-                    className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-lg shadow-emerald-500/5"
-                  >
-                    <div
-                      aria-hidden
-                      className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm"
-                      style={game.cover_url ? { backgroundImage: `url(${game.cover_url})` } : undefined}
-                    />
-                    <div className="relative flex h-full flex-col justify-between gap-6 p-6 backdrop-blur-sm">
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-200">
-                          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
-                            {formatCategory(game.category)}
-                          </span>
-                          <span className="rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-emerald-200">
-                            {priceLabel}
-                          </span>
-                          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">{formatStatus(game.status)}</span>
-                        </div>
-                        <div className="space-y-2">
-                          <h3 className="text-2xl font-semibold text-white">{game.title}</h3>
-                          <p className="text-sm text-slate-200">
-                            {game.summary ?? "This developer is still crafting the perfect pitch—jump in to see the latest build."}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3 text-xs font-semibold uppercase tracking-[0.25em] text-slate-200">
-                          <span className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100">{topStat}</span>
-                          <span className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100">{reviewStat}</span>
-                          <span className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100">{refundLabel}</span>
-                          <span className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100">Updated {updatedLabel}</span>
-                        </div>
-                        <Link
-                          href={href}
-                          className="inline-flex w-fit items-center justify-center rounded-full border border-emerald-300/60 bg-emerald-400/15 px-5 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:border-emerald-200 hover:bg-emerald-400/25 hover:text-emerald-50"
-                        >
-                          View listing
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300 backdrop-blur">
-              {featuredError ?? "Featured games will appear here once listings graduate from the publish checklist."}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 backdrop-blur">
-          <div className="grid gap-12 lg:grid-cols-2">
-            <div>
-              <span className="inline-flex w-fit items-center rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
-                For creators
-              </span>
-              <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">A publishing pipeline tuned for small teams</h2>
-              <p className="mt-3 text-sm text-slate-300">
-                Proof of Play automates the boring parts—draft validation, pricing, and distribution—so you can focus on shipping playable builds.
-              </p>
-              <ul className="mt-6 space-y-4 text-sm text-slate-200">
-                {creatorJourney.map((step) => (
-                  <li key={step.title} className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{step.badge}</p>
-                    <p className="mt-2 text-base font-semibold text-white">{step.title}</p>
-                    <p className="mt-2 text-xs text-slate-400">{step.description}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <span className="inline-flex w-fit items-center rounded-full border border-sky-400/60 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-200">
-                For players
-              </span>
-              <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Transparent purchases and feedback loops</h2>
-              <p className="mt-3 text-sm text-slate-300">
-                Every purchase, review, and zap is tied to a verifiable action, letting communities rally around the games they love.
-              </p>
-              <ul className="mt-6 space-y-4 text-sm text-slate-200">
-                {playerJourney.map((step) => (
-                  <li key={step.title} className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{step.badge}</p>
-                    <p className="mt-2 text-base font-semibold text-white">{step.title}</p>
-                    <p className="mt-2 text-xs text-slate-400">{step.description}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-8">
-          <div className="space-y-3">
-            <span className="inline-flex w-fit items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Roadmap snapshot
-            </span>
-            <h2 className="text-3xl font-semibold text-white sm:text-4xl">Where the build is headed next</h2>
-            <p className="text-sm text-slate-300 sm:text-base">
-              We ship in tight iterations—every milestone locks in the flows that make Proof of Play feel like a real store.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {milestoneCallouts.map((callout) => (
-              <div
-                key={callout.label}
-                className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-200 backdrop-blur"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{callout.label}</p>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] ${
-                      callout.status === "shipped"
-                        ? "border border-emerald-400/60 bg-emerald-500/10 text-emerald-200"
-                        : "border border-amber-400/60 bg-amber-500/10 text-amber-200"
-                    }`}
-                  >
-                    {callout.status === "shipped" ? "Shipped" : "In progress"}
-                  </span>
-                </div>
-                <p className="mt-4 text-lg font-semibold text-white">{callout.title}</p>
-                <p className="mt-3 text-xs text-slate-400">{callout.detail}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+          <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
+        </header>
+        <main className="space-y-10 pb-16">
+          {activeScreen === 1 && <StorefrontScreen />}
+          {activeScreen === 2 && <GameDetailScreen />}
+          {activeScreen === 3 && <LightningCheckoutScreen />}
+          {activeScreen === 4 && <ReceiptScreen />}
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
