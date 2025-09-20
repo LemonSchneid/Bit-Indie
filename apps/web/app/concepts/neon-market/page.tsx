@@ -252,7 +252,7 @@ function ScreenSwitcher({
 }) {
   return (
     <div className="flex flex-wrap gap-3">
-      {["Storefront", "Game Detail", "Lightning Checkout", "Receipt"].map((label, index) => {
+      {["STOREFRONT", "SELL YOUR GAME", "INFO FOR PLAYERS"].map((label, index) => {
         const screenIndex = index + 1;
         const isActive = activeScreen === screenIndex;
         return (
