@@ -171,6 +171,21 @@ const receipt = {
   nextStepLabel: "Download build + leave a zap",
 };
 
+const npubBenefits = [
+  {
+    title: "Send & receive zaps",
+    description: "Back creators instantly and pull tips into your wallet without leaving the flow.",
+  },
+  {
+    title: "Seamless checkout",
+    description: "Invoices autofill from your Nostr profile so purchases clear in seconds.",
+  },
+  {
+    title: "Portable progress",
+    description: "Achievements and saves follow your npub across every Lightning-ready world.",
+  },
+];
+
 type MetricStatus = "healthy" | "syncing" | "degraded";
 
 type RelayMetric = {
@@ -379,6 +394,45 @@ function LiveMetricsColumn() {
         </div>
       </NeonCard>
     </div>
+  );
+}
+
+function NpubIdentityWidget() {
+  return (
+    <NeonCard className="w-full max-w-sm p-6 lg:ml-10">
+      <MicroLabel>Bring your npub</MicroLabel>
+      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Sign in or create one</h3>
+      <p className="mt-2 text-sm text-emerald-200/80">
+        Use your Nostr public key as a universal login for Lightning-charged adventures.
+      </p>
+      <ul className="mt-5 space-y-4 text-sm text-slate-200">
+        {npubBenefits.map((benefit) => (
+          <li key={benefit.title} className="flex gap-3">
+            <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-emerald-400/60 bg-emerald-500/10 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-emerald-100">
+              ✶
+            </span>
+            <div>
+              <p className="font-semibold text-slate-100">{benefit.title}</p>
+              <p className="text-xs leading-relaxed text-slate-400">{benefit.description}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 flex flex-col gap-3">
+        <button
+          type="button"
+          className="w-full rounded-full border border-emerald-400/70 bg-emerald-500/20 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-50"
+        >
+          Sign in with npub
+        </button>
+        <button
+          type="button"
+          className="w-full rounded-full border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
+        >
+          Create a new npub
+        </button>
+      </div>
+    </NeonCard>
   );
 }
 
@@ -701,16 +755,19 @@ export default function NeonMarketConceptPage() {
       <div className="absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
         <header className="space-y-8">
-          <div className="space-y-4">
-            <MicroLabel>Proof of Play marketplace</MicroLabel>
-            <div className="max-w-3xl space-y-4">
-              <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                Neon storefront for indie worlds powered by Lightning.
-              </h1>
-              <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
-                Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
-              </p>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <MicroLabel>Proof of Play marketplace</MicroLabel>
+              <div className="max-w-3xl space-y-4">
+                <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                  Neon storefront for indie worlds powered by Lightning.
+                </h1>
+                <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
+                  Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
+                </p>
+              </div>
             </div>
+            <NpubIdentityWidget />
           </div>
           <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
         </header>
