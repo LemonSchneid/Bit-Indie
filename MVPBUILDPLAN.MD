@@ -6,7 +6,7 @@
 
 ## AI Workflow Enforcement Flag
 
-`ai_enforce_mvp_flow = false`
+`ai_enforce_mvp_flow = true`
 
 - When set to `true`, Codex/AI agents must follow the workflow in this build plan exactly—pick the next open ticket, deliver it, and mark it complete before proceeding.
 - When set to `false`, Codex/AI agents may take on other repository changes as directed by humans while still respecting all global contribution guidelines.
@@ -280,6 +280,19 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 * **T7-4** Zap accounting & landing-page widgets. *DoD:* Idempotent `ZapLedger` service records `target_type='GAME'` and `target_type='PLATFORM'` totals from NIP-57 receipts (including multi-part events), captures `zap_source` to distinguish forwarded/multi-hop payments, API exposes aggregates, web app renders dev zap totals and platform zap/tip buttons using configured LNURL, and telemetry is emitted for zap parsing errors; tests cover parsing, aggregation, idempotency, and source tracking. ✅ Done
 * **T7-5** Reply moderation controls. *DoD:* Schema gains moderation flags for ingested relay replies, admin tooling (CLI or stub UI) can hide/unhide replies, automated filters enforce length/profanity thresholds before surfacing to clients, and tests verify hidden replies stay suppressed while remaining fetchable for audit. ✅ Done
 * **T7-6** Observability & alerting. *DoD:* Metrics/logs/dashboards track publish latency, per-relay latency/failure rates, ingestion backlog, and zap parsing errors; alerts fire on sustained failures or backlog growth; documentation captures runbooks for publisher failures and ingestion stalls. ✅ Done
+
+### Milestone 8 — Refactoring Backlog (Week 15–16)
+
+* **T8-1** Extract game drafting service for routers. *DoD:* Introduce a dedicated service that owns developer authorization, slug uniqueness checks, price validation, featured-state transitions, and release-note toggles; update the games FastAPI router endpoints to delegate to the service while keeping HTTP response handling in the router; add unit tests covering slug conflicts, price validation, and featured toggles.
+* **T8-2** Consolidate featured publishing reconciliation. *DoD:* Move featured-status recalculation and publish-time mutations into a reusable service or background worker invoked by the publish/unpublish endpoints; ensure state updates happen within a single transaction without duplicate flush/refresh cycles; add tests verifying featured eligibility updates on publish/unpublish flows.
+* **T8-3** Convert comments router helpers to dependencies. *DoD:* Replace module-level singleton instantiation and manual body parsing with FastAPI dependencies that provide workflow instances and raw-markdown payloads; update routes to consume the dependencies and ensure dependency overrides work cleanly in tests; cover raw-body parsing and dependency override behaviour with automated tests.
+* **T8-4** Break `CommentThreadService` responsibilities into collaborators. *DoD:* Extract caching, Nostr reply normalization, zap aggregation, and DTO construction into focused collaborators that the service composes; maintain the existing service interface for callers; add unit tests for each collaborator plus integration-level coverage for the composed service.
+* **T8-5** Refactor release note publisher workflow. *DoD:* Extract retry/backoff management, relay instrumentation, and state persistence helpers out of `ReleaseNotePublisher.publish_release_note`; keep queue coordination readable and reusable by other Nostr workflows; add unit tests covering retry scenarios, instrumentation, and failure propagation.
+* **T8-6** Decompose the landing page mega-component. *DoD:* Move fixture datasets out of `app/page.tsx` into dedicated modules and split each storefront screen into standalone components (with optional dynamic imports); ensure the page component focuses on routing/composition; update TypeScript types and add component tests or stories validating rendering.
+* **T8-7** Introduce reusable modal/portal utilities. *DoD:* Extract Lightning checkout modal portal setup, body scroll locking, and backdrop scaffolding into a shared modal utility or adopt a framework component; refactor existing checkout overlays to use it; add tests or stories verifying overlay coverage and scroll locking.
+* **T8-8** Refactor `ZapButton` into workflow hook and presentational pieces. *DoD:* Create a custom hook that encapsulates LNURL resolution, async state, keyboard listeners, and payment workflow while keeping the button component primarily presentational; ensure other surfaces (comments, roadmap notes) can reuse the hook; cover the hook with unit tests for success, failure, and cancellation states.
+* **T8-9** Align comments API client with shared request helper. *DoD:* Replace the hand-rolled `fetch` in `lib/api/comments.ts` with the shared `requestJson` helper, preserving standardized error parsing; update any mocks or tests relying on the old implementation; ensure typings remain accurate.
+* **T8-10** Expand regression coverage for refactors. *DoD:* Add backend unit tests for the new services/collaborators and frontend tests for extracted components and hooks; ensure the continuous-integration suite runs the new tests and they pass consistently.
 
 ---
 
