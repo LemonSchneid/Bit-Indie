@@ -1,54 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Modal } from "../ui/modal";
 
 import { invoiceSteps } from "./data";
 import { MicroLabel, Pill } from "./ui";
 import { cn } from "./utils";
 
 export function LightningCheckoutModal({ onClose }: { onClose: () => void }) {
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalContainer(document.body);
-  }, []);
-
-  useEffect(() => {
-    if (!portalContainer) {
-      return undefined;
-    }
-
-    const originalOverflow = portalContainer.style.overflow;
-    portalContainer.style.overflow = "hidden";
-    return () => {
-      portalContainer.style.overflow = originalOverflow;
-    };
-  }, [portalContainer]);
-
-  if (!portalContainer) {
-    return null;
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 px-4 py-0">
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      containerClassName="items-center justify-center px-4 py-0"
+      contentClassName="flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col overflow-y-auto rounded-[32px] border border-emerald-400/25 bg-slate-950 shadow-[0_40px_120px_rgba(16,185,129,0.28)]"
+      backdropClassName="bg-slate-950/85"
+      backdrop={
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950/50"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,theme(colors.slate.950/55),theme(colors.slate.950/95))]"
+            aria-hidden="true"
+          />
+        </>
+      }
+      backdropAriaLabel="Close Lightning checkout"
+      ariaLabel="Lightning checkout dialog"
+    >
       <button
         type="button"
-        className="absolute inset-0 h-full w-full cursor-default"
         onClick={onClose}
-        aria-label="Close Lightning checkout"
-      />
-      <div className="pointer-events-none absolute inset-0 z-40 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950/50" />
-      <div className="pointer-events-none absolute inset-0 z-40 bg-[radial-gradient(circle_at_center,theme(colors.slate.950/55),theme(colors.slate.950/95))]" />
-      <div className="relative z-50 flex max-h-[calc(100vh-3rem)] w-full max-w-4xl flex-col overflow-y-auto rounded-[32px] border border-emerald-400/25 bg-slate-950 shadow-[0_40px_120px_rgba(16,185,129,0.28)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-6 top-6 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
-        >
-          Close
-        </button>
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        className="absolute right-6 top-6 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
+      >
+        Close
+      </button>
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           <section className="relative bg-gradient-to-br from-slate-900/40 via-slate-950 to-slate-950 px-8 py-12 text-slate-100">
             <div className="absolute -top-36 -right-36 h-96 w-96 rounded-full bg-slate-500/15 blur-3xl" />
             <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-slate-600/10 blur-3xl" />
@@ -156,8 +144,6 @@ export function LightningCheckoutModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
         </div>
-      </div>
-    </div>,
-    portalContainer,
+    </Modal>
   );
 }
