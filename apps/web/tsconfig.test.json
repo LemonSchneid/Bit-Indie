@@ -8,11 +8,15 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "jsx": "react-jsx"
   },
   "include": [
     "lib/lightning.ts",
-    "lib/lightning.test.ts"
+    "lib/lightning.test.ts",
+    "components/zap-button.tsx",
+    "components/home/**/*.ts",
+    "components/home/**/*.tsx"
   ],
   "exclude": [
     "node_modules"
