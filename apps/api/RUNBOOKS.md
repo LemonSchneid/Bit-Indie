@@ -1,87 +1,39 @@
-# Observability runbooks
+# Operations Runbooks (MVP)
 
-This document captures the operational runbooks required for the launch-time
-release note publisher and ingestion pipeline.
+This document captures the operational runbooks for the Simple‑MVP (Nostr off). Nostr publisher/ingestion pipelines are disabled and will be documented post‑MVP.
 
-## Release note publisher failures
+## API Health
 
-The FastAPI service emits the following telemetry when publishing release notes
-via the `ReleaseNotePublisher` service:
+The FastAPI service exposes `/health`. Configure uptime checks against this endpoint.
 
-* `nostr.publisher.publish.attempts` counter (tag `status`) — tracks the overall
-  outcome for each publish attempt (`success`, `partial`, or `failed`).
-* `nostr.publisher.publish.latency_ms` distribution — captures end-to-end
-  latency for a publish attempt.
-* `nostr.publisher.relay.success`/`nostr.publisher.relay.failures` counters
-  keyed by `relay` — track per-relay success and failure rates.
-* `nostr.publisher.relay.latency_ms` distribution — measures per-relay request
-  latency and exposes status tags (`success`, `error`, `skipped`).
-* `nostr.publisher.queue.backlog` gauge — records the depth of
-  `release_note_publish_queue` rows after each attempt.
+Recommended basic telemetry:
 
-Runbook steps:
+- Request latency and error rate by route.
+- Database connection pool saturation and slow queries.
+- Storage (S3/R2) errors and presign latency.
 
-1. **Alert triggers** — alerts fire when
-   `nostr.publisher.relay.failures` spikes or when the backlog gauge exceeds 25
-   entries. Review the alert payload for the failing relay URLs.
-2. **Inspect logs** — search application logs for `relay.publish.failed` or
-   `relay.skip.backoff` entries to confirm if failures are transient (HTTP
-   5xx/timeout) or due to repeated backoff.
-3. **Check queue depth** — use `select count(*) from release_note_publish_queue`
-   in the database to confirm how many jobs are outstanding and inspect the
-   `last_error` column for context.
-4. **Mitigation** —
-   * For transient relay issues: allow backoff to continue and monitor for a
-     backlog decrease.
-   * For persistent failures on specific relays: temporarily remove the relay
-     from `NOSTR_RELAYS` and redeploy, then requeue affected games with
-     `update release_note_publish_queue set next_attempt_at = now()`.
-   * For signing errors (very rare): rotate the platform signing key and
-     redeploy.
-5. **Resolution check** — confirm `nostr.publisher.relay.success` counts start
-   increasing and the backlog gauge returns below the 25 threshold.
+## Purchase Flow Issues
 
-## Release note ingestion stalls
+Symptoms:
 
-The ingestion worker exposes:
-
-* `nostr.replies.ingestion.backlog` gauge — tracks queued ingestion jobs.
-* `nostr.replies.ingestion.relay_success`/`relay_failures` counters — show per
-  relay success/failure counts.
-* `nostr.replies.ingestion.relay_latency_ms` distribution — provides per-relay
-  latency with status tags.
-* `nostr.replies.ingestion.failures` counter — includes tagged reasons such as
-  `query` and `parse`.
+- Users cannot generate invoices.
+- Invoices never transition to PAID.
+- Download does not unlock after payment.
 
 Runbook steps:
 
-1. **Alert triggers** — alerts fire when
-   `nostr.replies.ingestion.backlog` exceeds 100 jobs or sustained
-   `relay_failures` occur on all relays.
-2. **Inspect worker logs** — search for
-   `release_note_ingest.relay_failed` entries to identify relays returning
-   errors, or `release_note_ingest.backlog_high` when the queue length is above
-   threshold.
-3. **Validate queue health** — query the ingestion queue implementation for
-   stuck jobs and confirm shard workers are running (check process manager or
-   container logs).
-4. **Mitigation** —
-   * Restart stalled workers to release locks on queue rows.
-   * Temporarily reduce `total_shards` so a healthy worker can drain backlog.
-   * Investigate parse failures (`nostr.replies.ingestion.failures` tagged with
-     `parse`) for malformed relay events and consider filtering the offending
-     relay until the payload normalises.
-5. **Resolution check** — backlog gauge returns below 100 and
-   `relay_success` counters increase.
+1. Validate payment provider env:
+   - `LN_PROVIDER=lnbits` and `LNBITS_*` vars present and correct.
+2. Inspect provider status page/logs; test issuing an invoice directly via provider API.
+3. Check API logs around `POST /v1/games/:id/invoices` for validation errors.
+4. If paid but not unlocked, verify webhook/polling logic for invoice status and DB `download_granted` updates.
 
-## Zap ingestion anomalies
+## Storage & Downloads
 
-Zap receipt handlers emit `nostr.zaps.parse_errors` metrics tagged with the
-`source` (`receipt` or `ledger`) and `reason` (for example `missing_amount`,
-`invalid_signature`, or `unsupported_target`). These counters power alerts for
-unexpected parsing spikes.
+- Ensure `S3_*` env is configured. Validate presign works by requesting a download URL.
+- Watch for 403/404 errors from the object store; verify object ACLs and bucket/endpoint.
 
-* Use logs (`zap.receipt.invalid` or `zap_ledger_parse_error`) to isolate the
-  failing event IDs.
-* For repeated invalid receipts from a specific integration, contact the
-  partner to validate their payload format.
+## Moderation & Abuse
+
+- Admin routes allow hide/unhide of comments and reviews.
+- Consider rate limits for comment/review creation per IP/user.

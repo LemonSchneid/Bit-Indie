@@ -13,33 +13,18 @@ This repository uses **Codex agents** (AI coding assistants) as junior developer
   * Ticket ID (e.g., 0.1, 1.2)
   * Labels, estimate
   * Description, Acceptance Criteria, Tasks
-* Tickets are completed **in order**, top to bottom, unless otherwise specified.
+* We are currently in a Simple‑MVP phase with `ai_enforce_mvp_flow = false`.
+* Use the plan to align scope and priorities; humans may resequence work as needed.
 
 ---
 
 ## Codex workflow
 
-1. **Locate the next open ticket**
+1. **Confirm scope**
 
-   * Open `MVPBUILDPLAN.md`.
-   * Find the first ticket **without a `✅ Done` marker**.
+   * Open `MVPBUILDPLAN.md` and confirm the task aligns with the Simple‑MVP milestones.
 
-2. **Implement only that ticket**
-
-   * Complete all tasks in the ticket.
-   * Ensure Acceptance Criteria are met.
-   * Do not work on future tickets.
-
-3. **Mark completion**
-
-   * In `MVPBUILDPLAN.md`, edit the ticket header to append `✅ Done`.
-   * Example:
-
-     ```
-     ### 0.1 Monorepo scaffolding (apps/web, apps/api, infra) ✅ Done
-     ```
-
-4. **Open a Pull Request**
+2. **Open a Pull Request**
 
    * Title: `[Ticket X.Y] {short description}`
    * Body: Include:
@@ -49,10 +34,9 @@ This repository uses **Codex agents** (AI coding assistants) as junior developer
      * How Acceptance Criteria were satisfied
      * Any notes for human review
 
-5. **Stop.**
+3. **Wait for review**
 
-   * Do not attempt the next ticket.
-   * Wait for human review/merge.
+   * Do not proceed to additional scope without human approval.
 
 ---
 
@@ -77,9 +61,8 @@ This repository uses **Codex agents** (AI coding assistants) as junior developer
 
 * Never modify unrelated files unless required by the ticket.
 * Never mark tickets as done unless **fully implemented and tested**.
-* Always respect the Acceptance Criteria in `MVPBUILDPLAN.md`.
-* Do not jump ahead.
-* Do not alter milestone order.
+* Keep changes aligned with the "Nostr‑off MVP" direction.
+* Do not re‑enable Nostr features or services without explicit instruction.
 
 ---
 

@@ -1,7 +1,6 @@
 # Proof of Play API
 
-This directory houses the FastAPI service for the Proof of Play marketplace. The app is intentionally minimal at this stage and
-will expand as future tickets implement authentication, games, and purchase logic.
+This directory houses the FastAPI service for the Proof of Play marketplace. For the Simple‑MVP, Nostr features are disabled and the API focuses on purchases, comments, reviews, and admin.
 
 ## Local development
 
@@ -12,6 +11,15 @@ docker compose -f infra/docker-compose.yml up --build
 ```
 
 The API listens on [http://localhost:8080](http://localhost:8080) and exposes a simple health endpoint at `/health`.
+
+Feature flags:
+
+- `NOSTR_ENABLED=false` (default) disables Nostr auth/ingestion routes.
+
+### Seed demo data
+
+- Run `python -m proof_of_play_api.scripts.seed_simple_mvp` to seed the developer, game, comments, reviews, and purchases used by the Simple MVP demo.
+- Use `python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a specific purchase to `PAID` during manual testing.
 
 ## Database migrations
 
@@ -27,6 +35,4 @@ Alternatively, set the `PG_*` environment variables shown in `.env.example` befo
 
 ## Scaling considerations
 
-The comment thread service keeps an in-memory cache of merged first-party comments and ingested Nostr replies. When we scale the
-API to run with multiple worker processes, swap the module-level singleton for a dependency-injected service backed by a shared
-cache (Redis or Memcached) so moderation and publish actions invalidate all workers consistently.
+In MVP, comments and reviews are first‑party only (no relay ingestion). When adding Nostr back post‑MVP, replace any in‑memory caches with a shared cache (Redis) so moderation and publish actions invalidate all workers consistently.

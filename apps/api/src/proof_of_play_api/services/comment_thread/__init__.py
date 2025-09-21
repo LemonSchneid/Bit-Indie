@@ -25,28 +25,32 @@ class CommentThreadService:
         reply_normalizer: ReleaseNoteReplyNormalizer | None = None,
         zap_aggregator: CommentZapAggregator | None = None,
         dto_builder: CommentDTOBuilder | None = None,
+        nostr_enabled: bool = True,
     ) -> None:
         self._reply_loader = reply_loader or ReleaseNoteReplyLoader()
         self._reply_normalizer = reply_normalizer or ReleaseNoteReplyNormalizer()
         self._zap_aggregator = zap_aggregator or CommentZapAggregator()
         self._dto_builder = dto_builder or CommentDTOBuilder()
+        self._nostr_enabled = nostr_enabled
 
     def list_for_game(self, *, session: Session, game: Game) -> list[CommentDTO]:
         """Return chronologically sorted comments for the provided game."""
 
         first_party = self._load_first_party_comments(session=session, game=game)
-        snapshots = self._reply_loader.load_snapshots(
-            session=session, game_id=game.id
-        )
-        normalized_replies = self._reply_normalizer.normalize(
-            session=session,
-            game_id=game.id,
-            snapshots=snapshots,
-        )
-        nostr = [
-            self._dto_builder.build_release_note_reply(normalized_reply=reply)
-            for reply in normalized_replies
-        ]
+        nostr: list[CommentDTO] = []
+        if self._nostr_enabled:
+            snapshots = self._reply_loader.load_snapshots(
+                session=session, game_id=game.id
+            )
+            normalized_replies = self._reply_normalizer.normalize(
+                session=session,
+                game_id=game.id,
+                snapshots=snapshots,
+            )
+            nostr = [
+                self._dto_builder.build_release_note_reply(normalized_reply=reply)
+                for reply in normalized_replies
+            ]
         merged = [*first_party, *nostr]
         merged.sort(key=lambda item: (item.created_at, item.id))
         if not merged:

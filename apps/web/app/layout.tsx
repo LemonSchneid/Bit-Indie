@@ -2,11 +2,13 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
+import { ClientProviders } from "./providers";
+
 const currentYear = new Date().getFullYear();
 
 export const metadata: Metadata = {
   title: "Proof of Play",
-  description: "Nostr-powered indie game marketplace",
+  description: "Lightning-first indie game marketplace",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -21,12 +23,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <div className="flex-1">{children}</div>
+          <ClientProviders>
+            <div className="flex-1">{children}</div>
+          </ClientProviders>
 
           <footer className="border-t border-slate-800 bg-slate-950/70">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
               <p>&copy; {currentYear} Proof of Play.</p>
-              <p className="text-xs sm:text-sm">Building in public with Nostr, Lightning, and a love for games.</p>
+              <p className="text-xs sm:text-sm">Building in public with Lightning and a love for games.</p>
             </div>
           </footer>
         </div>

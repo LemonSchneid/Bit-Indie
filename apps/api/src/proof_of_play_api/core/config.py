@@ -85,13 +85,15 @@ class ApiSettings:
     title: str = "Proof of Play API"
     version: str = "0.1.0"
     allowed_origins: Tuple[str, ...] = DEFAULT_ALLOWED_ORIGINS
+    nostr_enabled: bool = False
 
     @classmethod
     def from_environment(cls) -> "ApiSettings":
         """Build settings by reading environment variables."""
 
         origins = cls._parse_origins(os.getenv("API_ORIGINS"))
-        return cls(allowed_origins=origins)
+        nostr_enabled = _parse_bool(os.getenv("NOSTR_ENABLED"), default=False)
+        return cls(allowed_origins=origins, nostr_enabled=nostr_enabled)
 
     @staticmethod
     def _parse_origins(raw_origins: str | None) -> Tuple[str, ...]:

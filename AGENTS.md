@@ -47,8 +47,17 @@ These guidelines apply to the entire repository. Read them before writing or mod
   3. Mark the ticket as complete by appending `✅ Done` in `MVPBUILDPLAN.md`.
   4. Open a pull request with clear title and body referencing the ticket ID, milestone, and implementation details.
   5. Stop after opening the PR and wait for human review/merge.
-* Never skip ahead or alter milestone order.
-* Treat `MVPBUILDPLAN.md` as the authoritative backlog. Do not add, remove, or modify tickets without explicit human instruction.
+* Never skip ahead or alter milestone order when enforcement is on.
+* Treat `MVPBUILDPLAN.md` as the authoritative backlog. During the Simple‑MVP phase (Nostr off), prioritize tasks that keep Nostr integrations disabled behind feature flags; do not delete Nostr code.
+
+---
+
+## Simple‑MVP Direction (Nostr Off)
+
+* Default to `NOSTR_ENABLED=false` (API) and `NEXT_PUBLIC_NOSTR_ENABLED=false` (web).
+* Do not introduce new Nostr-facing dependencies in runtime paths.
+* Preserve Nostr modules and tests; gate via flags or no‑op adapters.
+* Focus on Lightning purchases, first‑party comments/reviews, developer settings, and moderation.
 
 ---
 

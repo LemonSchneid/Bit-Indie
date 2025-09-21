@@ -11,6 +11,7 @@ import {
   type GameDraft,
   type GameReview,
 } from "../../../lib/api";
+import { nostrEnabled } from "../../../lib/flags";
 
 type GamePageProps = {
   params: {
@@ -393,12 +394,13 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 Community thread
               </h2>
               <p className="mt-2 text-xl font-semibold text-white">
-                Comments from Proof of Play and Nostr
+                {nostrEnabled ? "Comments from Proof of Play and Nostr" : "Comments from Proof of Play"}
               </p>
             </div>
             <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
-              First-party comments appear alongside replies to the release note on public relays.
-              Verified purchase badges highlight players who bought the build.
+              {nostrEnabled
+                ? "First-party comments appear alongside replies to the release note on public relays. Verified purchase badges highlight players who bought the build."
+                : "First-party comments from Proof of Play are shown here. Verified purchase badges highlight players who bought the build."}
             </p>
           </div>
 
@@ -406,20 +408,20 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">
               {commentsError}
             </p>
-          ) : comments.length === 0 ? (
+          ) : (nostrEnabled ? comments : comments.filter((c) => c.source === "FIRST_PARTY")).length === 0 ? (
             <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
               No comments yet. Share the release note or invite players to leave feedback here.
             </p>
           ) : (
             <div className="mt-6 space-y-6">
-              {comments.map((comment) => {
+              {(nostrEnabled ? comments : comments.filter((c) => c.source === "FIRST_PARTY")).map((comment) => {
                 const paragraphs = getCommentParagraphs(comment.body_md);
                 const trimmedBody = comment.body_md.trim();
                 const displayParagraphs =
                   paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
                 const authorLabel = getCommentAuthorLabel(comment);
                 const authorTitle = comment.author.npub ?? comment.author.pubkey_hex ?? undefined;
-                const isNostrReply = comment.source === "NOSTR";
+                const isNostrReply = nostrEnabled && comment.source === "NOSTR";
                 const zapLabel = formatZapAmount(comment.total_zap_msats);
                 const zapRecipient = authorLabel || "this commenter";
                 const zapComment = `Zap for comment ${comment.id} on ${game.title}`;
@@ -439,13 +441,13 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             {formatCommentDate(comment.created_at)}
                           </time>
                           {isNostrReply ? (
-                            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
+                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
                               Nostr reply
-                            </span>
+                              </span>
                           ) : (
-                            <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                              <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                               Proof of Play
-                            </span>
+                              </span>
                           )}
                         </div>
                       </div>

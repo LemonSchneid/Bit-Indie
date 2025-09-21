@@ -1,90 +1,48 @@
-# 🎮 Proof of Play — Nostr-Powered Indie Game Marketplace
+# 🎮 Proof of Play — Lightning‑First Indie Game Marketplace
 
 ---
 
-## 1. Core Vision
+## 1. Core Vision (Simple MVP)
 
-Proof of Play is a **Bitcoin-native indie game store + social layer**, powered by Nostr.
+Proof of Play is a **Bitcoin‑native indie game store**. For the MVP we focus on:
 
-* **You own the store** → catalog, downloads, payments, revenue cuts.
-* **Nostr provides identity + distribution + reputation** → every dev and player is a pubkey.
-* **Interaction is simple:**
+- Lightning purchases for downloadable games.
+- First‑party comments and verified‑purchase reviews.
+- A small admin to keep spam down.
 
-  * **Comments = speech** (free, signed notes).
-  * **Zaps = value** (Bitcoin payments).
+Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off for launch and will return post‑MVP.
 
 ---
 
 ## 2. Developers
 
-* Every developer has a **Nostr identity**.
-
-  * Auto-generated pubkey at signup.
-  * All listings, updates, and replies tied to that pubkey.
-  * Developers can export/claim their key anytime.
-
-* **Publishing Flow**
-
-  * Upload game → listing published to:
-
-    * Proof of Play Relay (canonical DB).
-    * Public Relays (distribution + advertising).
-
-* **Revenue Flow**
-
-  * Game sales (minus platform cut).
-  * Zaps on their notes (listings, updates, replies).
-
-* **Verified Developer**
-
-  * Claimed pubkey = badge → builds trust with players.
+- Create listings, upload builds, and set a Lightning Address to receive payments.
+- No relay publishing at launch; all data is first‑party in our DB.
+- Revenue: game sales (minus platform cut). Nostr zaps are planned post‑MVP.
 
 ---
 
 ## 3. Players
 
-* Every player has a **Nostr identity**.
-
-  * Auto-generated pubkey at signup.
-  * Reviews and comments tied to their pubkey.
-
-* **Wallet-Linked Players**
-
-  * Can zap games, reviews, and comments.
-  * Zaps are broadcast to relays under their pubkey.
-
-* **Non-Wallet Players**
-
-  * Can tip developers via LNURL invoice pop-up.
-  * Can still comment (free, signed with auto pubkey).
-  * Cannot zap (UI shows *“Link wallet to zap”*).
-
-* **Revenue Flow**
-
-  * Players can earn sats if their reviews/comments get zapped.
+- Guest checkout without creating an account; pay with any Lightning wallet.
+- First‑party comments and reviews; verified badge if you purchased the game.
+- Zaps and Nostr identity are planned features after MVP.
 
 ---
 
 ## 4. Proof of Play (the Platform)
 
-* Runs its own **relay** (canonical DB).
-
-* Publishes content under the **Proof of Play pubkey** for announcements, features, and updates.
-
-* **Revenue Streams**
-
-  * Sales cut (e.g. 10%).
-  * Zaps on Proof of Play’s own posts.
-  * Direct tips to the platform LNURL.
+- First‑party API and DB at launch; no public relay dependency.
+- Revenue: sales cut; platform tips via LNURL (optional UI).
 
 ---
 
-## 5. Content Flow
+## 5. Content Flow (MVP)
 
-* **Game Listings** → mirrored as NIP-15 marketplace events (`kind 30018`).
-* **Reviews/Comments** → mirrored as Nostr notes, bi-directional sync with relays.
-* **Zaps** → flow to the **author’s pubkey** (dev, player, or Proof of Play).
-* **Treasury/Escrow** → optional future feature for spam filtering (refundable deposits).
+- Game Listings → stored in first‑party DB only.
+- Reviews/Comments → first‑party only; no relay sync.
+- Payments → Lightning invoices to developer Lightning Addresses.
+- Optional future: refundable deposits for anti‑spam.
 
 ---
 
@@ -98,74 +56,57 @@ Proof of Play is a **Bitcoin-native indie game store + social layer**, powered b
 
 * **Game Page Actions**
 
-  * **Comment** → free, identity-tied.
-  * **Zap** → sats + signed event (wallet required).
-  * **Tip** → LNURL fallback.
+  * Comment → free, stored first‑party.
+  * Tip/Purchase → LNURL/Lightning Address.
 
-* **Reviews** → sorted by zap-weight + recency.
+- Reviews → sorted by helpful_score (no zap weighting in MVP).
 
-* **Dev Profiles** → show pubkey, games, zap totals, comment history, and “Verified” badge.
+- Dev Profiles → show games, sales/tips summary; Nostr badges later.
 
 ---
 
 ## 7. Revenue Model
 
 * **Game Sales** → \~10% platform cut.
-* **Zaps** →
-
-  * Developer zaps → to developer pubkey.
-  * Player zaps (reviews) → to player pubkey.
-  * Platform zaps → to Proof of Play pubkey.
-* **Tips** → platform LNURL for direct support.
-* **Optional Future** → refundable deposits as a quality filter.
+* Tips → platform LNURL for direct support (optional UI).
+* Optional Future → refundable deposits as a quality filter.
 
 ---
 
 ## 8. Why It’s Unique
 
 * **Bitcoin-native economy** → sats for sales + zaps.
-* **Nostr-native identity** → every dev and player has a portable pubkey reputation.
-* **Free speech, paid value** → only two interactions matter: comments (speech) + zaps (value).
-* **Open publishing** → prototypes, jams, early access, and finished games all welcome.
-* **Social virality** → listings and reviews spread across Nostr clients.
-* **Transparent history** → all events verifiable on relays.
+* **Nostr‑ready** → architecture keeps Nostr integrations behind flags, ready to switch on after MVP.
 
 ---
 
-## 9. Launch Plan (90-Day MVP)
+## 9. Launch Plan (Simple MVP)
 
-1. Deploy Proof of Play Relay (SQLite/Postgres).
-2. Implement game upload + sales system.
-3. Auto-generate pubkeys for developers + players.
-4. Add wallet linking (WebLN, LNURL) + fallback tips.
-5. Build UI with **Comments + Zaps only**.
-6. Mirror content to Nostr; pull back external comments/zaps.
-7. Roll out category system (Prototypes, Early Access, Finished).
+1. Core purchase flow (guest invoices + receipt restore).
+2. First‑party comments and reviews with verified‑purchase badges.
+3. Developer settings (Lightning Address, builds, metadata).
+4. Admin moderation + minimal rate‑limiting.
+5. Download delivery via S3/R2 presigned links.
+6. Telemetry and docs; deploy web/API.
 
 ---
 
 ## 10. Future Upgrades
 
-* Optional refundable deposit system for spam filtering.
-* Advanced zap-weighted reputation mechanics.
-* Native Proof of Play mobile client (a Nostr-first game hub).
-* Partnerships with Lightning-native game studios (e.g. THNDR, ZBD).
+- Re‑enable Nostr: sign‑in (NIP‑07), relay publishing, reply ingestion, zap receipts.
+- Zap‑weighted reputation for reviews.
+- Refundable deposit system for spam filtering.
+- Native mobile client.
 
 ---
 
 ## ✅ Summary
 
-Proof of Play = **the Bitcoin/Nostr-native indie game marketplace**.
-
-* Every **developer and player** has a Nostr identity.
-* Games, reviews, and updates are mirrored across relays.
-* **Comments = free speech.**
-* **Zaps = paid value.**
-* Proof of Play earns from **sales cuts + its own zaps/tips.**
+Proof of Play = a Lightning‑first indie game marketplace. Nostr integrations are preserved in code behind feature flags and will be re‑enabled after MVP.
 
 ---
 
-## Development setup
+## Development Setup
 
 This repository is a polyglot monorepo:
 
@@ -182,3 +123,21 @@ To bring the stack online, run:
 
 The API listens on [http://localhost:8080](http://localhost:8080) with a `/health` endpoint. Postgres is exposed on `localhost:5432`
 and MinIO on `localhost:9000` (console at `:9001`).
+
+MVP feature flags:
+
+- API: set `NOSTR_ENABLED=false` (default) to disable Nostr routes/services.
+- Web: set `NEXT_PUBLIC_NOSTR_ENABLED=false` (default) to hide Nostr UI.
+- Web mocks: set `NEXT_PUBLIC_API_MOCKS=true` to serve fixture data via MSW during UI development.
+
+### Frontend API mocks
+
+- Install MSW in the web workspace: `pnpm --filter web add -D msw` (install step not committed).
+- Generate the worker script once: `pnpx --filter web msw init public/`.
+- Set `NEXT_PUBLIC_API_MOCKS=true` in `.env.local` to boot the worker; the sample handlers return featured games, comments, reviews, and purchase flows for the `starpath-siege` demo game.
+- Disable the flag (set to `false`) to exercise the real API.
+
+### Seed sample marketplace data
+
+- Bring up the API stack (Docker or local virtualenv), then run `python -m proof_of_play_api.scripts.seed_simple_mvp` to insert the demo developer, game, comments, reviews, and purchases.
+- Use `python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a purchase to `PAID` during manual flows.

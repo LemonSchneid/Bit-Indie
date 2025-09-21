@@ -38,7 +38,8 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
     application.include_router(health_router)
-    application.include_router(auth_router)
+    if settings.nostr_enabled:
+        application.include_router(auth_router)
     application.include_router(admin_router)
     application.include_router(admin_refunds_router)
     application.include_router(admin_stats_router)
@@ -47,7 +48,8 @@ def create_application() -> FastAPI:
     application.include_router(comments_router)
     application.include_router(reviews_router)
     application.include_router(purchases_router)
-    application.include_router(nostr_router)
+    if settings.nostr_enabled:
+        application.include_router(nostr_router)
     application.include_router(zaps_router)
     return application
 

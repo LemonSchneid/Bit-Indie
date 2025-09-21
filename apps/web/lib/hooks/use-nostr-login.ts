@@ -15,6 +15,7 @@ import {
   loadStoredUserProfile,
   saveUserProfile,
 } from "../user-storage";
+import { nostrEnabled } from "../flags";
 
 export type NostrLoginState = "idle" | "pending" | "success" | "error";
 
@@ -57,15 +58,20 @@ export function useNostrLogin(): {
   const [hasSigner, setHasSigner] = useState(false);
   const [state, setState] = useState<NostrLoginState>("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());
+  const [profile, setProfile] = useState<UserProfile | null>(() => (nostrEnabled ? loadStoredUserProfile() : null));
 
   useEffect(() => {
+    if (!nostrEnabled) {
+      setHasSigner(false);
+      return;
+    }
+
     const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
     setHasSigner(signerAvailable);
-  }, []);
+  }, [nostrEnabled]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!nostrEnabled || typeof window === "undefined") {
       return;
     }
 
@@ -92,14 +98,24 @@ export function useNostrLogin(): {
       );
       window.removeEventListener("storage", handleStorage);
     };
-  }, []);
+  }, [nostrEnabled]);
 
   const persistProfile = useCallback((nextProfile: UserProfile) => {
+    if (!nostrEnabled) {
+      return;
+    }
     setProfile(nextProfile);
     saveUserProfile(nextProfile);
-  }, []);
+  }, [nostrEnabled]);
 
   const signIn = useCallback(async (options?: SignInOptions) => {
+    if (!nostrEnabled) {
+      setHasSigner(false);
+      setState("error");
+      setMessage("Sign-in is disabled for the Simple MVP. Use guest checkout instead.");
+      return;
+    }
+
     if (state === "pending") {
       return;
     }
@@ -150,7 +166,7 @@ export function useNostrLogin(): {
         setMessage("Login failed due to an unexpected error.");
       }
     }
-  }, [persistProfile, state]);
+  }, [nostrEnabled, persistProfile, state]);
 
   const resetFeedback = useCallback(() => {
     setMessage(null);

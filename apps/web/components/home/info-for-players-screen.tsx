@@ -1,5 +1,6 @@
 "use client";
 
+import { nostrEnabled } from "../../lib/flags";
 import { MicroLabel, NeonCard } from "./ui";
 
 export function InfoForPlayersScreen() {
@@ -11,25 +12,26 @@ export function InfoForPlayersScreen() {
           Get the most out of your Lightning-powered library
         </h2>
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-slate-300">
-          Pair your favorite Lightning wallet, link your Nostr identity, and you&apos;ll unlock
-          instant purchases, zap-backed reviews, and portable saves across every Proof of Play
-          world.
+          Pair your favorite Lightning wallet to unlock instant purchases and verified reviews.
+          {nostrEnabled
+            ? " Link your Nostr identity to sync progress across every Proof of Play world."
+            : " Nostr identity linking will return after the Simple MVP launch."}
         </p>
         <div className="grid gap-4 text-sm text-slate-200 sm:grid-cols-2">
           <NeonCard className="p-5">
             <MicroLabel>Setup checklist</MicroLabel>
             <ul className="mt-4 space-y-3 text-left text-xs text-slate-300">
               <li>Install a Lightning wallet that supports BOLT11 invoices.</li>
-              <li>Enable NIP-07 in your browser for seamless npub sign-ins.</li>
               <li>Whitelist <code>localhost:3000</code> (or your deployed domain) in the wallet.</li>
+              <li>Save guest receipts so you can restore downloads anytime.</li>
             </ul>
           </NeonCard>
           <NeonCard className="p-5">
             <MicroLabel>Quick tips</MicroLabel>
             <ul className="mt-4 space-y-3 text-left text-xs text-slate-300">
               <li>Use the download audit trail to keep track of builds per device.</li>
-              <li>Drop a zap-backed review to boost your favorite updates.</li>
-              <li>Follow devs via Nostr relays for early access patches.</li>
+              <li>Drop a review to boost your favorite updates (zap weighting coming later).</li>
+              <li>Follow dev devlogs on Proof of Play; Nostr relays join the lineup post-MVP.</li>
             </ul>
           </NeonCard>
         </div>

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.core.config import get_settings
 from proof_of_play_api.db.models import Comment, Game, User
 from proof_of_play_api.schemas.comment import CommentCreateRequest
 from proof_of_play_api.services.comment_thread import CommentDTO, CommentThreadService
@@ -46,7 +47,10 @@ class CommentWorkflow:
     """Coordinate validation, rate limiting, and persistence for comments."""
 
     def __init__(self, *, comment_thread_service: CommentThreadService | None = None) -> None:
-        self._comment_thread_service = comment_thread_service or CommentThreadService()
+        if comment_thread_service is None:
+            settings = get_settings()
+            comment_thread_service = CommentThreadService(nostr_enabled=settings.nostr_enabled)
+        self._comment_thread_service = comment_thread_service
 
     def create_comment(
         self,

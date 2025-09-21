@@ -204,8 +204,8 @@ export default async function PurchaseReceiptPage({
                 <h2 className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Next steps</h2>
                 {purchase.invoice_status === "PAID" ? (
                   <p className="mt-3">
-                    Head back to the game page to grab the latest build. Your download button will be unlocked when you sign in
-                    with the same Nostr account.
+                    Head back to the game page to grab the latest build. If you paid as a guest, keep this receipt handy to
+                    restore downloads on any device.
                   </p>
                 ) : (
                   <p className="mt-3">

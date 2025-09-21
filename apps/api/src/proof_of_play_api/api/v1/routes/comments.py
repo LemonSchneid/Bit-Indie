@@ -11,6 +11,7 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.core.config import get_settings
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Game
 from proof_of_play_api.schemas.comment import CommentCreateRequest, CommentRead
@@ -32,7 +33,8 @@ logger = logging.getLogger(__name__)
 def _build_comment_thread_service() -> CommentThreadService:
     """Instantiate the comment thread service used across requests."""
 
-    return CommentThreadService()
+    settings = get_settings()
+    return CommentThreadService(nostr_enabled=settings.nostr_enabled)
 
 
 def get_comment_thread_service() -> CommentThreadService:
@@ -152,4 +154,3 @@ __all__ = [
     "get_raw_comment_body",
     "list_game_comments",
 ]
-
