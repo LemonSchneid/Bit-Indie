@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -16,10 +15,8 @@ from proof_of_play_api.schemas.game import (
     FeaturedGameSummary,
     GamePublishChecklist,
     GamePublishRequest,
-    GamePublishRequirement,
     GameRead,
     GameUpdateRequest,
-    PublishRequirementCode,
 )
 from proof_of_play_api.schemas.purchase import (
     InvoiceCreateRequest,
@@ -34,10 +31,13 @@ from proof_of_play_api.services.storage import (
     StorageService,
     get_storage_service,
 )
-from proof_of_play_api.services.game_promotion import (
-    maybe_promote_game_to_discover,
-    update_game_featured_status,
+from proof_of_play_api.services.game_drafting import (
+    GameDraftingError,
+    GameDraftingService,
+    PublishChecklistResult,
+    get_game_drafting_service,
 )
+from proof_of_play_api.services.game_promotion import update_game_featured_status
 from proof_of_play_api.services.payments import (
     PaymentService,
     PaymentServiceError,
@@ -51,23 +51,6 @@ from proof_of_play_api.services.nostr_publisher import (
 
 
 router = APIRouter(prefix="/v1/games", tags=["games"])
-
-
-def _get_developer_id(*, session: Session, user_id: str) -> str:
-    """Return the developer identifier for the given user or raise an HTTP error."""
-
-    user = session.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-
-    developer = user.developer_profile
-    if developer is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must have a developer profile to manage games.",
-        )
-
-    return developer.id
 
 
 @router.post(
@@ -155,23 +138,14 @@ def create_game_invoice(
 def create_game_draft(
     request: GameCreateRequest,
     session: Session = Depends(get_session),
+    drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameRead:
     """Persist a new game draft for the requesting developer."""
 
-    developer_id = _get_developer_id(session=session, user_id=request.user_id)
-
-    existing_slug = session.scalar(select(Game).where(Game.slug == request.slug))
-    if existing_slug is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A game with this slug already exists.",
-        )
-
-    payload = request.model_dump(exclude={"user_id"})
-    game = Game(developer_id=developer_id, active=False, **payload)
-    session.add(game)
-    session.flush()
-    session.refresh(game)
+    try:
+        game = drafting.create_draft(session=session, request=request)
+    except GameDraftingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     return GameRead.model_validate(game)
 
@@ -185,51 +159,18 @@ def update_game_draft(
     game_id: str,
     request: GameUpdateRequest,
     session: Session = Depends(get_session),
+    drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameRead:
     """Update a game draft owned by the requesting developer."""
 
-    developer_id = _get_developer_id(session=session, user_id=request.user_id)
-
-    game = session.get(Game, game_id)
-    if game is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-
-    if game.developer_id != developer_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to modify this game.",
+    try:
+        game = drafting.update_draft(
+            session=session,
+            game_id=game_id,
+            request=request,
         )
-
-    updates = request.model_dump(exclude_unset=True, exclude={"user_id"})
-
-    new_slug = updates.get("slug")
-    if new_slug and new_slug != game.slug:
-        slug_conflict = session.scalar(select(Game).where(Game.slug == new_slug))
-        if slug_conflict is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A game with this slug already exists.",
-            )
-
-    new_build_key = updates.get("build_object_key")
-    if new_build_key and not new_build_key.startswith(f"games/{game.id}/build/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Build object key is invalid for this game.",
-        )
-
-    for field, value in updates.items():
-        if isinstance(value, AnyUrl):
-            value = str(value)
-        setattr(game, field, value)
-
-    session.flush()
-    session.refresh(game)
-
-    changed, _ = update_game_featured_status(session=session, game=game)
-    if changed:
-        session.flush()
-        session.refresh(game)
+    except GameDraftingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     return GameRead.model_validate(game)
 
@@ -245,20 +186,16 @@ def create_game_asset_upload(
     request: GameAssetUploadRequest,
     session: Session = Depends(get_session),
     storage: StorageService = Depends(get_storage_service),
+    drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameAssetUploadResponse:
     """Return a pre-signed upload payload for a developer owned game asset."""
 
-    developer_id = _get_developer_id(session=session, user_id=request.user_id)
-
-    game = session.get(Game, game_id)
-    if game is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-
-    if game.developer_id != developer_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to modify this game.",
+    try:
+        drafting.authorize_game_access(
+            session=session, user_id=request.user_id, game_id=game_id
         )
+    except GameDraftingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     upload = storage.generate_game_asset_upload(
         game_id=game_id,
@@ -276,51 +213,6 @@ def create_game_asset_upload(
     )
 
 
-def _evaluate_publish_requirements(game: Game) -> list[GamePublishRequirement]:
-    """Return any unmet requirements blocking a game from being published."""
-
-    missing: list[GamePublishRequirement] = []
-
-    if not (game.summary and game.summary.strip()):
-        missing.append(
-            GamePublishRequirement(
-                code=PublishRequirementCode.SUMMARY,
-                message="Add a short summary before publishing.",
-            )
-        )
-
-    if not (game.description_md and game.description_md.strip()):
-        missing.append(
-            GamePublishRequirement(
-                code=PublishRequirementCode.DESCRIPTION,
-                message="Provide a longer description to help players understand the game.",
-            )
-        )
-
-    if not game.cover_url:
-        missing.append(
-            GamePublishRequirement(
-                code=PublishRequirementCode.COVER_IMAGE,
-                message="Upload a cover image to showcase the game on its listing page.",
-            )
-        )
-
-    build_requirements = (
-        game.build_object_key,
-        game.build_size_bytes,
-        game.checksum_sha256,
-    )
-    if not all(build_requirements):
-        missing.append(
-            GamePublishRequirement(
-                code=PublishRequirementCode.BUILD_UPLOAD,
-                message="Upload a downloadable build with size and checksum recorded.",
-            )
-        )
-
-    return missing
-
-
 @router.get(
     "/{game_id}/publish-checklist",
     response_model=GamePublishChecklist,
@@ -330,24 +222,20 @@ def get_publish_checklist(
     game_id: str,
     user_id: str,
     session: Session = Depends(get_session),
+    drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GamePublishChecklist:
     """Return the outstanding publish requirements for the caller's game draft."""
 
-    developer_id = _get_developer_id(session=session, user_id=user_id)
-
-    game = session.get(Game, game_id)
-    if game is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-
-    if game.developer_id != developer_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to view this checklist.",
+    try:
+        result: PublishChecklistResult = drafting.get_publish_checklist(
+            session=session,
+            user_id=user_id,
+            game_id=game_id,
         )
+    except GameDraftingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    missing = _evaluate_publish_requirements(game)
-
-    return GamePublishChecklist(is_publish_ready=not missing, missing_requirements=missing)
+    return result.checklist
 
 
 @router.post(
@@ -360,48 +248,21 @@ def publish_game(
     request: GamePublishRequest,
     session: Session = Depends(get_session),
     publisher: ReleaseNotePublisher = Depends(get_release_note_publisher),
+    drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameRead:
     """Promote a game draft to the unlisted catalog if all requirements are satisfied."""
 
-    developer_id = _get_developer_id(session=session, user_id=request.user_id)
-
-    game = session.get(Game, game_id)
-    if game is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-
-    if game.developer_id != developer_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to publish this game.",
-        )
-
-    missing = _evaluate_publish_requirements(game)
-    if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "message": "Game is missing required fields for publishing.",
-                "missing_requirements": [item.model_dump() for item in missing],
-            },
-        )
-
-    game.active = True
-    game.status = GameStatus.UNLISTED
-
-    session.flush()
-    session.refresh(game)
-
-    changed, _ = update_game_featured_status(session=session, game=game)
-    if changed:
-        session.flush()
-        session.refresh(game)
-
     try:
-        publisher.publish_release_note(session=session, game=game)
+        game = drafting.publish_game(
+            session=session,
+            game_id=game_id,
+            request=request,
+            publisher=publisher,
+        )
+    except GameDraftingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ReleaseNotePublishError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-
-    session.refresh(game)
 
     return GameRead.model_validate(game)
 
