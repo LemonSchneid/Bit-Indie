@@ -26,6 +26,53 @@ from proof_of_play_api.services.nostr_publisher import (
 )
 
 
+class _CapturingMetrics:
+    """Fake metrics backend capturing emitted values for assertions."""
+
+    def __init__(self) -> None:
+        self.counters: list[tuple[str, int, dict[str, str]]] = []
+        self.gauges: list[tuple[str, float, dict[str, str]]] = []
+        self.observations: list[tuple[str, float, dict[str, str]]] = []
+
+    def increment(
+        self,
+        metric: str,
+        *,
+        value: int = 1,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.counters.append((metric, value, dict(tags or {})))
+
+    def gauge(
+        self,
+        metric: str,
+        *,
+        value: float,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.gauges.append((metric, float(value), dict(tags or {})))
+
+    def observe(
+        self,
+        metric: str,
+        *,
+        value: float,
+        tags: dict[str, str] | None = None,
+    ) -> None:
+        self.observations.append((metric, float(value), dict(tags or {})))
+
+
+class _PerfCounterStub:
+    """Deterministic stand-in for ``time.perf_counter`` during tests."""
+
+    def __init__(self) -> None:
+        self._value = 0.0
+
+    def __call__(self) -> float:
+        self._value += 1.0
+        return self._value
+
+
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure each test runs against a fresh in-memory database."""
@@ -228,3 +275,93 @@ def test_publish_release_note_skips_relays_during_backoff() -> None:
         assert updated_entry.attempts == settings.circuit_breaker_attempts
         assert updated_entry.payload != "{}"
         assert updated_entry.next_attempt_at == blocked_entry.next_attempt_at
+
+
+def test_publish_release_note_emits_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Publishing should emit instrumentation for skips, failures, and successes."""
+
+    _create_schema()
+    secret_key = 192837465
+    relays = (
+        "https://relay.skip/publish",
+        "https://relay.fail/publish",
+        "https://relay.ok/publish",
+    )
+    settings = _build_settings(secret_key, relays=relays)
+    metrics = _CapturingMetrics()
+    perf_stub = _PerfCounterStub()
+    monkeypatch.setattr(
+        "proof_of_play_api.services.nostr_publisher.perf_counter", perf_stub
+    )
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("fail/publish"):
+            return httpx.Response(502, text="relay unavailable")
+        return httpx.Response(202, json={"accepted": True})
+
+    transport = httpx.MockTransport(_handler)
+    with httpx.Client(transport=transport) as client, session_scope() as session:
+        game = _seed_game(session)
+        blocked_entry = ReleaseNotePublishQueue(
+            game_id=game.id,
+            relay_url="https://relay.skip/publish",
+            payload="{}",
+            attempts=2,
+            next_attempt_at=datetime(2024, 7, 4, 15, 0, tzinfo=timezone.utc)
+            + timedelta(hours=1),
+        )
+        session.add(blocked_entry)
+        session.flush()
+
+        publisher = ReleaseNotePublisher(
+            client=client, settings=settings, metrics=metrics
+        )
+        reference = datetime(2024, 7, 4, 15, 0, tzinfo=timezone.utc)
+
+        outcome = publisher.publish_release_note(
+            session=session, game=game, reference=reference
+        )
+
+        assert outcome.successful_relays == ("https://relay.ok/publish",)
+        assert outcome.failed_relays == (
+            "https://relay.skip/publish",
+            "https://relay.fail/publish",
+        )
+
+        counter_index = {metric: tags for metric, _, tags in metrics.counters}
+        assert counter_index["nostr.publisher.relay.skipped"] == {
+            "relay": "https://relay.skip/publish",
+            "reason": "backoff",
+        }
+        assert counter_index["nostr.publisher.relay.failures"] == {
+            "relay": "https://relay.fail/publish",
+        }
+        assert counter_index["nostr.publisher.relay.success"] == {
+            "relay": "https://relay.ok/publish",
+        }
+
+        publish_attempt_tags = [
+            tags
+            for metric, _, tags in metrics.counters
+            if metric == "nostr.publisher.publish.attempts"
+        ]
+        assert publish_attempt_tags == [{"status": "partial"}]
+
+        relay_statuses = {
+            tags.get("status")
+            for metric, _, tags in metrics.observations
+            if metric == "nostr.publisher.relay.latency_ms"
+        }
+        assert relay_statuses == {"skipped", "error", "success"}
+
+        publish_latency_tags = [
+            tags
+            for metric, _, tags in metrics.observations
+            if metric == "nostr.publisher.publish.latency_ms"
+        ]
+        assert publish_latency_tags == [{"status": "partial"}]
+
+        assert metrics.gauges == [
+            ("nostr.publisher.queue.backlog", 2.0, {})
+        ]
