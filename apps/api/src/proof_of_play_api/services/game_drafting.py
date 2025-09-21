@@ -10,7 +10,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 from starlette import status
 
-from proof_of_play_api.db.models import Developer, Game, GameStatus, User
+from proof_of_play_api.db.models import Developer, Game, User
 from proof_of_play_api.schemas.game import (
     GameCreateRequest,
     GamePublishChecklist,
@@ -20,6 +20,7 @@ from proof_of_play_api.schemas.game import (
     PublishRequirementCode,
 )
 from proof_of_play_api.services.game_promotion import update_game_featured_status
+from proof_of_play_api.services.game_publication import GamePublicationService
 from proof_of_play_api.services.nostr_publisher import ReleaseNotePublisher
 
 
@@ -227,6 +228,7 @@ class GameDraftingService:
         game_id: str,
         request: GamePublishRequest,
         publisher: ReleaseNotePublisher,
+        publication: GamePublicationService,
     ) -> Game:
         """Promote a draft to the unlisted catalog and dispatch release notes."""
 
@@ -238,19 +240,12 @@ class GameDraftingService:
         if missing:
             raise PublishRequirementsNotMetError(missing=missing)
 
-        game.active = True
-        game.status = GameStatus.UNLISTED
-        game.release_note_event_id = None
-        game.release_note_published_at = None
-
-        session.flush()
-        session.refresh(game)
-
-        self._refresh_featured_status(session=session, game=game)
-
-        publisher.publish_release_note(session=session, game=game)
-        session.refresh(game)
-        return game
+        result = publication.publish(
+            session=session,
+            game=game,
+            publisher=publisher,
+        )
+        return result.game
 
     def _refresh_featured_status(self, *, session: Session, game: Game) -> None:
         """Recalculate featured eligibility and persist any status changes."""
