@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Iterable, Mapping, Sequence
 
@@ -133,101 +133,35 @@ class ReleaseNoteReplyCache:
         self._entries.clear()
 
 
-class CommentThreadService:
-    """Compose a merged comment timeline sourced from database records."""
+@dataclass(frozen=True)
+class NormalizedReleaseNoteReply:
+    """Represents a cached reply enriched with resolved user context."""
+
+    snapshot: _ReleaseNoteReplySnapshot
+    matched_user: User | None
+    is_verified_purchase: bool
+
+
+class ReleaseNoteReplyLoader:
+    """Load and cache release note replies for reuse across sessions."""
 
     def __init__(
         self,
         *,
-        reply_cache: ReleaseNoteReplyCache | None = None,
+        cache: ReleaseNoteReplyCache | None = None,
     ) -> None:
-        self._reply_cache = reply_cache or ReleaseNoteReplyCache()
+        self._cache = cache or ReleaseNoteReplyCache()
 
-    def list_for_game(self, *, session: Session, game: Game) -> list[CommentDTO]:
-        """Return chronologically sorted comments for the provided game."""
+    def load_snapshots(
+        self, *, session: Session, game_id: str
+    ) -> list[_ReleaseNoteReplySnapshot]:
+        """Return cached reply snapshots for the supplied game identifier."""
 
-        first_party = self._load_first_party_comments(session=session, game=game)
-        nostr = self._load_release_note_replies(session=session, game=game)
-        merged = [*first_party, *nostr]
-        merged.sort(key=lambda item: (item.created_at, item.id))
-        if not merged:
-            return merged
-
-        zap_totals = self._load_comment_zap_totals(
-            session=session, comment_ids=[comment.id for comment in merged]
-        )
-        enriched: list[CommentDTO] = []
-        for comment in merged:
-            enriched.append(
-                CommentDTO(
-                    id=comment.id,
-                    game_id=comment.game_id,
-                    body_md=comment.body_md,
-                    created_at=comment.created_at,
-                    source=comment.source,
-                    author=comment.author,
-                    is_verified_purchase=comment.is_verified_purchase,
-                    total_zap_msats=zap_totals.get(comment.id, 0),
-                )
-            )
-        return enriched
-
-    def serialize_comment(self, *, session: Session, comment: Comment) -> CommentDTO:
-        """Return a DTO representation for a freshly created comment."""
-
-        user = comment.user or session.get(User, comment.user_id)
-        if user is None:
-            msg = "Comment must reference a persisted user before serialization."
-            raise ValueError(msg)
-
-        verified = self._has_verified_purchase(
-            session=session,
-            game_id=comment.game_id,
-            user_id=user.id,
-        )
-        return self._build_first_party_comment(comment=comment, user=user, verified=verified)
-
-    def clear_cache(self) -> None:
-        """Reset cached release note replies. Intended for tests."""
-
-        self._reply_cache.clear()
-
-    def _load_first_party_comments(
-        self, *, session: Session, game: Game
-    ) -> list[CommentDTO]:
-        stmt: Select[Comment] = (
-            select(Comment)
-            .options(joinedload(Comment.user))
-            .where(Comment.game_id == game.id)
-            .where(Comment.is_hidden.is_(False))
-            .order_by(Comment.created_at.asc(), Comment.id.asc())
-        )
-        comments = session.scalars(stmt).all()
-        user_ids = {comment.user_id for comment in comments if comment.user_id}
-        verified_users = self._load_verified_user_ids(
-            session=session, game_id=game.id, user_ids=user_ids
-        )
-        dtos: list[CommentDTO] = []
-        for comment in comments:
-            user = comment.user
-            if user is None:
-                continue
-            dto = self._build_first_party_comment(
-                comment=comment,
-                user=user,
-                verified=comment.user_id in verified_users,
-            )
-            dtos.append(dto)
-        return dtos
-
-    def _load_release_note_replies(
-        self, *, session: Session, game: Game
-    ) -> list[CommentDTO]:
-        cached = self._reply_cache.get(game.id)
+        cached = self._cache.get(game_id)
         if cached is None:
             stmt = (
                 select(ReleaseNoteReply)
-                .where(ReleaseNoteReply.game_id == game.id)
+                .where(ReleaseNoteReply.game_id == game_id)
                 .where(ReleaseNoteReply.is_hidden.is_(False))
                 .order_by(
                     ReleaseNoteReply.event_created_at.asc(),
@@ -236,20 +170,54 @@ class CommentThreadService:
             )
             replies = session.scalars(stmt).all()
             cached = [self._snapshot_reply(reply=reply) for reply in replies]
-            self._reply_cache.set(game.id, cached)
+            self._cache.set(game_id, cached)
+        return list(cached)
 
-        alias_pubkeys = {alias for snapshot in cached for alias in snapshot.alias_pubkeys}
+    def clear_cache(self) -> None:
+        """Remove cached reply snapshots. Primarily used in tests."""
+
+        self._cache.clear()
+
+    def _snapshot_reply(self, *, reply: ReleaseNoteReply) -> _ReleaseNoteReplySnapshot:
+        pubkey_hex = _normalize_hex_key(reply.pubkey)
+        aliases = _extract_alias_pubkeys(reply.tags_json, pubkey_hex)
+        created_at = reply.event_created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return _ReleaseNoteReplySnapshot(
+            comment_id=f"nostr:{reply.event_id}",
+            game_id=reply.game_id,
+            pubkey_hex=pubkey_hex,
+            body_md=reply.content or "",
+            created_at=created_at,
+            alias_pubkeys=aliases,
+        )
+
+
+class ReleaseNoteReplyNormalizer:
+    """Resolve cached reply snapshots into user-aware representations."""
+
+    def normalize(
+        self,
+        *,
+        session: Session,
+        game_id: str,
+        snapshots: Sequence[_ReleaseNoteReplySnapshot],
+    ) -> list[NormalizedReleaseNoteReply]:
+        """Return normalized replies with associated users and verification state."""
+
+        alias_pubkeys = {alias for snapshot in snapshots for alias in snapshot.alias_pubkeys}
         users_by_pubkey = self._load_users_by_pubkey(
             session=session, pubkeys=alias_pubkeys
         )
-        verified_user_ids = self._load_verified_user_ids(
+        verified_user_ids = _load_verified_user_ids(
             session=session,
-            game_id=game.id,
+            game_id=game_id,
             user_ids={user.id for user in users_by_pubkey.values()},
         )
 
-        dtos: list[CommentDTO] = []
-        for snapshot in cached:
+        normalized: list[NormalizedReleaseNoteReply] = []
+        for snapshot in snapshots:
             matched_user = self._resolve_snapshot_user(
                 snapshot=snapshot, users_by_pubkey=users_by_pubkey
             )
@@ -257,79 +225,14 @@ class CommentThreadService:
                 matched_user is not None
                 and matched_user.id in verified_user_ids
             )
-            author = CommentAuthorDTO(
-                user_id=matched_user.id if matched_user else None,
-                pubkey_hex=snapshot.pubkey_hex,
-                npub=encode_npub(snapshot.pubkey_hex) if snapshot.pubkey_hex else None,
-                display_name=matched_user.display_name if matched_user else None,
-                lightning_address=matched_user.lightning_address if matched_user else None,
+            normalized.append(
+                NormalizedReleaseNoteReply(
+                    snapshot=snapshot,
+                    matched_user=matched_user,
+                    is_verified_purchase=verified,
+                )
             )
-            dto = CommentDTO(
-                id=snapshot.comment_id,
-                game_id=snapshot.game_id,
-                body_md=snapshot.body_md,
-                created_at=snapshot.created_at,
-                source=CommentSource.NOSTR,
-                author=author,
-                is_verified_purchase=verified,
-                total_zap_msats=0,
-            )
-            dtos.append(dto)
-        return dtos
-
-    def _build_first_party_comment(
-        self,
-        *,
-        comment: Comment,
-        user: User,
-        verified: bool,
-    ) -> CommentDTO:
-        author = CommentAuthorDTO(
-            user_id=user.id,
-            pubkey_hex=user.pubkey_hex,
-            npub=encode_npub(user.pubkey_hex),
-            display_name=user.display_name,
-            lightning_address=user.lightning_address,
-        )
-        created_at = comment.created_at
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        return CommentDTO(
-            id=comment.id,
-            game_id=comment.game_id,
-            body_md=comment.body_md,
-            created_at=created_at,
-            source=CommentSource.FIRST_PARTY,
-            author=author,
-            is_verified_purchase=verified,
-            total_zap_msats=0,
-        )
-
-    def _has_verified_purchase(
-        self, *, session: Session, game_id: str, user_id: str
-    ) -> bool:
-        stmt = (
-            select(Purchase.id)
-            .where(Purchase.game_id == game_id)
-            .where(Purchase.user_id == user_id)
-            .where(Purchase.invoice_status == InvoiceStatus.PAID)
-            .limit(1)
-        )
-        return session.scalar(stmt) is not None
-
-    def _load_verified_user_ids(
-        self, *, session: Session, game_id: str, user_ids: Iterable[str]
-    ) -> set[str]:
-        ids = {user_id for user_id in user_ids if user_id}
-        if not ids:
-            return set()
-        stmt = (
-            select(Purchase.user_id)
-            .where(Purchase.game_id == game_id)
-            .where(Purchase.invoice_status == InvoiceStatus.PAID)
-            .where(Purchase.user_id.in_(ids))
-        )
-        return set(session.scalars(stmt))
+        return normalized
 
     def _load_users_by_pubkey(
         self, *, session: Session, pubkeys: Iterable[str]
@@ -339,25 +242,6 @@ class CommentThreadService:
             return {}
         stmt = select(User).where(User.pubkey_hex.in_(normalized))
         return {user.pubkey_hex.lower(): user for user in session.scalars(stmt)}
-
-    def _load_comment_zap_totals(
-        self, *, session: Session, comment_ids: Iterable[str]
-    ) -> dict[str, int]:
-        identifiers = {comment_id for comment_id in comment_ids if comment_id}
-        if not identifiers:
-            return {}
-
-        stmt = (
-            select(
-                Zap.target_id,
-                func.coalesce(func.sum(Zap.amount_msats), 0).label("total_msats"),
-            )
-            .where(Zap.target_type == ZapTargetType.COMMENT)
-            .where(Zap.target_id.in_(identifiers))
-            .group_by(Zap.target_id)
-        )
-        rows = session.execute(stmt).all()
-        return {row.target_id: int(row.total_msats) for row in rows}
 
     def _resolve_snapshot_user(
         self,
@@ -379,20 +263,228 @@ class CommentThreadService:
                 return resolved
         return None
 
-    def _snapshot_reply(self, *, reply: ReleaseNoteReply) -> _ReleaseNoteReplySnapshot:
-        pubkey_hex = _normalize_hex_key(reply.pubkey)
-        aliases = _extract_alias_pubkeys(reply.tags_json, pubkey_hex)
-        created_at = reply.event_created_at
+
+class CommentDTOBuilder:
+    """Construct DTOs for first-party and Nostr-sourced comments."""
+
+    def build_first_party_comment(
+        self,
+        *,
+        comment: Comment,
+        user: User,
+        is_verified_purchase: bool,
+    ) -> CommentDTO:
+        author = CommentAuthorDTO(
+            user_id=user.id,
+            pubkey_hex=user.pubkey_hex,
+            npub=encode_npub(user.pubkey_hex),
+            display_name=user.display_name,
+            lightning_address=user.lightning_address,
+        )
+        created_at = comment.created_at
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
-        return _ReleaseNoteReplySnapshot(
-            comment_id=f"nostr:{reply.event_id}",
-            game_id=reply.game_id,
-            pubkey_hex=pubkey_hex,
-            body_md=reply.content or "",
+        return CommentDTO(
+            id=comment.id,
+            game_id=comment.game_id,
+            body_md=comment.body_md,
             created_at=created_at,
-            alias_pubkeys=aliases,
+            source=CommentSource.FIRST_PARTY,
+            author=author,
+            is_verified_purchase=is_verified_purchase,
+            total_zap_msats=0,
         )
+
+    def build_release_note_reply(
+        self,
+        *,
+        normalized_reply: NormalizedReleaseNoteReply,
+    ) -> CommentDTO:
+        snapshot = normalized_reply.snapshot
+        matched_user = normalized_reply.matched_user
+        author = CommentAuthorDTO(
+            user_id=matched_user.id if matched_user else None,
+            pubkey_hex=snapshot.pubkey_hex,
+            npub=encode_npub(snapshot.pubkey_hex) if snapshot.pubkey_hex else None,
+            display_name=matched_user.display_name if matched_user else None,
+            lightning_address=matched_user.lightning_address if matched_user else None,
+        )
+        return CommentDTO(
+            id=snapshot.comment_id,
+            game_id=snapshot.game_id,
+            body_md=snapshot.body_md,
+            created_at=snapshot.created_at,
+            source=CommentSource.NOSTR,
+            author=author,
+            is_verified_purchase=normalized_reply.is_verified_purchase,
+            total_zap_msats=0,
+        )
+
+
+class CommentZapAggregator:
+    """Compute Lightning zap totals for surfaced comments."""
+
+    def attach_totals(
+        self,
+        *,
+        session: Session,
+        comments: Sequence[CommentDTO],
+    ) -> list[CommentDTO]:
+        """Return comments enriched with aggregated zap totals."""
+
+        identifiers = [comment.id for comment in comments if comment.id]
+        if not identifiers:
+            return list(comments)
+        totals = self._load_comment_zap_totals(
+            session=session, comment_ids=identifiers
+        )
+        enriched: list[CommentDTO] = []
+        for comment in comments:
+            total = totals.get(comment.id, 0)
+            enriched.append(replace(comment, total_zap_msats=total))
+        return enriched
+
+    def _load_comment_zap_totals(
+        self, *, session: Session, comment_ids: Iterable[str]
+    ) -> dict[str, int]:
+        identifiers = {comment_id for comment_id in comment_ids if comment_id}
+        if not identifiers:
+            return {}
+
+        stmt = (
+            select(
+                Zap.target_id,
+                func.coalesce(func.sum(Zap.amount_msats), 0).label("total_msats"),
+            )
+            .where(Zap.target_type == ZapTargetType.COMMENT)
+            .where(Zap.target_id.in_(identifiers))
+            .group_by(Zap.target_id)
+        )
+        rows = session.execute(stmt).all()
+        return {row.target_id: int(row.total_msats) for row in rows}
+
+
+class CommentThreadService:
+    """Compose a merged comment timeline sourced from database records."""
+
+    def __init__(
+        self,
+        *,
+        reply_loader: ReleaseNoteReplyLoader | None = None,
+        reply_normalizer: ReleaseNoteReplyNormalizer | None = None,
+        zap_aggregator: CommentZapAggregator | None = None,
+        dto_builder: CommentDTOBuilder | None = None,
+    ) -> None:
+        self._reply_loader = reply_loader or ReleaseNoteReplyLoader()
+        self._reply_normalizer = reply_normalizer or ReleaseNoteReplyNormalizer()
+        self._zap_aggregator = zap_aggregator or CommentZapAggregator()
+        self._dto_builder = dto_builder or CommentDTOBuilder()
+
+    def list_for_game(self, *, session: Session, game: Game) -> list[CommentDTO]:
+        """Return chronologically sorted comments for the provided game."""
+
+        first_party = self._load_first_party_comments(session=session, game=game)
+        snapshots = self._reply_loader.load_snapshots(
+            session=session, game_id=game.id
+        )
+        normalized_replies = self._reply_normalizer.normalize(
+            session=session,
+            game_id=game.id,
+            snapshots=snapshots,
+        )
+        nostr = [
+            self._dto_builder.build_release_note_reply(normalized_reply=reply)
+            for reply in normalized_replies
+        ]
+        merged = [*first_party, *nostr]
+        merged.sort(key=lambda item: (item.created_at, item.id))
+        if not merged:
+            return merged
+        return self._zap_aggregator.attach_totals(
+            session=session,
+            comments=merged,
+        )
+
+    def serialize_comment(self, *, session: Session, comment: Comment) -> CommentDTO:
+        """Return a DTO representation for a freshly created comment."""
+
+        user = comment.user or session.get(User, comment.user_id)
+        if user is None:
+            msg = "Comment must reference a persisted user before serialization."
+            raise ValueError(msg)
+
+        verified = self._has_verified_purchase(
+            session=session,
+            game_id=comment.game_id,
+            user_id=user.id,
+        )
+        return self._dto_builder.build_first_party_comment(
+            comment=comment,
+            user=user,
+            is_verified_purchase=verified,
+        )
+
+    def clear_cache(self) -> None:
+        """Reset cached release note replies. Intended for tests."""
+
+        self._reply_loader.clear_cache()
+
+    def _load_first_party_comments(
+        self, *, session: Session, game: Game
+    ) -> list[CommentDTO]:
+        stmt: Select[Comment] = (
+            select(Comment)
+            .options(joinedload(Comment.user))
+            .where(Comment.game_id == game.id)
+            .where(Comment.is_hidden.is_(False))
+            .order_by(Comment.created_at.asc(), Comment.id.asc())
+        )
+        comments = session.scalars(stmt).all()
+        user_ids = {comment.user_id for comment in comments if comment.user_id}
+        verified_users = _load_verified_user_ids(
+            session=session, game_id=game.id, user_ids=user_ids
+        )
+        dtos: list[CommentDTO] = []
+        for comment in comments:
+            user = comment.user
+            if user is None:
+                continue
+            dto = self._dto_builder.build_first_party_comment(
+                comment=comment,
+                user=user,
+                is_verified_purchase=comment.user_id in verified_users,
+            )
+            dtos.append(dto)
+        return dtos
+
+    def _has_verified_purchase(
+        self, *, session: Session, game_id: str, user_id: str
+    ) -> bool:
+        stmt = (
+            select(Purchase.id)
+            .where(Purchase.game_id == game_id)
+            .where(Purchase.user_id == user_id)
+            .where(Purchase.invoice_status == InvoiceStatus.PAID)
+            .limit(1)
+        )
+        return session.scalar(stmt) is not None
+
+
+def _load_verified_user_ids(
+    *, session: Session, game_id: str, user_ids: Iterable[str]
+) -> set[str]:
+    """Return user identifiers with verified purchases for the supplied game."""
+
+    ids = {user_id for user_id in user_ids if user_id}
+    if not ids:
+        return set()
+    stmt = (
+        select(Purchase.user_id)
+        .where(Purchase.game_id == game_id)
+        .where(Purchase.invoice_status == InvoiceStatus.PAID)
+        .where(Purchase.user_id.in_(ids))
+    )
+    return set(session.scalars(stmt))
 
 
 def _extract_alias_pubkeys(
@@ -569,11 +661,16 @@ def _convertbits(
 
 
 __all__ = [
+    "CommentDTOBuilder",
     "CommentAuthorDTO",
     "CommentDTO",
     "CommentSource",
+    "CommentZapAggregator",
     "CommentThreadService",
+    "NormalizedReleaseNoteReply",
     "ReleaseNoteReplyCache",
+    "ReleaseNoteReplyLoader",
+    "ReleaseNoteReplyNormalizer",
     "decode_npub",
     "encode_npub",
 ]
