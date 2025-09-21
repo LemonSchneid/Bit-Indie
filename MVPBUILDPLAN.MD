@@ -4,6 +4,15 @@
 
 ---
 
+## AI Workflow Enforcement Flag
+
+`ai_enforce_mvp_flow = true`
+
+- When set to `true`, Codex/AI agents must follow the workflow in this build plan exactly—pick the next open ticket, deliver it, and mark it complete before proceeding.
+- When set to `false`, Codex/AI agents may take on other repository changes as directed by humans while still respecting all global contribution guidelines.
+
+---
+
 ## 0) Tech choices (keep it small & boring)
 
 * **Frontend:** Next.js 14 (App Router), React Query (TanStack), Tailwind, shadcn/ui.
