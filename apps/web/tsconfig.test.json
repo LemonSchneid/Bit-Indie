@@ -16,7 +16,9 @@
     "lib/lightning.test.ts",
     "components/zap-button.tsx",
     "components/home/**/*.ts",
-    "components/home/**/*.tsx"
+    "components/home/**/*.tsx",
+    "components/ui/**/*.ts",
+    "components/ui/**/*.tsx"
   ],
   "exclude": [
     "node_modules"
