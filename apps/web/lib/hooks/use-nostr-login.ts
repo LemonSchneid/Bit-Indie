@@ -1,0 +1,171 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import {
+  type LoginSuccessResponse,
+  type SignedEvent,
+  type UserProfile,
+  requestLoginChallenge,
+  verifyLoginEvent,
+} from "../api";
+import {
+  USER_PROFILE_STORAGE_EVENT,
+  USER_PROFILE_STORAGE_KEY,
+  loadStoredUserProfile,
+  saveUserProfile,
+} from "../user-storage";
+
+export type NostrLoginState = "idle" | "pending" | "success" | "error";
+
+const LOGIN_KIND = 22242;
+
+export type NostrUnsignedEvent = {
+  kind: number;
+  created_at: number;
+  tags: string[][];
+  content: string;
+};
+
+interface NostrSigner {
+  signEvent: (event: NostrUnsignedEvent) => Promise<SignedEvent>;
+}
+
+declare global {
+  interface Window {
+    nostr?: NostrSigner;
+  }
+}
+
+type ExternalSigner = {
+  signEvent: (event: NostrUnsignedEvent) => Promise<SignedEvent>;
+};
+
+type SignInOptions = {
+  signer?: ExternalSigner;
+};
+
+export function useNostrLogin(): {
+  hasSigner: boolean;
+  state: NostrLoginState;
+  message: string | null;
+  profile: UserProfile | null;
+  signIn: (options?: SignInOptions) => Promise<void>;
+  resetFeedback: () => void;
+  updateProfile: (nextProfile: UserProfile) => void;
+} {
+  const [hasSigner, setHasSigner] = useState(false);
+  const [state, setState] = useState<NostrLoginState>("idle");
+  const [message, setMessage] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());
+
+  useEffect(() => {
+    const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
+    setHasSigner(signerAvailable);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const refreshProfile = () => {
+      setProfile(loadStoredUserProfile());
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === USER_PROFILE_STORAGE_KEY) {
+        refreshProfile();
+      }
+    };
+
+    window.addEventListener(
+      USER_PROFILE_STORAGE_EVENT,
+      refreshProfile as EventListener,
+    );
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        USER_PROFILE_STORAGE_EVENT,
+        refreshProfile as EventListener,
+      );
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const persistProfile = useCallback((nextProfile: UserProfile) => {
+    setProfile(nextProfile);
+    saveUserProfile(nextProfile);
+  }, []);
+
+  const signIn = useCallback(async (options?: SignInOptions) => {
+    if (state === "pending") {
+      return;
+    }
+
+    const signer: ExternalSigner | null = options?.signer
+      ? options.signer
+      : typeof window !== "undefined" && window.nostr?.signEvent
+        ? { signEvent: window.nostr.signEvent }
+        : null;
+
+    if (!signer) {
+      setHasSigner(false);
+      setState("error");
+      setMessage("A NIP-07 compatible browser extension or Nostr Connect signer is required to sign in.");
+      return;
+    }
+
+    if (!options?.signer && typeof window !== "undefined") {
+      setHasSigner(Boolean(window.nostr?.signEvent));
+    }
+
+    setState("pending");
+    setMessage(null);
+
+    try {
+      const challenge = await requestLoginChallenge();
+      const unsignedEvent: NostrUnsignedEvent = {
+        kind: LOGIN_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["challenge", challenge.challenge],
+          ["client", "proof-of-play-web"],
+        ],
+        content: "Proof of Play login",
+      };
+
+      const signedEvent = await signer.signEvent(unsignedEvent);
+      const response: LoginSuccessResponse = await verifyLoginEvent(signedEvent);
+
+      persistProfile(response.user);
+      setState("success");
+      setMessage("Your Nostr identity is linked to Proof of Play.");
+    } catch (error) {
+      setState("error");
+      if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage("Login failed due to an unexpected error.");
+      }
+    }
+  }, [persistProfile, state]);
+
+  const resetFeedback = useCallback(() => {
+    setMessage(null);
+    if (state !== "pending") {
+      setState(profile ? "success" : "idle");
+    }
+  }, [profile, state]);
+
+  return {
+    hasSigner,
+    state,
+    message,
+    profile,
+    signIn,
+    resetFeedback,
+    updateProfile: persistProfile,
+  };
+}

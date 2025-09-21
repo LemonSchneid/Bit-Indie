@@ -136,7 +136,9 @@ def test_create_comment_persists_and_returns_payload() -> None:
     assert body["body_md"] == "Excited to play this build!"
     assert body["source"] == "FIRST_PARTY"
     assert body["author"]["user_id"] == user_id
+    assert body["author"]["lightning_address"] is None
     assert body["is_verified_purchase"] is False
+    assert body["total_zap_msats"] == 0
 
     with session_scope() as session:
         stored = session.get(Comment, body["id"])
@@ -565,4 +567,3 @@ def test_hidden_release_note_replies_are_not_listed() -> None:
 
     assert response.status_code == 200
     assert response.json() == []
-

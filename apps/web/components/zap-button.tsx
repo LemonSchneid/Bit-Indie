@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   LightningDestinationConfig,
@@ -14,7 +15,7 @@ import {
   resolveLightningPayEndpoint,
 } from "../lib/lightning";
 
-const PRESET_SAT_AMOUNTS = [100, 500, 1000, 5000, 10_000];
+const PRESET_SAT_AMOUNTS = [1, 10, 21, 50];
 
 type ZapButtonProps = {
   lightningAddress?: string | null;
@@ -34,7 +35,6 @@ export function ZapButton({
   className,
 }: ZapButtonProps): JSX.Element {
   const hasDestination = Boolean(lightningAddress?.trim()) || Boolean(lnurl?.trim());
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [status, setStatus] = useState<ZapStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -58,23 +58,27 @@ export function ZapButton({
       return;
     }
 
-    const handleClick = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsMenuOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClick);
     window.addEventListener("keydown", handleKey);
     return () => {
-      document.removeEventListener("mousedown", handleClick);
       window.removeEventListener("keydown", handleKey);
+    };
+  }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
     };
   }, [isMenuOpen]);
 
@@ -210,7 +214,7 @@ export function ZapButton({
         className={`inline-flex items-center rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 ${className ?? ""}`}
         role="note"
       >
-        Link wallet to zap
+        LINK WALLET TO RECEIVE ZAPS
       </span>
     );
   }
@@ -220,7 +224,7 @@ export function ZapButton({
   const isLoading = status === "loading" || status === "paying";
 
   return (
-    <div ref={containerRef} className={`relative ${className ?? ""}`}>
+    <div className={className ?? ""}>
       <button
         type="button"
         className="inline-flex items-center gap-2 rounded-full border border-amber-400/50 bg-amber-500/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-100 transition hover:border-amber-300 hover:bg-amber-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
@@ -233,77 +237,88 @@ export function ZapButton({
         <span>Zap</span>
       </button>
 
-      {isMenuOpen ? (
-        <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-amber-400/40 bg-slate-950/95 p-4 text-xs text-slate-200 shadow-xl shadow-amber-500/20">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/80">
-                Send sats
-              </p>
-              <p className="mt-1 text-sm text-slate-200">Support {recipientLabel} with a quick zap.</p>
-            </div>
-            <button
-              type="button"
-              className="rounded-full border border-white/20 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-300 transition hover:border-white/40 hover:bg-white/10"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-
-          {minSats !== null && maxSats !== null ? (
-            <p className="mt-2 text-[11px] text-slate-400">
-              Available range: {minSats.toLocaleString()} – {maxSats.toLocaleString()} sats
-            </p>
-          ) : null}
-
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {PRESET_SAT_AMOUNTS.map((amount) => (
+      {isMenuOpen
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4">
               <button
-                key={amount}
                 type="button"
-                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
-                  isAmountAllowed(amount)
-                    ? "border-amber-400/40 bg-amber-500/15 text-amber-100 hover:border-amber-300 hover:bg-amber-400/25"
-                    : "cursor-not-allowed border-white/10 bg-slate-900/60 text-slate-500"
-                }`}
-                onClick={() => sendZap(amount)}
-                disabled={!isAmountAllowed(amount) || isLoading}
-              >
-                {amount.toLocaleString()} sats
-              </button>
-            ))}
-          </div>
+                className="absolute inset-0 h-full w-full cursor-default"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close zap menu"
+              />
+              <div className="relative z-10 w-full max-w-xs rounded-2xl border border-amber-400/40 bg-slate-950/95 p-5 text-xs text-slate-200 shadow-xl shadow-amber-500/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/80">
+                      Send sats
+                    </p>
+                    <p className="mt-1 text-sm text-slate-200">Support {recipientLabel} with a quick zap.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/20 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-300 transition hover:border-white/40 hover:bg-white/10"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
 
-          <form className="mt-3 flex items-center gap-2" onSubmit={handleCustomSubmit}>
-            <input
-              type="number"
-              min={minSats ?? 1}
-              className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-              placeholder="Custom sats"
-              value={customAmount}
-              onChange={(event) => setCustomAmount(event.target.value)}
-            />
-            <button
-              type="submit"
-              className="rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-300 hover:bg-amber-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
-              disabled={isLoading}
-            >
-              Zap
-            </button>
-          </form>
+                {minSats !== null && maxSats !== null ? (
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    Available range: {minSats.toLocaleString()} – {maxSats.toLocaleString()} sats
+                  </p>
+                ) : null}
 
-          {isLoading ? (
-            <p className="mt-3 text-[11px] text-slate-400">Preparing invoice…</p>
-          ) : null}
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {PRESET_SAT_AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 ${
+                        isAmountAllowed(amount)
+                          ? "border-amber-400/40 bg-amber-500/15 text-amber-100 hover:border-amber-300 hover:bg-amber-400/25"
+                          : "cursor-not-allowed border-white/10 bg-slate-900/60 text-slate-500"
+                      }`}
+                      onClick={() => sendZap(amount)}
+                      disabled={!isAmountAllowed(amount) || isLoading}
+                    >
+                      {amount.toLocaleString()} sats
+                    </button>
+                  ))}
+                </div>
 
-          {errorMessage ? (
-            <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-[11px] text-rose-100">
-              {errorMessage}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+                <form className="mt-3 flex items-center gap-2" onSubmit={handleCustomSubmit}>
+                  <input
+                    type="number"
+                    min={minSats ?? 1}
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                    placeholder="Custom sats"
+                    value={customAmount}
+                    onChange={(event) => setCustomAmount(event.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-300 hover:bg-amber-400/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                    disabled={isLoading}
+                  >
+                    Zap
+                  </button>
+                </form>
+
+                {isLoading ? (
+                  <p className="mt-3 text-[11px] text-slate-400">Preparing invoice…</p>
+                ) : null}
+
+                {errorMessage ? (
+                  <p className="mt-3 rounded-xl border border-rose-400/40 bg-rose-500/10 p-3 text-[11px] text-rose-100">
+                    {errorMessage}
+                  </p>
+                ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {showSuccess && lastZapAmount !== null ? (
         <p className="mt-2 text-[11px] text-emerald-300">

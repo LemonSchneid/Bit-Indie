@@ -314,3 +314,37 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 ## 14) Tripwires to enable refundable deposit
 
 Enable only if for 2 consecutive weeks: takedowns >1% of new listings, or mod hours >20/wk, or duplicate spam >3%, or refund rate >8% on low-review titles. Apply to **FINISHED** games first; grandfather early adopters.
+
+---
+
+## Frontend Tickets
+
+* **F1-1** currently the sign in with npub widget is top right on my landing page. can we make it inline right under the "Proof of play marketplace" widget. lay it out more horizontally then vertically so it matches the flow of the rest of the page. ✅ Done
+* **F1-2** the create new npub button should be underneath the sign in with npub button. not beside it. ✅ Done
+* **F1-3** center the hero header on the landing page so the intro block and its copy are centered rather than left-aligned. ✅ Done
+* **F1-4** center the homepage screen switcher tabs (STOREFRONT, SELL YOUR GAME, INFO FOR PLAYERS) so they align with the centered hero content. ✅ Done
+* **F1-5** decouple the “Sell your game” tab from the GameDetailScreen so cards on the storefront open their own detail view, while the tab shows dedicated publishing content. ✅ Done
+* **F1-6** ensure the “Launch Lightning purchase modal” button within the game detail view opens the checkout flow, and detach the Info for Players tab from the Lightning checkout screen. ✅ Done
+* **F1-7** display the Lightning checkout as an overlay modal when launched from a game detail so players don’t have to scroll down the page. ✅ Done
+* **F1-8** restore the Lightning checkout to the Info for Players tab so it takes over the view (no overlay) and wire the game detail button to navigate there. ✅ Done
+* **F1-9** show the Lightning checkout via a modal launched from each game detail, while the Info for Players tab goes back to informational content. ✅ Done
+* **F1-10** extend the Lightning checkout modal to full viewport height so the embedded card doesn&apos;t require scrolling. ✅ Done
+* **F1-11** remove the Zap-powered reviews card from the game detail view so Community comments span the full width. ✅ Done
+* **F1-12** remove all references to the "Share crew invite" action from game detail screens and related concept pages. ✅ Done
+* **F1-13** add zap support to community comments: backend totals, zap button, and Lightning flow mirroring Nostr behaviour. ✅ Done
+* **F1-14** remove the outdated Neon Market concept page to avoid confusion with the production frontend. ✅ Done
+* **F1-15** mirror the zap totals and button in landing-page mock comments so the demo matches the real UI. ✅ Done
+* **F1-16** hide lightning addresses in the UI and keep zap handling backend-driven for comments and mock data. ✅ Done
+* **F1-17** change ZapButton fallback label to "LINK WALLET TO RECEIVE ZAPS" to clarify it’s for the comment author. ✅ Done
+* **F1-18** in landing-page mocks, pass a fake Lightning address/LNURL for all but one comment so the zap button shows both states (active vs. fallback). ✅ Done
+* **F1-19** reduce ZapButton quick amounts to [1, 10, 21, 50] sats and ensure the zap menu positions as a fixed overlay so it never gets clipped or hidden. ✅ Done
+* **F1-20** change the ZapButton menu to open as a centered modal with backdrop, staying put until closed. ✅ Done
+* **F1-21** redesign the Lightning checkout modal opened by the landing/game button so it presents a polished, centered layout. ✅ Done
+* **F1-22** adjust Lightning checkout modal backdrop gradients so the fade covers the very top corners without harsh edges. ✅ Done
+* **F1-23** allow Lightning checkout modal content to scroll internally so nothing gets clipped on smaller viewports. ✅ Done
+* **F1-24** refine Lightning checkout modal backdrop using the provided radial gradient overlay. ✅ Done
+* **F1-25** render Lightning checkout modals through document-level portals so their backdrops cover the full viewport. ✅ Done
+* **F1-26** revert the Lightning checkout modal backdrop to a neutral slate gradient without emerald overlays. ✅ Done
+* **F1-27** move the developer update feed off the storefront, reserving the space for future dev-dashboard comments. ✅ Done
+* **F1-28** connect the homepage "Sign in with npub" button to the Nostr login flow so visitors can authenticate directly. ✅ Done
+* **F1-29** Nostr sign-in (NIP-07) and mobile signer (NIP-46) pairing. Status: deferred. DoD: Landing widget enables extension login and mobile pairing with Nostr Connect; purchase flows remain guest-friendly with anon IDs. 
