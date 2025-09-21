@@ -292,7 +292,7 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 * **T8-7** Introduce reusable modal/portal utilities. *DoD:* Extract Lightning checkout modal portal setup, body scroll locking, and backdrop scaffolding into a shared modal utility or adopt a framework component; refactor existing checkout overlays to use it; add tests or stories verifying overlay coverage and scroll locking. ✅ Done
 * **T8-8** Refactor `ZapButton` into workflow hook and presentational pieces. *DoD:* Create a custom hook that encapsulates LNURL resolution, async state, keyboard listeners, and payment workflow while keeping the button component primarily presentational; ensure other surfaces (comments, roadmap notes) can reuse the hook; cover the hook with unit tests for success, failure, and cancellation states. ✅ Done
 * **T8-9** Align comments API client with shared request helper. *DoD:* Replace the hand-rolled `fetch` in `lib/api/comments.ts` with the shared `requestJson` helper, preserving standardized error parsing; update any mocks or tests relying on the old implementation; ensure typings remain accurate. ✅ Done
-* **T8-10** Expand regression coverage for refactors. *DoD:* Add backend unit tests for the new services/collaborators and frontend tests for extracted components and hooks; ensure the continuous-integration suite runs the new tests and they pass consistently.
+* **T8-10** Expand regression coverage for refactors. *DoD:* Add backend unit tests for the new services/collaborators and frontend tests for extracted components and hooks; ensure the continuous-integration suite runs the new tests and they pass consistently. ✅ Done
 
 ---
 
