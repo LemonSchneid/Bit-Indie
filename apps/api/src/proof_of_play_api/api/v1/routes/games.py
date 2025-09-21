@@ -37,6 +37,10 @@ from proof_of_play_api.services.game_drafting import (
     PublishChecklistResult,
     get_game_drafting_service,
 )
+from proof_of_play_api.services.game_publication import (
+    GamePublicationService,
+    get_game_publication_service,
+)
 from proof_of_play_api.services.game_promotion import update_game_featured_status
 from proof_of_play_api.services.payments import (
     PaymentService,
@@ -248,6 +252,7 @@ def publish_game(
     request: GamePublishRequest,
     session: Session = Depends(get_session),
     publisher: ReleaseNotePublisher = Depends(get_release_note_publisher),
+    publication: GamePublicationService = Depends(get_game_publication_service),
     drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameRead:
     """Promote a game draft to the unlisted catalog if all requirements are satisfied."""
@@ -258,6 +263,7 @@ def publish_game(
             game_id=game_id,
             request=request,
             publisher=publisher,
+            publication=publication,
         )
     except GameDraftingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
