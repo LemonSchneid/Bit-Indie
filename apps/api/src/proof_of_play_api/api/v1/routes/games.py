@@ -57,6 +57,26 @@ from proof_of_play_api.services.nostr_publisher import (
 router = APIRouter(prefix="/v1/games", tags=["games"])
 
 
+@router.get(
+    "",
+    response_model=list[GameRead],
+    summary="List publicly visible games in the catalog",
+)
+def list_catalog_games(session: Session = Depends(get_session)) -> list[GameRead]:
+    """Return active games that are visible on the public storefront."""
+
+    stmt = (
+        select(Game)
+        .options(joinedload(Game.developer).joinedload(Developer.user))
+        .where(Game.active.is_(True))
+        .where(Game.status.in_([GameStatus.DISCOVER, GameStatus.FEATURED]))
+        .order_by(Game.updated_at.desc())
+    )
+    games = session.scalars(stmt).all()
+
+    return [GameRead.model_validate(game) for game in games]
+
+
 @router.post(
     "/{game_id}/invoice",
     response_model=InvoiceCreateResponse,
@@ -351,6 +371,7 @@ def list_featured_games(
 
 
 __all__ = [
+    "list_catalog_games",
     "list_featured_games",
     "create_game_asset_upload",
     "create_game_draft",

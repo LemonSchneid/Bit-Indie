@@ -137,6 +137,13 @@ export async function getGameBySlug(slug: string): Promise<GameDraft> {
   });
 }
 
+export async function listCatalogGames(): Promise<GameDraft[]> {
+  return requestJson<GameDraft[]>("/v1/games", {
+    cache: "no-store",
+    errorMessage: "Unable to load the game catalog right now.",
+  });
+}
+
 export async function getFeaturedGames(limit?: number): Promise<FeaturedGameSummary[]> {
   const params = new URLSearchParams();
   if (typeof limit === "number" && Number.isFinite(limit)) {
