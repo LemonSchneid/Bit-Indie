@@ -69,6 +69,86 @@ def _build_client() -> tuple[TestClient, _DummyReleaseNotePublisher]:
     return TestClient(app), publisher
 
 
+def test_list_catalog_games_returns_publicly_visible_entries() -> None:
+    """GET /v1/games should return active discoverable and featured listings."""
+
+    _create_schema()
+
+    with session_scope() as session:
+        developer_user = User(
+            pubkey_hex="catalog-dev-pubkey",
+            lightning_address="orbit@example.com",
+        )
+        session.add(developer_user)
+        session.flush()
+
+        developer = Developer(user_id=developer_user.id, user=developer_user)
+        session.add(developer)
+        session.flush()
+
+        discover_game = Game(
+            developer=developer,
+            status=GameStatus.DISCOVER,
+            title="Discover Orbit",
+            slug="discover-orbit",
+            summary="A discoverable roguelite.",
+            price_msats=150_000,
+            cover_url="https://example.com/discover.png",
+            category=GameCategory.EARLY_ACCESS,
+            build_object_key=None,
+            build_size_bytes=None,
+            checksum_sha256=None,
+            active=True,
+        )
+        featured_game = Game(
+            developer=developer,
+            status=GameStatus.FEATURED,
+            title="Featured Orbit",
+            slug="featured-orbit",
+            summary="A headliner entry.",
+            price_msats=210_000,
+            cover_url="https://example.com/featured.png",
+            category=GameCategory.FINISHED,
+            build_object_key=None,
+            build_size_bytes=None,
+            checksum_sha256=None,
+            active=True,
+        )
+        hidden_game = Game(
+            developer=developer,
+            status=GameStatus.UNLISTED,
+            title="Hidden Orbit",
+            slug="hidden-orbit",
+            summary="Should not appear.",
+            active=True,
+        )
+        inactive_game = Game(
+            developer=developer,
+            status=GameStatus.FEATURED,
+            title="Offline Orbit",
+            slug="offline-orbit",
+            summary="Inactive listing.",
+            active=False,
+        )
+
+        session.add_all([discover_game, featured_game, hidden_game, inactive_game])
+        session.flush()
+
+        discover_game.updated_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        featured_game.updated_at = datetime(2024, 2, 1, tzinfo=timezone.utc)
+
+    client, _ = _build_client()
+
+    response = client.get("/v1/games")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [game["slug"] for game in body] == ["featured-orbit", "discover-orbit"]
+    assert body[0]["status"] == "FEATURED"
+    assert body[1]["status"] == "DISCOVER"
+    assert body[0]["developer_lightning_address"] == "orbit@example.com"
+
+
 _user_pubkey_sequence = count()
 
 
