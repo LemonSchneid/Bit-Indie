@@ -334,6 +334,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                   priceMsats={game.price_msats}
                   priceLabel={priceLabel}
                   buildAvailable={buildAvailable}
+                  developerLightningAddress={game.developer_lightning_address}
                 />
               ) : (
                 <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">

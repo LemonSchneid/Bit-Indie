@@ -18,6 +18,11 @@ import { getOrCreateAnonId } from "../lib/anon-id";
 import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
 import { buildQrCodeUrl } from "../lib/qr-code";
+import {
+  fetchLnurlPayParams,
+  requestLnurlInvoice,
+  resolveLightningPayEndpoint,
+} from "../lib/lightning";
 
 type FlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
 type CopyState = "idle" | "copied" | "error";
@@ -28,14 +33,25 @@ type GamePurchaseFlowProps = {
   priceMsats: number;
   priceLabel: string;
   buildAvailable: boolean;
+  developerLightningAddress: string | null;
 };
 
 const POLL_INTERVAL_MS = 4000;
+
+function generateGuestPurchaseId(anonId: string): string {
+  const cryptoObject = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
+  if (cryptoObject && typeof cryptoObject.randomUUID === "function") {
+    return `guest-${anonId}-${cryptoObject.randomUUID()}`;
+  }
+  const randomSegment = Math.random().toString(16).slice(2, 10);
+  return `guest-${anonId}-${Date.now()}-${randomSegment}`;
+}
 
 function describeStatus(
   status: InvoiceStatus | null,
   flowState: FlowState,
   downloadUnlocked: boolean,
+  isGuestCheckout: boolean,
 ): string {
   if (downloadUnlocked) {
     return "Payment received! Your download is unlocked.";
@@ -50,7 +66,9 @@ function describeStatus(
   }
 
   if (!status) {
-    return "Generate an invoice to pay with your Lightning wallet.";
+    return isGuestCheckout
+      ? "Generate a guest invoice to pay with your Lightning wallet."
+      : "Generate an invoice to pay with your Lightning wallet.";
   }
 
   switch (status) {
@@ -62,6 +80,9 @@ function describeStatus(
       return "This purchase was refunded. Generate a new invoice to retry.";
     case "PENDING":
     default:
+      if (isGuestCheckout) {
+        return "Pay the invoice with your Lightning wallet and keep the receipt for your records.";
+      }
       return "Waiting for payment confirmation. We refresh the status every few seconds.";
   }
 }
@@ -72,11 +93,13 @@ export function GamePurchaseFlow({
   priceMsats,
   priceLabel,
   buildAvailable,
+  developerLightningAddress,
 }: GamePurchaseFlowProps): JSX.Element | null {
   const isPurchasable = Number.isFinite(priceMsats) && priceMsats > 0;
 
   const router = useRouter();
   const user = useStoredUserProfile();
+  const isGuestCheckout = !user;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
@@ -168,7 +191,7 @@ export function GamePurchaseFlow({
 
   useInvoicePolling({
     invoiceId: invoice?.purchase_id ?? null,
-    enabled: flowState === "polling" && Boolean(invoice),
+    enabled: flowState === "polling" && Boolean(invoice) && !isGuestCheckout,
     pollIntervalMs: POLL_INTERVAL_MS,
     onPurchase: handlePurchaseUpdate,
     onExpired: handleInvoiceExpired,
@@ -227,26 +250,37 @@ export function GamePurchaseFlow({
   }, [buildAvailable, gameId]);
 
   const receiptUrl = useMemo(() => {
-    if (!invoice) {
+    if (!invoice || isGuestCheckout) {
       return null;
     }
 
     return `/purchases/${invoice.purchase_id}/receipt`;
-  }, [invoice]);
+  }, [invoice, isGuestCheckout]);
 
   const receiptLinkToCopy = useMemo(() => {
-    if (!receiptUrl) {
+    if (!invoice) {
       return "";
     }
-    if (typeof window !== "undefined") {
-      try {
-        return new URL(receiptUrl, window.location.origin).toString();
-      } catch (error) {
-        console.error("Failed to build receipt link", error);
+
+    if (!isGuestCheckout) {
+      if (receiptUrl) {
+        if (typeof window !== "undefined") {
+          try {
+            return new URL(receiptUrl, window.location.origin).toString();
+          } catch (error) {
+            console.error("Failed to build receipt link", error);
+          }
+        }
+        return receiptUrl;
       }
+      if (invoice.check_url) {
+        return invoice.check_url;
+      }
+      return "";
     }
-    return receiptUrl;
-  }, [receiptUrl]);
+
+    return invoice.payment_request;
+  }, [invoice, isGuestCheckout, receiptUrl]);
 
   useEffect(() => {
     const paymentRequest = invoice?.payment_request;
@@ -275,11 +309,48 @@ export function GamePurchaseFlow({
     setPurchase(null);
 
     try {
-      const payload: InvoiceCreateRequest = user ? { user_id: user.id } : { anon_id: getOrCreateAnonId() };
-      const created = await createGameInvoice(gameId, payload);
-      setInvoice(created);
+      if (user) {
+        const payload: InvoiceCreateRequest = { user_id: user.id };
+        const created = await createGameInvoice(gameId, payload);
+        setInvoice(created);
+        setFlowState("polling");
+        return;
+      }
+
+      if (!isPurchasable) {
+        throw new Error("This game is not currently available for paid checkout.");
+      }
+
+      const anonId = getOrCreateAnonId();
+      const normalizedLightningAddress = developerLightningAddress?.trim();
+      if (!normalizedLightningAddress) {
+        throw new Error(
+          "This developer has not configured a Lightning address yet. Please try again later.",
+        );
+      }
+
+      const endpoint = resolveLightningPayEndpoint({ lightningAddress: normalizedLightningAddress });
+      const payParams = await fetchLnurlPayParams(endpoint);
+      const amountSats = Math.max(1, Math.ceil(Number(priceMsats) / 1000));
+      const invoiceResponse = await requestLnurlInvoice(
+        payParams,
+        amountSats,
+        `Proof of Play — ${gameTitle}`,
+      );
+
+      const guestInvoice: InvoiceCreateResponse = {
+        purchase_id: generateGuestPurchaseId(anonId),
+        invoice_id: `lnurl-${Date.now()}`,
+        payment_request: invoiceResponse.pr,
+        amount_msats: amountSats * 1000,
+        invoice_status: "PENDING",
+        check_url: endpoint,
+      };
+
+      setInvoice(guestInvoice);
       setFlowState("polling");
     } catch (error) {
+      setInvoice(null);
       setFlowState("error");
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -287,7 +358,14 @@ export function GamePurchaseFlow({
         setErrorMessage("Unable to create a Lightning invoice. Please try again.");
       }
     }
-  }, [user, gameId]);
+  }, [
+    developerLightningAddress,
+    gameId,
+    gameTitle,
+    isPurchasable,
+    priceMsats,
+    user,
+  ]);
 
   const handleCopyInvoice = useCallback(async () => {
     if (!invoice) {
@@ -327,7 +405,7 @@ export function GamePurchaseFlow({
   }, [receiptLinkToCopy]);
 
   const handleDownloadReceipt = useCallback(() => {
-    if (!receiptLinkToCopy || !invoice) {
+    if (!invoice) {
       return;
     }
 
@@ -338,10 +416,23 @@ export function GamePurchaseFlow({
       `Purchase ID: ${invoice.purchase_id}`,
       `Invoice ID: ${invoice.invoice_id}`,
       `Amount: ${priceLabel}`,
-      `Receipt link: ${receiptLinkToCopy}`,
-      "",
-      "Keep this file or the receipt link to restore your download later.",
     ];
+
+    if (developerLightningAddress) {
+      lines.push(`Lightning address: ${developerLightningAddress}`);
+    }
+
+    if (receiptLinkToCopy) {
+      const label = isGuestCheckout ? "Payment request" : "Receipt link";
+      lines.push(`${label}: ${receiptLinkToCopy}`);
+    }
+
+    lines.push("", "Keep this file so you can restore your purchase later.");
+    if (isGuestCheckout) {
+      lines.push(
+        "Guest checkout does not unlock downloads automatically. Share this receipt with the developer if you need support.",
+      );
+    }
 
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -352,9 +443,16 @@ export function GamePurchaseFlow({
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-  }, [gameTitle, priceLabel, receiptLinkToCopy, invoice]);
+  }, [
+    developerLightningAddress,
+    gameTitle,
+    invoice,
+    isGuestCheckout,
+    priceLabel,
+    receiptLinkToCopy,
+  ]);
 
-  const statusMessage = describeStatus(invoiceStatus, flowState, downloadUnlocked);
+  const statusMessage = describeStatus(invoiceStatus, flowState, downloadUnlocked, isGuestCheckout);
 
   const handleReceiptLookupSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -540,19 +638,21 @@ export function GamePurchaseFlow({
                 {!invoice ? (
                   <div className="mt-6 space-y-4 text-sm text-slate-300">
                     <p>
-                      We&apos;ll create a one-time invoice linked to your Proof of Play account.
+                      {isGuestCheckout
+                        ? "Guest checkout generates a one-time Lightning invoice that sends sats directly to the developer."
+                        : "We\'ll create a one-time invoice linked to your Proof of Play account."}
                     </p>
                     <button
                       type="button"
                       onClick={handleCreateInvoice}
-                      disabled={!user || flowState === "creating"}
+                      disabled={flowState === "creating"}
                       className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {flowState === "creating" ? "Creating invoice…" : "Generate Lightning invoice"}
                     </button>
-                    {!user ? (
+                    {isGuestCheckout ? (
                       <p className="text-xs text-amber-200">
-                        Sign in with your NIP-07 signer on the home page before continuing.
+                        You don&apos;t need to sign in. Pay with any Lightning wallet and save the receipt afterwards.
                       </p>
                     ) : null}
                   </div>
@@ -617,18 +717,57 @@ export function GamePurchaseFlow({
                         </p>
                         <p className="mt-2 text-sm text-slate-200">{statusMessage}</p>
                       </div>
-                      <p className="text-xs text-slate-400">
-                        We&apos;ll keep refreshing automatically. You can also open the receipt in a new tab:&nbsp;
-                        <a
-                          href={receiptUrl ?? invoice.check_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-emerald-300 underline hover:text-emerald-200"
-                        >
-                          {receiptUrl ? "View Lightning receipt" : "View purchase status"}
-                        </a>
-                      </p>
+                      {isGuestCheckout ? (
+                        <p className="text-xs text-slate-400">
+                          Guest invoices aren&apos;t monitored automatically. After paying, download the receipt so you can restore your
+                          purchase later.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400">
+                          We&apos;ll keep refreshing automatically. You can also open the receipt in a new tab:&nbsp;
+                          <a
+                            href={receiptUrl ?? invoice.check_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-emerald-300 underline hover:text-emerald-200"
+                          >
+                            {receiptUrl ? "View Lightning receipt" : "View purchase status"}
+                          </a>
+                        </p>
+                      )}
                     </div>
+                    {receiptLinkToCopy ? (
+                      <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-200">
+                        <p className="text-sm text-slate-200">
+                          Save this {isGuestCheckout ? "payment request" : "receipt link"} to restore the download later.
+                        </p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <code className="flex-1 break-all rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-[0.65rem] text-slate-300">
+                            {receiptLinkToCopy}
+                          </code>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleCopyReceiptLink}
+                              className="inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:bg-emerald-400/20"
+                            >
+                              {receiptCopyState === "copied"
+                                ? "Copied"
+                                : receiptCopyState === "error"
+                                ? "Copy unavailable"
+                                : "Copy"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDownloadReceipt}
+                              className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-100"
+                            >
+                              Download receipt
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     {flowState === "expired" ? (
                       <button
                         type="button"
