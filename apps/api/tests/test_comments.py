@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
-from proof_of_play_api.api.v1.routes.comments import get_comment_thread_service
+from proof_of_play_api.api.v1.routes.comments import (
+    get_comment_thread_service,
+    get_comment_workflow,
+    get_raw_comment_body,
+)
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
 from proof_of_play_api.db.models import (
     Comment,
@@ -20,7 +26,14 @@ from proof_of_play_api.db.models import (
     User,
 )
 from proof_of_play_api.main import create_application
-from proof_of_play_api.services.comment_thread import encode_npub
+from proof_of_play_api.services.comment_thread import (
+    CommentAuthorDTO,
+    CommentDTO,
+    CommentSource,
+    encode_npub,
+)
+from proof_of_play_api.schemas.comment import CommentCreateRequest
+from sqlalchemy.orm import Session
 from proof_of_play_api.services.proof_of_work import (
     PROOF_OF_WORK_DIFFICULTY_BITS,
     calculate_proof_of_work_hash,
@@ -52,6 +65,29 @@ def _build_client() -> TestClient:
     """Return a FastAPI client bound to a fresh application instance."""
 
     return TestClient(create_application())
+
+
+def _build_raw_request(body: bytes) -> Request:
+    """Return a Starlette request object carrying the provided raw body."""
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/",
+        "headers": [(b"content-type", b"application/json")],
+        "query_string": b"",
+        "client": ("testclient", 5000),
+        "server": ("testserver", 80),
+    }
+    state = {"body": body, "sent": False}
+
+    async def receive() -> dict[str, object]:
+        if state["sent"]:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        state["sent"] = True
+        return {"type": "http.request", "body": state["body"], "more_body": False}
+
+    return Request(scope, receive)
 
 
 def _seed_game(*, active: bool = True) -> str:
@@ -222,6 +258,70 @@ def test_create_comment_accepts_valid_proof_of_work() -> None:
     assert body["body_md"] == body_md
 
 
+def test_create_comment_respects_workflow_dependency_override() -> None:
+    """API handlers should honor dependency overrides for the comment workflow."""
+
+    _create_schema()
+    game_id = _seed_game(active=True)
+    user_id = _create_user(reputation_score=50)
+    client = _build_client()
+
+    captured: dict[str, object] = {}
+
+    class StubWorkflow:
+        """Capture workflow invocations for dependency override verification."""
+
+        def create_comment(
+            self,
+            *,
+            session: Session,
+            game_id: str,
+            request: CommentCreateRequest,
+            raw_body_md: str | None,
+        ) -> CommentDTO:
+            captured["session"] = session
+            captured["game_id"] = game_id
+            captured["user_id"] = request.user_id
+            captured["raw_body_md"] = raw_body_md
+            captured["normalized_body_md"] = request.body_md
+            author = CommentAuthorDTO(
+                user_id=request.user_id,
+                pubkey_hex=None,
+                npub=None,
+                display_name=None,
+                lightning_address=None,
+            )
+            return CommentDTO(
+                id="stub-comment",
+                game_id=game_id,
+                body_md=request.body_md,
+                created_at=datetime.now(timezone.utc),
+                source=CommentSource.FIRST_PARTY,
+                author=author,
+                is_verified_purchase=False,
+                total_zap_msats=0,
+            )
+
+    overrides = client.app.dependency_overrides
+    overrides[get_comment_workflow] = lambda: StubWorkflow()
+
+    try:
+        response = client.post(
+            f"/v1/games/{game_id}/comments",
+            json={"user_id": user_id, "body_md": "  Spaced content  "},
+        )
+    finally:
+        overrides.pop(get_comment_workflow, None)
+
+    assert response.status_code == 201
+    assert captured["game_id"] == game_id
+    assert captured["user_id"] == user_id
+    assert isinstance(captured["session"], Session)
+    assert captured["normalized_body_md"] == "Spaced content"
+    assert captured["raw_body_md"] == "  Spaced content  "
+    assert response.json()["id"] == "stub-comment"
+
+
 def test_create_comment_enforces_rate_limit() -> None:
     """Users exceeding the rate limit should receive a 429 response."""
 
@@ -250,6 +350,24 @@ def test_create_comment_enforces_rate_limit() -> None:
     assert response.status_code == 429
     assert "rate limit" in response.json()["detail"].lower()
     assert "Retry-After" in response.headers
+
+
+def test_get_raw_comment_body_returns_original_payload() -> None:
+    """Raw-body dependency should return the untrimmed markdown string when present."""
+
+    request = _build_raw_request(b'{"body_md": "  Raw content  "}')
+    result = asyncio.run(get_raw_comment_body(request))
+
+    assert result == "  Raw content  "
+
+
+def test_get_raw_comment_body_returns_none_for_invalid_payload() -> None:
+    """Malformed JSON payloads should yield a null raw markdown body."""
+
+    request = _build_raw_request(b"{\"body_md\": \"missing brace\"")
+    result = asyncio.run(get_raw_comment_body(request))
+
+    assert result is None
 
 
 def test_list_comments_returns_chronological_order() -> None:

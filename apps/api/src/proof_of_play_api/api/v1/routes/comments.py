@@ -6,6 +6,8 @@ import json
 import logging
 from json import JSONDecodeError
 
+from functools import lru_cache
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -25,24 +27,30 @@ from proof_of_play_api.services.comment_workflow import (
 router = APIRouter(prefix="/v1/games/{game_id}/comments", tags=["comments"])
 logger = logging.getLogger(__name__)
 
-_comment_thread_service = CommentThreadService()
-_comment_workflow = CommentWorkflow(comment_thread_service=_comment_thread_service)
+
+@lru_cache(maxsize=1)
+def _build_comment_thread_service() -> CommentThreadService:
+    """Instantiate the comment thread service used across requests."""
+
+    return CommentThreadService()
 
 
 def get_comment_thread_service() -> CommentThreadService:
-    """Return the singleton comment thread service used by API handlers."""
+    """Provide the shared comment thread service for API handlers."""
 
-    return _comment_thread_service
-
-
-def get_comment_workflow() -> CommentWorkflow:
-    """Return the comment workflow orchestrator shared by API handlers."""
-
-    return _comment_workflow
+    return _build_comment_thread_service()
 
 
-async def _extract_raw_body_md(request: Request) -> str | None:
-    """Return the untrimmed comment body from the incoming JSON payload."""
+def get_comment_workflow(
+    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
+) -> CommentWorkflow:
+    """Provide a workflow coordinator using the configured thread service."""
+
+    return CommentWorkflow(comment_thread_service=comment_thread_service)
+
+
+async def get_raw_comment_body(request: Request) -> str | None:
+    """Return the unnormalized comment body from the incoming JSON payload."""
 
     try:
         body_bytes = await request.body()
@@ -67,14 +75,18 @@ async def _extract_raw_body_md(request: Request) -> str | None:
     response_model=list[CommentRead],
     summary="List comments for a game",
 )
-def list_game_comments(game_id: str, session: Session = Depends(get_session)) -> list[CommentRead]:
+def list_game_comments(
+    game_id: str,
+    session: Session = Depends(get_session),
+    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
+) -> list[CommentRead]:
     """Return all comments for the requested game ordered by creation time."""
 
     game = session.get(Game, game_id)
     if game is None or not game.active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
 
-    service = get_comment_thread_service()
+    service = comment_thread_service
     dtos = service.list_for_game(session=session, game=game)
     return [CommentRead.model_validate(dto) for dto in dtos]
 
@@ -88,12 +100,11 @@ def list_game_comments(game_id: str, session: Session = Depends(get_session)) ->
 def create_game_comment(
     game_id: str,
     request: CommentCreateRequest,
-    raw_body_md: str | None = Depends(_extract_raw_body_md),
+    workflow: CommentWorkflow = Depends(get_comment_workflow),
+    raw_body_md: str | None = Depends(get_raw_comment_body),
     session: Session = Depends(get_session),
 ) -> CommentRead:
     """Persist a comment authored by the requesting user on the specified game."""
-
-    workflow = get_comment_workflow()
 
     try:
         dto = workflow.create_comment(
@@ -134,6 +145,11 @@ def create_game_comment(
 
     return CommentRead.model_validate(dto)
 
-
-__all__ = ["create_game_comment", "list_game_comments"]
+__all__ = [
+    "create_game_comment",
+    "get_comment_thread_service",
+    "get_comment_workflow",
+    "get_raw_comment_body",
+    "list_game_comments",
+]
 
