@@ -26,7 +26,7 @@ export const mockGame: GameDraft = {
   build_size_bytes: 734003200,
   checksum_sha256: "d34db33fd34db33fd34db33fd34db33fd34db33fd34db33fd34db33fd34db33f",
   active: true,
-  developer_lightning_address: "dev@lightning.local",
+  developer_lightning_address: "piteousfrench82@walletofsatoshi.com",
   created_at: nowIso,
   updated_at: nowIso,
 };
