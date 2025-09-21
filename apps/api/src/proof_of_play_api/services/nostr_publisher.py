@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from time import perf_counter
-from typing import Any, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol
 
 import httpx
 from sqlalchemy import func, select
@@ -60,6 +60,190 @@ class PublishOutcome:
     failed_relays: tuple[str, ...]
 
 
+@dataclass
+class _RelayAttemptState:
+    """Track metadata for a single relay publish attempt."""
+
+    relay_url: str
+    entry: ReleaseNotePublishQueue | None
+    next_attempt_at: datetime | None
+    skip_reason: str | None = None
+
+    @property
+    def should_skip(self) -> bool:
+        """Return ``True`` when the relay should be skipped for this run."""
+
+        return self.skip_reason is not None
+
+
+class _RelayQueueManager:
+    """Coordinate queue persistence and retry behaviour for relay attempts."""
+
+    def __init__(
+        self,
+        *,
+        session: Session,
+        now: datetime,
+        backoff_strategy: Callable[[int], int],
+    ) -> None:
+        self._session = session
+        self._now = now
+        self._backoff_strategy = backoff_strategy
+
+    def prepare_attempt(
+        self,
+        *,
+        game_id: str,
+        relay_url: str,
+        payload_json: str,
+    ) -> _RelayAttemptState:
+        """Load queue metadata and determine whether the relay is eligible."""
+
+        entry = self._load_queue_entry(game_id=game_id, relay_url=relay_url)
+        skip_reason: str | None = None
+        next_attempt_at: datetime | None = None
+        if entry is not None:
+            entry.payload = payload_json
+            next_attempt_at = entry.next_attempt_at
+            normalized = self._normalize_timestamp(next_attempt_at)
+            if normalized is not None and normalized > self._now:
+                skip_reason = "backoff"
+        return _RelayAttemptState(
+            relay_url=relay_url,
+            entry=entry,
+            next_attempt_at=next_attempt_at,
+            skip_reason=skip_reason,
+        )
+
+    def record_failure(
+        self,
+        *,
+        game: Game,
+        attempt: _RelayAttemptState,
+        payload_json: str,
+        error_message: str,
+    ) -> None:
+        """Persist retry metadata when a relay rejects the publish."""
+
+        entry = attempt.entry
+        attempts = int(entry.attempts or 0) + 1 if entry else 1
+        backoff_seconds = self._backoff_strategy(attempts=attempts)
+        next_attempt = self._now + timedelta(seconds=backoff_seconds)
+
+        if entry is None:
+            entry = ReleaseNotePublishQueue(
+                game_id=game.id,
+                relay_url=attempt.relay_url,
+                payload=payload_json,
+                attempts=attempts,
+                last_error=error_message,
+                next_attempt_at=next_attempt,
+            )
+            self._session.add(entry)
+        else:
+            entry.attempts = attempts
+            entry.payload = payload_json
+            entry.last_error = error_message
+            entry.next_attempt_at = next_attempt
+
+        attempt.entry = entry
+        attempt.next_attempt_at = entry.next_attempt_at
+        attempt.skip_reason = None
+
+    def record_success(self, attempt: _RelayAttemptState) -> None:
+        """Remove queue entries when a relay accepts the publish."""
+
+        entry = attempt.entry
+        if entry is not None:
+            self._session.delete(entry)
+
+    def record_backlog_metric(self, *, metrics: MetricsClient) -> int:
+        """Emit queue backlog gauges and return the current depth."""
+
+        queue_depth = self._session.execute(
+            select(func.count()).select_from(ReleaseNotePublishQueue)
+        ).scalar_one()
+        metrics.gauge("nostr.publisher.queue.backlog", value=float(queue_depth))
+        return int(queue_depth)
+
+    def _load_queue_entry(
+        self, *, game_id: str, relay_url: str
+    ) -> ReleaseNotePublishQueue | None:
+        stmt = select(ReleaseNotePublishQueue).where(
+            ReleaseNotePublishQueue.game_id == game_id,
+            ReleaseNotePublishQueue.relay_url == relay_url,
+        )
+        return self._session.scalar(stmt)
+
+    @staticmethod
+    def _normalize_timestamp(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
+class _RelayInstrumentation:
+    """Publish metrics describing relay outcomes and overall timing."""
+
+    def __init__(self, *, metrics: MetricsClient) -> None:
+        self._metrics = metrics
+
+    def record_skip(self, *, relay_url: str, started_at: float, reason: str) -> None:
+        """Emit skip counters and latency for relays currently in backoff."""
+
+        elapsed_ms = (perf_counter() - started_at) * 1000.0
+        self._metrics.increment(
+            "nostr.publisher.relay.skipped",
+            tags={"relay": relay_url, "reason": reason},
+        )
+        self._metrics.observe(
+            "nostr.publisher.relay.latency_ms",
+            value=elapsed_ms,
+            tags={"relay": relay_url, "status": "skipped"},
+        )
+
+    def record_failure(self, *, relay_url: str, started_at: float) -> None:
+        """Emit counters and latency for relays that returned errors."""
+
+        elapsed_ms = (perf_counter() - started_at) * 1000.0
+        self._metrics.increment(
+            "nostr.publisher.relay.failures", tags={"relay": relay_url}
+        )
+        self._metrics.observe(
+            "nostr.publisher.relay.latency_ms",
+            value=elapsed_ms,
+            tags={"relay": relay_url, "status": "error"},
+        )
+
+    def record_success(self, *, relay_url: str, started_at: float) -> None:
+        """Emit counters and latency for relays that accepted the event."""
+
+        elapsed_ms = (perf_counter() - started_at) * 1000.0
+        self._metrics.increment(
+            "nostr.publisher.relay.success", tags={"relay": relay_url}
+        )
+        self._metrics.observe(
+            "nostr.publisher.relay.latency_ms",
+            value=elapsed_ms,
+            tags={"relay": relay_url, "status": "success"},
+        )
+
+    def record_attempt(self, *, status: str, started_at: float) -> None:
+        """Emit metrics describing the overall publish attempt status."""
+
+        elapsed_ms = (perf_counter() - started_at) * 1000.0
+        self._metrics.increment(
+            "nostr.publisher.publish.attempts", tags={"status": status}
+        )
+        self._metrics.observe(
+            "nostr.publisher.publish.latency_ms",
+            value=elapsed_ms,
+            tags={"status": status},
+        )
+
+
 class ReleaseNotePublisher:
     """Compose, sign, and publish release notes for newly listed games."""
 
@@ -96,66 +280,49 @@ class ReleaseNotePublisher:
         successes: list[str] = []
         failures: list[str] = []
 
+        queue_manager = _RelayQueueManager(
+            session=session,
+            now=now,
+            backoff_strategy=self._calculate_backoff_seconds,
+        )
+        instrumentation = _RelayInstrumentation(metrics=self._metrics)
+
         for relay_url in self._settings.relays:
             relay_start = perf_counter()
-            queue_entry = self._load_queue_entry(
-                session=session, game_id=game.id, relay_url=relay_url
+            attempt = queue_manager.prepare_attempt(
+                game_id=game.id, relay_url=relay_url, payload_json=payload_json
             )
-            if queue_entry is not None:
-                queue_entry.payload = payload_json
-                next_attempt_at = queue_entry.next_attempt_at
-                if (
-                    next_attempt_at is not None
-                    and next_attempt_at.tzinfo is not None
-                    and next_attempt_at > now
-                ) or (
-                    next_attempt_at is not None
-                    and next_attempt_at.tzinfo is None
-                    and next_attempt_at.replace(tzinfo=timezone.utc) > now
-                ):
-                    failures.append(relay_url)
-                    self._metrics.increment(
-                        "nostr.publisher.relay.skipped",
-                        tags={"relay": relay_url, "reason": "backoff"},
-                    )
-                    self._metrics.observe(
-                        "nostr.publisher.relay.latency_ms",
-                        value=(perf_counter() - relay_start) * 1000.0,
-                        tags={"relay": relay_url, "status": "skipped"},
-                    )
-                    logger.warning(
-                        "relay.skip.backoff",
-                        extra={
-                            "relay_url": relay_url,
-                            "game_id": game.id,
-                            "next_attempt_at": next_attempt_at.isoformat()
-                            if next_attempt_at
-                            else None,
-                        },
-                    )
-                    continue
+            if attempt.should_skip:
+                failures.append(relay_url)
+                instrumentation.record_skip(
+                    relay_url=relay_url,
+                    started_at=relay_start,
+                    reason=attempt.skip_reason or "backoff",
+                )
+                logger.warning(
+                    "relay.skip.backoff",
+                    extra={
+                        "relay_url": relay_url,
+                        "game_id": game.id,
+                        "next_attempt_at": attempt.next_attempt_at.isoformat()
+                        if attempt.next_attempt_at
+                        else None,
+                    },
+                )
+                continue
 
             try:
                 self._send_event(relay_url=relay_url, event=event)
             except RelayPublishError as exc:
-                self._record_failure(
-                    session=session,
+                queue_manager.record_failure(
                     game=game,
-                    relay_url=relay_url,
-                    existing_entry=queue_entry,
+                    attempt=attempt,
                     payload_json=payload_json,
-                    failure_time=now,
                     error_message=str(exc),
                 )
                 failures.append(relay_url)
-                self._metrics.increment(
-                    "nostr.publisher.relay.failures",
-                    tags={"relay": relay_url},
-                )
-                self._metrics.observe(
-                    "nostr.publisher.relay.latency_ms",
-                    value=(perf_counter() - relay_start) * 1000.0,
-                    tags={"relay": relay_url, "status": "error"},
+                instrumentation.record_failure(
+                    relay_url=relay_url, started_at=relay_start
                 )
                 logger.warning(
                     "relay.publish.failed",
@@ -167,18 +334,10 @@ class ReleaseNotePublisher:
                 )
             else:
                 successes.append(relay_url)
-                elapsed_ms = (perf_counter() - relay_start) * 1000.0
-                self._metrics.increment(
-                    "nostr.publisher.relay.success",
-                    tags={"relay": relay_url},
+                instrumentation.record_success(
+                    relay_url=relay_url, started_at=relay_start
                 )
-                self._metrics.observe(
-                    "nostr.publisher.relay.latency_ms",
-                    value=elapsed_ms,
-                    tags={"relay": relay_url, "status": "success"},
-                )
-                if queue_entry is not None:
-                    session.delete(queue_entry)
+                queue_manager.record_success(attempt)
 
         game.release_note_event_id = event["id"]
         game.release_note_published_at = now
@@ -190,22 +349,11 @@ class ReleaseNotePublisher:
         elif failures and not successes:
             outcome_status = "failed"
 
-        total_elapsed_ms = (perf_counter() - overall_start) * 1000.0
-        self._metrics.increment(
-            "nostr.publisher.publish.attempts", tags={"status": outcome_status}
-        )
-        self._metrics.observe(
-            "nostr.publisher.publish.latency_ms",
-            value=total_elapsed_ms,
-            tags={"status": outcome_status},
+        instrumentation.record_attempt(
+            status=outcome_status, started_at=overall_start
         )
 
-        queue_depth = session.execute(
-            select(func.count()).select_from(ReleaseNotePublishQueue)
-        ).scalar_one()
-        self._metrics.gauge(
-            "nostr.publisher.queue.backlog", value=float(queue_depth)
-        )
+        queue_depth = queue_manager.record_backlog_metric(metrics=self._metrics)
         if queue_depth >= PUBLISH_QUEUE_ALERT_THRESHOLD:
             logger.warning(
                 "relay.publish.backlog_high",
@@ -264,17 +412,6 @@ class ReleaseNotePublisher:
 
         return f"{self._settings.public_web_url}/games/{game.slug}"
 
-    def _load_queue_entry(
-        self, *, session: Session, game_id: str, relay_url: str
-    ) -> ReleaseNotePublishQueue | None:
-        """Return an existing queue entry for the relay when present."""
-
-        stmt = select(ReleaseNotePublishQueue).where(
-            ReleaseNotePublishQueue.game_id == game_id,
-            ReleaseNotePublishQueue.relay_url == relay_url,
-        )
-        return session.scalar(stmt)
-
     def _send_event(self, *, relay_url: str, event: Mapping[str, Any]) -> None:
         """Send the event payload to the target relay using the configured client."""
 
@@ -292,40 +429,6 @@ class ReleaseNotePublisher:
                 f"{response.status_code}: {response.text.strip()}"
             )
             raise RelayPublishError(msg)
-
-    def _record_failure(
-        self,
-        *,
-        session: Session,
-        game: Game,
-        relay_url: str,
-        existing_entry: ReleaseNotePublishQueue | None,
-        payload_json: str,
-        failure_time: datetime,
-        error_message: str,
-    ) -> None:
-        """Persist backoff metadata so the relay can be retried later."""
-
-        backoff = self._calculate_backoff_seconds(
-            attempts=(existing_entry.attempts + 1) if existing_entry else 1
-        )
-        next_attempt = failure_time + timedelta(seconds=backoff)
-
-        if existing_entry is None:
-            entry = ReleaseNotePublishQueue(
-                game_id=game.id,
-                relay_url=relay_url,
-                payload=payload_json,
-                attempts=1,
-                last_error=error_message,
-                next_attempt_at=next_attempt,
-            )
-            session.add(entry)
-        else:
-            existing_entry.attempts = int(existing_entry.attempts or 0) + 1
-            existing_entry.payload = payload_json
-            existing_entry.last_error = error_message
-            existing_entry.next_attempt_at = next_attempt
 
     def _calculate_backoff_seconds(self, *, attempts: int) -> int:
         """Return the number of seconds to wait before retrying a relay."""

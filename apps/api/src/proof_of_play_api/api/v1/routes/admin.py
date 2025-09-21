@@ -12,7 +12,6 @@ from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import (
     Comment,
     Game,
-    GameStatus,
     ModerationFlag,
     ModerationFlagStatus,
     ModerationTargetType,
@@ -35,6 +34,11 @@ from proof_of_play_api.schemas.release_note_reply import (
     ReleaseNoteReplyModerationRequest,
 )
 from proof_of_play_api.api.v1.routes.comments import get_comment_thread_service
+from proof_of_play_api.services.comment_thread import CommentThreadService
+from proof_of_play_api.services.game_publication import (
+    GamePublicationService,
+    get_game_publication_service,
+)
 
 
 router = APIRouter(prefix="/v1/admin/mod", tags=["admin"])
@@ -134,6 +138,7 @@ def read_moderation_queue(
 def apply_moderation_takedown(
     request: ModerationTakedownRequest,
     session: Session = Depends(get_session),
+    publication: GamePublicationService = Depends(get_game_publication_service),
 ) -> ModerationActionResponse:
     """Hide or unlist flagged content and mark associated flags as actioned."""
 
@@ -146,8 +151,7 @@ def apply_moderation_takedown(
         game = session.get(Game, request.target_id)
         if game is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found.")
-        game.active = False
-        game.status = GameStatus.UNLISTED
+        publication.unpublish(session=session, game=game)
     elif target_type is ModerationTargetType.COMMENT:
         comment = session.get(Comment, request.target_id)
         if comment is None:
@@ -214,6 +218,7 @@ def hide_release_note_reply(
     reply_id: str,
     request: ReleaseNoteReplyModerationRequest,
     session: Session = Depends(get_session),
+    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
 ) -> ReleaseNoteReplyAuditRead:
     """Mark a release note reply as hidden and record the moderation action."""
 
@@ -229,7 +234,7 @@ def hide_release_note_reply(
     reply.hidden_at = datetime.now(timezone.utc)
     session.flush()
 
-    get_comment_thread_service().clear_cache()
+    comment_thread_service.clear_cache()
     return ReleaseNoteReplyAuditRead.from_model(reply)
 
 
@@ -242,6 +247,7 @@ def unhide_release_note_reply(
     reply_id: str,
     request: ReleaseNoteReplyModerationRequest,
     session: Session = Depends(get_session),
+    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
 ) -> ReleaseNoteReplyAuditRead:
     """Remove the hidden flag from a reply so it can reappear on storefront timelines."""
 
@@ -258,7 +264,7 @@ def unhide_release_note_reply(
     reply.hidden_at = None
     session.flush()
 
-    get_comment_thread_service().clear_cache()
+    comment_thread_service.clear_cache()
     return ReleaseNoteReplyAuditRead.from_model(reply)
 
 

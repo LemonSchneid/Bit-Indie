@@ -38,8 +38,9 @@ These guidelines apply to the entire repository. Read them before writing or mod
 
 ## Codex Workflow Integration
 
-* Codex agents must follow the workflow defined in `CONTRIBUTING.md` and use **`MVPBUILDPLAN.md`** as the source of truth for milestones and tickets.
-* Always:
+* Codex agents must follow the workflow defined in `CONTRIBUTING.md` and use **`MVPBUILDPLAN.md`** as the source of truth for milestones and tickets **when** the plan's `ai_enforce_mvp_flow` flag is set to `true`.
+* If `ai_enforce_mvp_flow = false`, agents may tackle other human-directed work while still complying with repository standards and any specific instructions provided for the touched areas.
+* When the flag is `true`, always:
 
   1. Locate the next open ticket in `MVPBUILDPLAN.md` (the first without a `✅ Done`).
   2. Implement only that ticket, meeting all Acceptance Criteria.

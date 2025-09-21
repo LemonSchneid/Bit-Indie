@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run test:build && node --test dist-tests/lightning.test.js",
+    "test": "npm run test:build && node --test dist-tests",
     "test:build": "tsc --project tsconfig.test.json"
   },
   "dependencies": {
