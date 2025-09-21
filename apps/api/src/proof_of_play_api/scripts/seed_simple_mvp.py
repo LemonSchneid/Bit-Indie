@@ -40,13 +40,13 @@ def seed() -> None:
                 id="user-seed-developer",
                 pubkey_hex="seeddeveloperpubkey000000000000000000000000000000000000000000000000000000000000",
                 display_name="Orbit Foundry",
-                lightning_address="orbit@lightning.local",
+                lightning_address="piteousfrench82@walletofsatoshi.com",
                 is_admin=True,
             )
             session.add(developer_user)
         else:
             developer_user.display_name = "Orbit Foundry"
-            developer_user.lightning_address = "orbit@lightning.local"
+            developer_user.lightning_address = "piteousfrench82@walletofsatoshi.com"
             developer_user.is_admin = True
 
         player_user = session.get(User, "user-seed-player")
