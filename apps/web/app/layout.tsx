@@ -1,4 +1,5 @@
 import "./globals.css";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
@@ -17,9 +18,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="bg-slate-950 text-slate-100 antialiased">
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-slate-800 bg-slate-950/70">
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-              <p className="text-lg font-semibold tracking-tight">Proof of Play</p>
-              <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
+            <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
+              <div className="space-y-1">
+                <Link
+                  href="/"
+                  className="text-lg font-semibold tracking-tight text-white transition hover:text-emerald-200"
+                >
+                  Proof of Play
+                </Link>
+                <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
+              </div>
+              <nav className="flex items-center gap-3 text-sm text-slate-300">
+                <Link
+                  href="/games"
+                  className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
+                >
+                  View catalog
+                </Link>
+              </nav>
             </div>
           </header>
 

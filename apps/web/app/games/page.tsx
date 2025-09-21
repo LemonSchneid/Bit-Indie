@@ -1,0 +1,156 @@
+import Image from "next/image";
+import Link from "next/link";
+
+import { listCatalogGames, type GameDraft } from "../../lib/api";
+
+function formatPriceMsats(value: GameDraft["price_msats"]): string {
+  if (value === null) {
+    return "Free download";
+  }
+
+  const sats = value / 1000;
+  if (Number.isInteger(sats)) {
+    return `${Number(sats).toLocaleString()} sats`;
+  }
+
+  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+}
+
+function formatCategory(category: GameDraft["category"]): string {
+  switch (category) {
+    case "PROTOTYPE":
+      return "Prototype";
+    case "EARLY_ACCESS":
+      return "Early Access";
+    case "FINISHED":
+      return "Finished";
+    default:
+      return category.replaceAll("_", " ").toLowerCase();
+  }
+}
+
+function formatStatus(status: GameDraft["status"]): string {
+  switch (status) {
+    case "UNLISTED":
+      return "Unlisted preview";
+    case "DISCOVER":
+      return "Discover";
+    case "FEATURED":
+      return "Featured";
+    default:
+      return status;
+  }
+}
+
+function formatUpdatedAt(timestamp: GameDraft["updated_at"]): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return "recently";
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export default async function GamesCatalogPage(): Promise<JSX.Element> {
+  const games = await listCatalogGames();
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-16">
+        <header className="space-y-3">
+          <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Catalog</p>
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            Browse playable builds from the Proof of Play sandbox.
+          </h1>
+          <p className="max-w-3xl text-base text-slate-300">
+            These listings load directly from the FastAPI backend. Seed the demo data to explore the full purchase flow for
+            Starpath Siege and future test titles.
+          </p>
+        </header>
+
+        {games.length === 0 ? (
+          <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8 text-slate-300">
+            <h2 className="text-xl font-semibold text-white">No games available yet</h2>
+            <p className="mt-3 text-sm text-slate-300">
+              Start the Docker Compose stack and run the seed script to populate the sandbox catalog.
+            </p>
+            <code className="mt-4 block rounded-xl border border-emerald-400/40 bg-slate-950 px-4 py-3 text-xs text-emerald-200">
+              docker compose -f infra/docker-compose.yml exec api python -m proof_of_play_api.scripts.seed_simple_mvp
+            </code>
+          </section>
+        ) : (
+          <section className="grid gap-6 sm:grid-cols-2">
+            {games.map((game) => (
+              <article
+                key={game.id}
+                className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-lg shadow-emerald-500/10"
+              >
+                <div className="relative h-48 w-full bg-slate-900/80">
+                  {game.cover_url ? (
+                    <Image
+                      src={game.cover_url}
+                      alt={`${game.title} cover art`}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                      Cover art coming soon
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col gap-5 p-6">
+                  <div className="flex flex-wrap items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-slate-400">
+                    <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1">{formatStatus(game.status)}</span>
+                    <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                      {formatCategory(game.category)}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-slate-300">
+                      Updated {formatUpdatedAt(game.updated_at)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-semibold tracking-tight text-white">{game.title}</h2>
+                    {game.summary ? (
+                      <p className="text-sm text-slate-300">{game.summary}</p>
+                    ) : (
+                      <p className="text-sm text-slate-400">Summary coming soon from the developer.</p>
+                    )}
+                  </div>
+
+                  <div className="mt-auto space-y-4">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                      <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-white">
+                        {formatPriceMsats(game.price_msats)}
+                      </span>
+                      <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                        {game.developer_lightning_address
+                          ? `⚡ ${game.developer_lightning_address}`
+                          : "Lightning address pending"}
+                      </span>
+                    </div>
+
+                    <Link
+                      href={`/games/${game.slug}`}
+                      className="inline-flex items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
+                    >
+                      View details
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
