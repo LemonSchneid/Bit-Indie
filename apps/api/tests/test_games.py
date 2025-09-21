@@ -187,7 +187,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
             "title": "Neon Drift",
             "slug": "Neon-Drift",
             "summary": "Slide through cyber streets.",
-            "price_msats": 1500,
+            "price_msats": 2000,
         },
     )
 
@@ -196,7 +196,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
     assert body["title"] == "Neon Drift"
     assert body["slug"] == "neon-drift"
     assert body["summary"] == "Slide through cyber streets."
-    assert body["price_msats"] == 1500
+    assert body["price_msats"] == 2000
     assert body["active"] is False
     assert body["category"] == GameCategory.PROTOTYPE.value
 
@@ -206,7 +206,7 @@ def test_create_game_draft_persists_and_returns_payload() -> None:
         assert stored.title == "Neon Drift"
         assert stored.slug == "neon-drift"
         assert stored.summary == "Slide through cyber streets."
-        assert stored.price_msats == 1500
+        assert stored.price_msats == 2000
         assert stored.active is False
 
 
