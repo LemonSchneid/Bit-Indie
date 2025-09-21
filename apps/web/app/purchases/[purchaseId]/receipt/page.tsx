@@ -123,7 +123,8 @@ export default async function PurchaseReceiptPage({
               {game.title} receipt
             </h1>
             <p className="max-w-2xl text-base text-slate-300">
-              Thanks for supporting {game.title}. Save this page or bookmark it as proof of purchase.
+              Thanks for supporting {game.title}. Save or bookmark this page—the link is your proof of purchase and lets you
+              restore the download later.
             </p>
           </header>
 
@@ -174,8 +175,8 @@ export default async function PurchaseReceiptPage({
                 <p className="mt-3 text-base text-white">{buyerName}</p>
                 <p className="mt-1 font-mono text-xs text-slate-400">{buyer.pubkey_hex}</p>
                 <p className="mt-4 text-sm text-slate-300">
-                  Your Lightning purchase is tied to this Proof of Play account. Keep your signer handy when downloading new
-                  builds.
+                  Anyone with this receipt link can re-open the download. Keep it handy in your password manager or browser
+                  bookmarks.
                 </p>
               </div>
             </div>

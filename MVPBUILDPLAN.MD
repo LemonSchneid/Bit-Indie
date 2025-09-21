@@ -345,3 +345,6 @@ Enable only if for 2 consecutive weeks: takedowns >1% of new listings, or mod ho
 * **F1-24** refine Lightning checkout modal backdrop using the provided radial gradient overlay. ✅ Done
 * **F1-25** render Lightning checkout modals through document-level portals so their backdrops cover the full viewport. ✅ Done
 * **F1-26** revert the Lightning checkout modal backdrop to a neutral slate gradient without emerald overlays. ✅ Done
+* **F1-27** move the developer update feed off the storefront, reserving the space for future dev-dashboard comments. ✅ Done
+* **F1-28** connect the homepage "Sign in with npub" button to the Nostr login flow so visitors can authenticate directly. ✅ Done
+* **F1-29** Nostr sign-in (NIP-07) and mobile signer (NIP-46) pairing. Status: deferred. DoD: Landing widget enables extension login and mobile pairing with Nostr Connect; purchase flows remain guest-friendly with anon IDs. 

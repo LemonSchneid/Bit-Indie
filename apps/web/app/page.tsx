@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 
 import { ZapButton } from "../components/zap-button";
+// Nostr sign-in is in progress; UI shows Coming Soon for now.
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
+}
+
+function formatPubkeyShort(pubkey: string): string {
+  if (pubkey.length <= 12) {
+    return pubkey;
+  }
+
+  const prefix = pubkey.slice(0, 8);
+  const suffix = pubkey.slice(-8);
+  return `${prefix}…${suffix}`;
 }
 
 const featuredGames = [
@@ -79,6 +90,15 @@ const discoverGames = [
     priceSats: 20500,
     reviewCount: 171,
     zapTotal: 99000,
+  },
+  {
+    title: "Bit Descent",
+    developer: "Lantern Forge",
+    status: "DISCOVER",
+    category: "RPG",
+    priceSats: 10,
+    reviewCount: 12,
+    zapTotal: 18400,
   },
   {
     title: "Satellite Lullaby",
@@ -207,6 +227,23 @@ const gameDetails: Record<string, GameDetail> = {
     lightningAddress: "guild@solarweave.games",
     priceSats: 9900,
     tipRecommended: 2600,
+  },
+  "Bit Descent": {
+    title: "Bit Descent",
+    status: "DISCOVER",
+    category: "RPG",
+    version: "0.3.1",
+    lastUpdated: "2024-04-18",
+    description: [
+      "Descend through procedurally generated caverns where Lightning-charged traps rewire every run.",
+      "Collect arcane chips that cash out to sat-backed upgrades between dungeon dives.",
+      "Outsmart adaptive bosses that study your zap-enabled loadout and counter your favorite builds.",
+    ],
+    coverArt: "/images/concepts/bit-descent-cover.png",
+    developer: "Lantern Forge",
+    lightningAddress: "piteousfrench82@walletofsatoshi.com",
+    priceSats: 10,
+    tipRecommended: 3,
   },
   "Farside Bloom": {
     title: "Farside Bloom",
@@ -340,6 +377,13 @@ type RoadmapStage = {
   items: RoadmapEntry[];
 };
 
+type DevDashboardComment = {
+  id: string;
+  author: string;
+  postedAt: string;
+  body: string;
+};
+
 const roadmapStages: RoadmapStage[] = [
   {
     title: "Live right now",
@@ -446,6 +490,21 @@ const developerUpdates: DeveloperUpdate[] = [
     publishedAt: "APR 08 • 2024",
     body: "Hooked up the new Platform Roadmap tab with composer mocks so the community can zap the priorities that resonate.",
     zapMsats: 64_000_000,
+  },
+];
+
+const devDashboardComments: DevDashboardComment[] = [
+  {
+    id: "comment-2024-03-30",
+    author: "Proof of Play team",
+    postedAt: "Internal note · MAR 30, 2024",
+    body: "The dev dashboard prototype includes panels for build status, zap analytics, and comment moderation controls.",
+  },
+  {
+    id: "comment-2024-04-03",
+    author: "Sprint coordination",
+    postedAt: "Internal note · APR 03, 2024",
+    body: "Next sprint connects the dashboard publish flow to the Nostr pipeline so storefront updates stay curated by ops.",
   },
 ];
 
@@ -651,7 +710,7 @@ function RoadmapStatusBadge({ status }: { status: RoadmapStatus }) {
   );
 }
 
-function DeveloperUpdatePanel() {
+export function DeveloperUpdatePanel() {
   return (
     <NeonCard className="p-6">
       <div className="space-y-2">
@@ -708,6 +767,39 @@ function DeveloperUpdatePanel() {
             </div>
           </div>
         ))}
+      </div>
+    </NeonCard>
+  );
+}
+
+function DevDashboardCommentsPreview() {
+  return (
+    <NeonCard className="p-6">
+      <div className="space-y-2">
+        <MicroLabel>Dev dashboard comments</MicroLabel>
+        <h3 className="text-xl font-semibold tracking-tight text-white">Internal notes will surface here soon</h3>
+        <p className="text-sm leading-relaxed text-slate-300">
+          Once the dev dashboard ships, the comments you post there will syndicate to this space for quick community updates.
+        </p>
+      </div>
+      <div className="mt-6 space-y-4">
+        {devDashboardComments.map((comment) => (
+          <div key={comment.id} className="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.4em] text-slate-400">{comment.postedAt}</p>
+                <p className="mt-1 text-sm font-semibold uppercase tracking-[0.35em] text-slate-200">{comment.author}</p>
+              </div>
+              <span className="rounded-full border border-slate-700/70 bg-slate-950/60 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.35em] text-slate-300">
+                Preview
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300">{comment.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 rounded-2xl border border-slate-700/60 bg-slate-950/60 p-4 text-xs text-slate-400">
+        We&apos;ll replace these sample notes with real dashboard comments as soon as the private dev tooling goes live.
       </div>
     </NeonCard>
   );
@@ -815,7 +907,7 @@ function PlatformRoadmapScreen() {
         </div>
       </NeonCard>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
-        <DeveloperUpdatePanel />
+        <DevDashboardCommentsPreview />
         <CommunityNotesPanel />
       </div>
     </div>
@@ -953,6 +1045,10 @@ function NpubIdentityWidget() {
               Use your Nostr public key as a universal login for Lightning-charged adventures.
             </p>
           </div>
+          <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+            <p className="font-semibold text-emerald-50">Nostr sign-in</p>
+            <p className="mt-1 text-emerald-100/80">Coming soon — track progress on the roadmap.</p>
+          </div>
           <ul className="grid gap-4 pt-2 text-sm text-slate-200 sm:grid-cols-2 md:grid-cols-3">
             {npubBenefits.map((benefit) => (
               <li key={benefit.title} className="flex gap-3">
@@ -970,16 +1066,19 @@ function NpubIdentityWidget() {
         <div className="flex w-full max-w-md flex-col gap-3">
           <button
             type="button"
-            className="w-full rounded-full border border-emerald-400/70 bg-emerald-500/20 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-50"
+            disabled
+            className="w-full cursor-not-allowed rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200"
           >
-            Sign in with npub
+            Nostr sign-in — Coming soon
           </button>
           <button
             type="button"
-            className="w-full rounded-full border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
+            disabled
+            className="w-full cursor-not-allowed rounded-full border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-400"
           >
-            Create a new npub
+            Create a new npub — Coming soon
           </button>
+          <p className="text-xs text-emerald-200/80">Follow the roadmap to see when npub login goes live.</p>
         </div>
       </div>
     </NeonCard>

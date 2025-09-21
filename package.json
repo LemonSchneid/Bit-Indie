@@ -1,11 +1,12 @@
 {
   "name": "proof-of-play",
+  "version": "0.1.0",
   "private": true,
   "workspaces": ["apps/web"],
   "scripts": {
-    "dev:web": "npm --prefix apps/web run dev",
-    "build:web": "npm --prefix apps/web run build",
-    "start:web": "npm --prefix apps/web run start",
-    "lint:web": "npm --prefix apps/web run lint"
+    "dev:web": "npm run dev --workspace apps/web",
+    "build:web": "npm run build --workspace apps/web",
+    "start:web": "npm run start --workspace apps/web",
+    "lint:web": "npm run lint --workspace apps/web"
   }
 }

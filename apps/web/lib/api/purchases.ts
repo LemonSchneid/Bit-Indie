@@ -4,7 +4,8 @@ export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
 export type RefundStatus = "NONE" | "REQUESTED" | "APPROVED" | "DENIED" | "PAID";
 
 export interface InvoiceCreateRequest {
-  user_id: string;
+  user_id?: string;
+  anon_id?: string;
 }
 
 export interface InvoiceCreateResponse {

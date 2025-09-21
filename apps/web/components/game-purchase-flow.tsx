@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 
 import {
   InvoiceCreateResponse,
@@ -12,6 +13,8 @@ import {
   getGameDownloadUrl,
   getLatestPurchaseForGame,
 } from "../lib/api";
+import type { InvoiceCreateRequest } from "../lib/api";
+import { getOrCreateAnonId } from "../lib/anon-id";
 import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
 import { buildQrCodeUrl } from "../lib/qr-code";
@@ -72,6 +75,7 @@ export function GamePurchaseFlow({
 }: GamePurchaseFlowProps): JSX.Element | null {
   const isPurchasable = Number.isFinite(priceMsats) && priceMsats > 0;
 
+  const router = useRouter();
   const user = useStoredUserProfile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [flowState, setFlowState] = useState<FlowState>("idle");
@@ -82,6 +86,9 @@ export function GamePurchaseFlow({
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrGenerationFailed, setQrGenerationFailed] = useState(false);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const [showReceiptLookup, setShowReceiptLookup] = useState(false);
+  const [manualReceiptId, setManualReceiptId] = useState("");
+  const [receiptCopyState, setReceiptCopyState] = useState<CopyState>("idle");
 
   useEffect(() => {
     setPortalContainer(document.body);
@@ -186,6 +193,24 @@ export function GamePurchaseFlow({
     setCopyState("idle");
   }, [invoice?.payment_request]);
 
+  useEffect(() => {
+    if (receiptCopyState !== "copied") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setReceiptCopyState("idle");
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [receiptCopyState]);
+
+  useEffect(() => {
+    setReceiptCopyState("idle");
+  }, [receiptLinkToCopy]);
+
   const downloadUnlocked = flowState === "paid" || purchase?.download_granted === true;
   const invoiceStatus: InvoiceStatus | null = purchase?.invoice_status ?? invoice?.invoice_status ?? null;
 
@@ -209,6 +234,20 @@ export function GamePurchaseFlow({
     return `/purchases/${invoice.purchase_id}/receipt`;
   }, [invoice]);
 
+  const receiptLinkToCopy = useMemo(() => {
+    if (!receiptUrl) {
+      return "";
+    }
+    if (typeof window !== "undefined") {
+      try {
+        return new URL(receiptUrl, window.location.origin).toString();
+      } catch (error) {
+        console.error("Failed to build receipt link", error);
+      }
+    }
+    return receiptUrl;
+  }, [receiptUrl]);
+
   useEffect(() => {
     const paymentRequest = invoice?.payment_request;
     if (!paymentRequest) {
@@ -230,19 +269,14 @@ export function GamePurchaseFlow({
   }, [invoice?.payment_request]);
 
   const handleCreateInvoice = useCallback(async () => {
-    if (!user) {
-      setErrorMessage("Sign in with your Nostr account before generating an invoice.");
-      setFlowState("error");
-      return;
-    }
-
     setFlowState("creating");
     setErrorMessage(null);
     setInvoice(null);
     setPurchase(null);
 
     try {
-      const created = await createGameInvoice(gameId, { user_id: user.id });
+      const payload: InvoiceCreateRequest = user ? { user_id: user.id } : { anon_id: getOrCreateAnonId() };
+      const created = await createGameInvoice(gameId, payload);
       setInvoice(created);
       setFlowState("polling");
     } catch (error) {
@@ -273,7 +307,84 @@ export function GamePurchaseFlow({
     }
   }, [invoice]);
 
+  const handleCopyReceiptLink = useCallback(async () => {
+    if (!receiptLinkToCopy) {
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      setReceiptCopyState("error");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(receiptLinkToCopy);
+      setReceiptCopyState("copied");
+    } catch (error) {
+      console.error("Failed to copy receipt link", error);
+      setReceiptCopyState("error");
+    }
+  }, [receiptLinkToCopy]);
+
+  const handleDownloadReceipt = useCallback(() => {
+    if (!receiptLinkToCopy || !invoice) {
+      return;
+    }
+
+    const lines = [
+      "Proof of Play — Lightning Purchase Receipt",
+      "",
+      `Game: ${gameTitle}`,
+      `Purchase ID: ${invoice.purchase_id}`,
+      `Invoice ID: ${invoice.invoice_id}`,
+      `Amount: ${priceLabel}`,
+      `Receipt link: ${receiptLinkToCopy}`,
+      "",
+      "Keep this file or the receipt link to restore your download later.",
+    ];
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `proof-of-play-receipt-${invoice.purchase_id}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, [gameTitle, priceLabel, receiptLinkToCopy, invoice]);
+
   const statusMessage = describeStatus(invoiceStatus, flowState, downloadUnlocked);
+
+  const handleReceiptLookupSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const trimmed = manualReceiptId.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      setShowReceiptLookup(false);
+      setManualReceiptId("");
+      let receiptId = trimmed;
+      try {
+        const maybeUrl = new URL(trimmed);
+        const segments = maybeUrl.pathname.split("/").filter(Boolean);
+        const idSegment = segments[segments.length - 2] === "purchases" ? segments[segments.length - 1] : null;
+        if (idSegment) {
+          receiptId = idSegment;
+        }
+      } catch (_error) {
+        const match = trimmed.match(/purchases\/(.+?)(?:\/|$)/);
+        if (match?.[1]) {
+          receiptId = match[1];
+        }
+      }
+
+      router.push(`/purchases/${encodeURIComponent(receiptId)}/receipt`);
+    },
+    [manualReceiptId, router],
+  );
 
   if (!isPurchasable) {
     return null;
@@ -309,14 +420,42 @@ export function GamePurchaseFlow({
                 The developer hasn&apos;t uploaded a downloadable build yet. You&apos;ll be notified once it&apos;s ready.
               </p>
             )}
+            {receiptLinkToCopy ? (
+              <div className="space-y-2 rounded-2xl border border-emerald-400/30 bg-slate-950/40 p-4 text-xs text-slate-200">
+                <p className="text-sm text-slate-100">
+                  Save this receipt link to restore the download later. You can copy it or download a receipt file.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <code className="flex-1 break-all rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-[0.65rem] text-slate-300">
+                    {receiptLinkToCopy}
+                  </code>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyReceiptLink}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:bg-emerald-400/20"
+                    >
+                      {receiptCopyState === "copied"
+                        ? "Receipt copied"
+                        : receiptCopyState === "error"
+                        ? "Copy unavailable"
+                        : "Copy link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadReceipt}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-100"
+                    >
+                      Download receipt
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="mt-6 space-y-4 text-sm text-slate-300">
-            <p>
-              {user
-                ? "Complete a Lightning payment to unlock the download instantly."
-                : "Sign in on the home page with your Nostr identity before purchasing."}
-            </p>
+            <p>Complete a Lightning payment to unlock the download instantly.</p>
             <button
               type="button"
               onClick={() => {
@@ -327,10 +466,44 @@ export function GamePurchaseFlow({
             >
               Start Lightning checkout
             </button>
-            {!user ? (
-              <p className="text-xs text-amber-200">
-                Connect your NIP-07 signer on the home page so we know which account to unlock.
-              </p>
+            <button
+              type="button"
+              onClick={() => setShowReceiptLookup((current) => !current)}
+              className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200/80 hover:text-emerald-100"
+            >
+              Have a receipt link?
+            </button>
+            {showReceiptLookup ? (
+              <form
+                className="flex flex-col gap-2 text-xs text-slate-300 sm:flex-row sm:items-center"
+                onSubmit={handleReceiptLookupSubmit}
+              >
+                <input
+                  type="text"
+                  value={manualReceiptId}
+                  onChange={(event) => setManualReceiptId(event.target.value)}
+                  placeholder="Enter receipt ID or URL"
+                  className="w-full flex-1 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-100 focus:border-emerald-400 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:bg-emerald-400/20"
+                  >
+                    Open receipt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReceiptLookup(false);
+                      setManualReceiptId("");
+                    }}
+                    className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-300 hover:border-slate-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             ) : null}
           </div>
         )}

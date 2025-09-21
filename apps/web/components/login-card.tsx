@@ -3,37 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  LoginSuccessResponse,
-  SignedEvent,
-  UserProfile,
-  becomeDeveloper,
-  requestLoginChallenge,
-  verifyLoginEvent,
-} from "../lib/api";
-import { loadStoredUserProfile, saveUserProfile } from "../lib/user-storage";
+import { UserProfile, becomeDeveloper } from "../lib/api";
+import { useNostrLogin } from "../lib/hooks/use-nostr-login";
 import { GameDraftForm } from "./game-draft-form";
 
 type LoginState = "idle" | "pending" | "success" | "error";
-
-const LOGIN_KIND = 22242;
-
-type NostrUnsignedEvent = {
-  kind: number;
-  created_at: number;
-  tags: string[][];
-  content: string;
-};
-
-interface NostrSigner {
-  signEvent: (event: NostrUnsignedEvent) => Promise<SignedEvent>;
-}
-
-declare global {
-  interface Window {
-    nostr?: NostrSigner;
-  }
-}
 
 function formatPubkey(pubkey: string): string {
   if (pubkey.length <= 12) {
@@ -46,21 +20,24 @@ function formatPubkey(pubkey: string): string {
 }
 
 export function LoginCard(): JSX.Element {
-  const [hasSigner, setHasSigner] = useState(false);
-  const [state, setState] = useState<LoginState>("idle");
-  const [message, setMessage] = useState<string | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());
-  const [developerState, setDeveloperState] = useState<LoginState>(() =>
-    profile?.is_developer ? "success" : "idle",
-  );
-  const [developerMessage, setDeveloperMessage] = useState<string | null>(() =>
+  const { hasSigner, state, message, profile, signIn, updateProfile } = useNostrLogin();
+  const [developerState, setDeveloperState] = useState<LoginState>(profile?.is_developer ? "success" : "idle");
+  const [developerMessage, setDeveloperMessage] = useState<string | null>(
     profile?.is_developer ? "Your account is now registered as a developer." : null,
   );
 
   useEffect(() => {
-    const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
-    setHasSigner(signerAvailable);
-  }, []);
+    if (!profile) {
+      setDeveloperState("idle");
+      setDeveloperMessage(null);
+      return;
+    }
+
+    if (profile.is_developer) {
+      setDeveloperState("success");
+      setDeveloperMessage("Your account is now registered as a developer.");
+    }
+  }, [profile]);
 
   const buttonLabel = useMemo(() => {
     if (!hasSigner) {
@@ -73,55 +50,8 @@ export function LoginCard(): JSX.Element {
   }, [hasSigner, state, profile]);
 
   const handleLogin = useCallback(async () => {
-    if (state === "pending") {
-      return;
-    }
-
-    if (typeof window === "undefined" || !window.nostr?.signEvent) {
-      setHasSigner(false);
-      setState("error");
-      setMessage("A NIP-07 compatible browser extension is required to sign in.");
-      return;
-    }
-
-    setState("pending");
-    setMessage(null);
-
-    try {
-      const challenge = await requestLoginChallenge();
-      const unsignedEvent: NostrUnsignedEvent = {
-        kind: LOGIN_KIND,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [
-          ["challenge", challenge.challenge],
-          ["client", "proof-of-play-web"],
-        ],
-        content: "Proof of Play login",
-      };
-
-      const signedEvent = await window.nostr.signEvent(unsignedEvent);
-      const response: LoginSuccessResponse = await verifyLoginEvent(signedEvent);
-
-      setProfile(response.user);
-      saveUserProfile(response.user);
-      if (response.user.is_developer) {
-        setDeveloperState("success");
-        setDeveloperMessage("Your account is now registered as a developer.");
-      } else {
-        setDeveloperState("idle");
-        setDeveloperMessage(null);
-      }
-      setState("success");
-      setMessage("Your Nostr identity is linked to Proof of Play.");
-    } catch (error: unknown) {
-      setState("error");
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage("Login failed due to an unexpected error.");
-      }
-    }
-  }, [state]);
+    await signIn();
+  }, [signIn]);
 
   const handleBecomeDeveloper = useCallback(async () => {
     if (!profile) {
@@ -140,8 +70,7 @@ export function LoginCard(): JSX.Element {
     try {
       await becomeDeveloper({ user_id: profile.id });
       const updatedProfile: UserProfile = { ...profile, is_developer: true };
-      setProfile(updatedProfile);
-      saveUserProfile(updatedProfile);
+      updateProfile(updatedProfile);
       setDeveloperState("success");
       setDeveloperMessage("Your account is now registered as a developer.");
     } catch (error: unknown) {
@@ -152,7 +81,7 @@ export function LoginCard(): JSX.Element {
         setDeveloperMessage("Failed to create developer profile.");
       }
     }
-  }, [profile, developerState]);
+  }, [profile, developerState, updateProfile]);
 
   return (
     <div className="space-y-6">
@@ -242,4 +171,3 @@ export function LoginCard(): JSX.Element {
     </div>
   );
 }
-
