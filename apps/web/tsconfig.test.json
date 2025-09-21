@@ -14,6 +14,10 @@
   "include": [
     "lib/lightning.ts",
     "lib/lightning.test.ts",
+    "lib/api/comments.ts",
+    "lib/api/comments.test.ts",
+    "lib/hooks/use-zap-workflow.ts",
+    "lib/hooks/use-zap-workflow.test.tsx",
     "components/zap-button.tsx",
     "components/home/**/*.ts",
     "components/home/**/*.tsx",
