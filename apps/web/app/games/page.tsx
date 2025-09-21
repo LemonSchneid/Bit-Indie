@@ -68,7 +68,8 @@ export default async function GamesCatalogPage(): Promise<JSX.Element> {
           </h1>
           <p className="max-w-3xl text-base text-slate-300">
             These listings load directly from the FastAPI backend. Seed the demo data to explore the full purchase flow for
-            Starpath Siege and future test titles.
+            Starpath Siege, Chronorift Tactics, Lumen Forge, Echoes of the Deep, and Quantum Drift Rally without touching
+            static mocks.
           </p>
         </header>
 
@@ -118,7 +119,14 @@ export default async function GamesCatalogPage(): Promise<JSX.Element> {
                   </div>
 
                   <div className="space-y-2">
-                    <h2 className="text-2xl font-semibold tracking-tight text-white">{game.title}</h2>
+                    <h2 className="text-2xl font-semibold tracking-tight text-white">
+                      <Link
+                        href={`/games/${game.slug}`}
+                        className="transition hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                      >
+                        {game.title}
+                      </Link>
+                    </h2>
                     {game.summary ? (
                       <p className="text-sm text-slate-300">{game.summary}</p>
                     ) : (
@@ -142,7 +150,7 @@ export default async function GamesCatalogPage(): Promise<JSX.Element> {
                       href={`/games/${game.slug}`}
                       className="inline-flex items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
                     >
-                      View details
+                      View details & checkout
                     </Link>
                   </div>
                 </div>
