@@ -14,8 +14,8 @@ export function InfoForPlayersScreen() {
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-slate-300">
           Pair your favorite Lightning wallet to unlock instant purchases and verified reviews.
           {nostrEnabled
-            ? " Link your Nostr identity to sync progress across every Proof of Play world."
-            : " Nostr identity linking will return after the Simple MVP launch."}
+            ? " Link your Proof ID to sync progress across every Proof of Play world."
+            : " Proof ID sign-in is rolling out after the Simple MVP launch."}
         </p>
         <div className="grid gap-4 text-sm text-slate-200 sm:grid-cols-2">
           <NeonCard className="p-5">
@@ -31,7 +31,7 @@ export function InfoForPlayersScreen() {
             <ul className="mt-4 space-y-3 text-left text-xs text-slate-300">
               <li>Use the download audit trail to keep track of builds per device.</li>
               <li>Drop a review to boost your favorite updates (zap weighting coming later).</li>
-              <li>Follow dev devlogs on Proof of Play; Nostr relays join the lineup post-MVP.</li>
+              <li>Follow dev devlogs on Proof of Play; Proof ID feeds arrive post-MVP.</li>
             </ul>
           </NeonCard>
         </div>

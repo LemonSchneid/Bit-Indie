@@ -108,7 +108,7 @@ export type ReceiptSummary = {
   nextStepLabel: string;
 };
 
-export type NpubBenefit = {
+export type IdentityBenefit = {
   title: string;
   description: string;
 };

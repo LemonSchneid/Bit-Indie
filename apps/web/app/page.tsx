@@ -13,7 +13,7 @@ import {
 import { GameDetailScreen } from "../components/home/game-detail-screen";
 import { InfoForPlayersScreen } from "../components/home/info-for-players-screen";
 import { LightningCheckoutModal } from "../components/home/lightning-checkout-modal";
-import { NpubIdentityWidget } from "../components/home/npub-identity-widget";
+import { IdentityWidget } from "../components/home/identity-widget";
 import { PlatformRoadmapScreen } from "../components/home/platform-roadmap-screen";
 import { ScreenSwitcher } from "../components/home/screen-switcher";
 import { SellGameScreen } from "../components/home/sell-game-screen";
@@ -72,7 +72,7 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-            <NpubIdentityWidget />
+            <IdentityWidget />
           </div>
           <ScreenSwitcher activeScreen={activeScreen} onSelect={handleScreenSelect} />
         </header>

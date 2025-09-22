@@ -8,7 +8,7 @@ import type {
   InvoiceStep,
   LiveMetrics,
   MockComment,
-  NpubBenefit,
+  IdentityBenefit,
   ReceiptSummary,
   RoadmapStage,
 } from "./types";
@@ -187,26 +187,26 @@ export const liveMetrics: LiveMetrics = {
 
 export const communityComments: MockComment[] = [
   {
-    author: "npub1k6...h2v9",
+    author: "Proof ID • 6H2V9",
     lightningAddress: "support@chromaflux.games",
     timeAgo: "2h ago",
-    body: "Garage sync works flawlessly with my Nostr profile. Crew invites in seconds!",
+    body: "Signed in on desktop and Deck — downloads followed my Proof ID instantly.",
     verified: true,
     zapMsats: 32_000,
   },
   {
-    author: "npub1qr...8l7x",
+    author: "Guest device • Delta-8L7X",
     lightningAddress: null,
     timeAgo: "6h ago",
-    body: "Would love to see more neon night variants of the Harbor Circuit.",
+    body: "Saved the guest receipt link and restored on my laptop without missing a beat.",
     verified: false,
     zapMsats: 0,
   },
   {
-    author: "npub1lc...m5dw",
+    author: "Proof ID • M5DW42",
     lightningAddress: "tips@neoncrew.games",
     timeAgo: "1d ago",
-    body: "Paid with Zeus in under five seconds. Handling model is dialed in now.",
+    body: "Paid with Zeus and the unlock hit my account before the wallet closed.",
     verified: true,
     zapMsats: 12_500,
   },
@@ -310,14 +310,14 @@ export const devDashboardComments: DevDashboardComment[] = [
     id: "comment-2024-04-03",
     author: "Sprint coordination",
     postedAt: "Internal note · APR 03, 2024",
-    body: "Next sprint connects the dashboard publish flow to the Nostr pipeline so storefront updates stay curated by ops.",
+    body: "Next sprint links the dashboard publish flow to the Proof ID service so storefront updates stay curated by ops.",
   },
 ];
 
 export const communityRoadmapNotes: CommunityRoadmapNote[] = [
   {
     id: "note-crew-leaderboards",
-    author: "npub1k6...road",
+    author: "Proof ID • ROADCREW",
     createdAgo: "3h ago",
     note: "Leaderboard for most-zapped crews on the storefront would highlight where players are most active.",
     lightningAddress: "ideas@proof-of-play.games",
@@ -326,7 +326,7 @@ export const communityRoadmapNotes: CommunityRoadmapNote[] = [
   },
   {
     id: "note-mod-tools",
-    author: "npub1xq...sk7p",
+    author: "Proof ID • SK7P",
     createdAgo: "9h ago",
     note: "Expose basic moderation actions to trusted reviewers so flagged community notes get resolved faster.",
     lightningAddress: null,
@@ -335,7 +335,7 @@ export const communityRoadmapNotes: CommunityRoadmapNote[] = [
   },
   {
     id: "note-saved-builds",
-    author: "npub1fe...9vyq",
+    author: "Guest note • 9VYQ",
     createdAgo: "1d ago",
     note: "Allow me to pin previous builds for offline play and zap the dev when I revisit an older version.",
     lightningAddress: "support@chromaflux.games",
@@ -356,23 +356,23 @@ export const invoiceSteps: InvoiceStep[] = [
 export const receipt: ReceiptSummary = {
   status: "Settled",
   amountSats: 22000,
-  buyerPubkey: "npub1k6q8n6c9r7w5f7h2v9x3k0z4l8p2d4s6m8a7u9c3f1",
+  buyerPubkey: "proof-id-1k6q8n6c9r7w5f7h2v9x3k0z4l8p2d4s6m8a7u9c3f1",
   orderId: "POP-20240314-8842",
   nextStepLabel: "Download build + leave a zap",
 };
 
-export const npubBenefits: NpubBenefit[] = [
+export const identityBenefits: IdentityBenefit[] = [
   {
-    title: "Send & receive zaps",
-    description: "Back creators instantly and pull tips into your wallet without leaving the flow.",
+    title: "Sync purchases anywhere",
+    description: "Proof IDs keep entitlements and downloads tied to your account on every device.",
   },
   {
-    title: "Seamless checkout",
-    description: "Invoices autofill from your Nostr profile so purchases clear in seconds.",
+    title: "Guest recovery ready",
+    description: "Guest checkouts mint a device ID plus receipt link so you can restore access in seconds.",
   },
   {
-    title: "Portable progress",
-    description: "Achievements and saves follow your npub across every Lightning-ready world.",
+    title: "Creator & mod upgrades",
+    description: "Level up to developer or moderator roles using the same Proof ID when you need more tools.",
   },
 ];
 

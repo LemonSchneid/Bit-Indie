@@ -136,7 +136,7 @@ export function LightningCheckoutModal({ onClose }: { onClose: () => void }) {
               <ul className="mt-3 space-y-2">
                 <li>• Your wallet confirms payment instantly.</li>
                 <li>• The download unlocks within a few seconds.</li>
-                <li>• You&apos;ll receive a receipt under your npub account for verified purchase status.</li>
+                <li>• You&apos;ll receive a receipt tied to your Proof ID (or guest ID) for verified purchase status.</li>
               </ul>
               <p className="mt-4 text-[12px] text-slate-500">
                 Need help? Ping <span className="font-semibold text-emerald-200">support@proof-of-play.gg</span> with the invoice ID above.
