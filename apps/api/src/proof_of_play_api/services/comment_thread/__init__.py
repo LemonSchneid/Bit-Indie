@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from proof_of_play_api.db.models import Comment, Game, InvoiceStatus, Purchase, User
 
-from .cache import ReleaseNoteReplyCache, ReleaseNoteReplyLoader
+from .cache import (
+    ReleaseNoteReplyCache,
+    ReleaseNoteReplyLoader,
+    ReleaseNoteReplySnapshot,
+)
 from .dto import CommentAuthorDTO, CommentDTO, CommentDTOBuilder, CommentSource
 from .normalizer import NormalizedReleaseNoteReply, ReleaseNoteReplyNormalizer
 from .utils import decode_npub, encode_npub
@@ -135,6 +139,7 @@ __all__ = [
     "NormalizedReleaseNoteReply",
     "ReleaseNoteReplyCache",
     "ReleaseNoteReplyLoader",
+    "ReleaseNoteReplySnapshot",
     "ReleaseNoteReplyNormalizer",
     "decode_npub",
     "encode_npub",
