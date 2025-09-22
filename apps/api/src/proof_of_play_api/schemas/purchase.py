@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field, model_validator
 
 from proof_of_play_api.db.models import InvoiceStatus, RefundStatus
 
@@ -12,13 +12,26 @@ from proof_of_play_api.db.models import InvoiceStatus, RefundStatus
 class InvoiceCreateRequest(BaseModel):
     """Request payload used when asking for a Lightning invoice."""
 
-    user_id: str = Field(..., min_length=1)
+    user_id: str | None = Field(None, min_length=1)
+    anon_id: str | None = Field(None, min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def validate_actor(self) -> "InvoiceCreateRequest":
+        """Ensure either ``user_id`` or ``anon_id`` is provided, but not both."""
+
+        has_user = bool(self.user_id)
+        has_anon = bool(self.anon_id)
+        if has_user == has_anon:
+            msg = "Provide either user_id or anon_id for invoice creation."
+            raise ValueError(msg)
+        return self
 
 
 class InvoiceCreateResponse(BaseModel):
     """Response returned after creating a purchase invoice."""
 
     purchase_id: str
+    user_id: str
     invoice_id: str
     payment_request: str
     amount_msats: int

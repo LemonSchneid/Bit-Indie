@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import Annotated
+
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,11 @@ from proof_of_play_api.services.payments import (
     PaymentServiceError,
     get_payment_service,
 )
+from proof_of_play_api.services.guest_checkout import (
+    GuestCheckoutError,
+    GuestCheckoutService,
+    get_guest_checkout_service,
+)
 from proof_of_play_api.services.storage import StorageService, get_storage_service
 
 
@@ -48,18 +55,47 @@ router = APIRouter(prefix="/v1/purchases", tags=["purchases"])
 )
 def lookup_purchase(
     *,
-    game_id: str = Query(..., min_length=1, description="Identifier of the purchased game."),
-    user_id: str = Query(..., min_length=1, description="Identifier of the purchasing user."),
+    game_id: Annotated[str, Query(min_length=1, description="Identifier of the purchased game.")],
+    user_id: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            description="Identifier of the purchasing user.",
+        ),
+    ] = None,
+    anon_id: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            description="Anonymous identifier associated with the guest purchase.",
+        ),
+    ] = None,
     session: Session = Depends(get_session),
+    guest_checkout: GuestCheckoutService = Depends(get_guest_checkout_service),
 ) -> PurchaseRead:
     """Return the newest purchase matching the provided user and game identifiers."""
+
+    lookup_user_id = user_id
+    if lookup_user_id is None:
+        if anon_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide user_id or anon_id to look up purchases.",
+            )
+        try:
+            guest_user = guest_checkout.get_guest_user(anon_id=anon_id)
+        except GuestCheckoutError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        if guest_user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase not found.")
+        lookup_user_id = guest_user.id
 
     order_by_columns = (Purchase.created_at.desc(), Purchase.id.desc())
     completed_stmt = (
         select(Purchase)
         .where(
             Purchase.game_id == game_id,
-            Purchase.user_id == user_id,
+            Purchase.user_id == lookup_user_id,
             or_(
                 Purchase.download_granted.is_(True),
                 Purchase.invoice_status == InvoiceStatus.PAID,
@@ -72,7 +108,7 @@ def lookup_purchase(
     if purchase is None:
         fallback_stmt = (
             select(Purchase)
-            .where(Purchase.game_id == game_id, Purchase.user_id == user_id)
+            .where(Purchase.game_id == game_id, Purchase.user_id == lookup_user_id)
             .order_by(*order_by_columns)
             .limit(1)
         )
