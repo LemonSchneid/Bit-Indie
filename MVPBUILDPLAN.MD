@@ -6,9 +6,11 @@ Goal: Ship a web-first MVP with Lightning purchases for downloadable games, firs
 
 ## AI Workflow Enforcement Flag
 
-`ai_enforce_mvp_flow = false`
+`ai_enforce_mvp_flow = true`
 
-- Human-directed changes are allowed. Use this file as guidance; we will sequence work pragmatically for the MVP.
+- AI contributors must tackle tickets in the order listed below, stopping after completing the first open item.
+- Append `✅ Done` to a ticket once its acceptance criteria are met and verified.
+- Do not reprioritize milestones without explicit human direction.
 
 ---
 
@@ -161,6 +163,50 @@ M5 — Download Delivery
 M6 — Telemetry & Docs
 - Health endpoints, structured logging, minimal tracing.
 - Update READMEs and runbooks (Nostr off; how to re‑enable later).
+
+---
+
+## Tickets (Active Enforcement)
+
+### Ticket M1-T001 — Sunset Mock Storefront Data
+- **Milestone:** M1 — Core Purchase Flow
+- **Summary:** Remove the Next.js mock storefront fixtures now that Docker seeding provides real catalog data.
+- **Acceptance Criteria:**
+  1. Delete mock storefront data modules and references without breaking local or Docker Compose startup flows.
+  2. Ensure the seeded data path remains the source for storefront listings in development.
+  3. Update any documentation or scripts that previously pointed to the mock data, if applicable.
+
+### Ticket M1-T002 — Productionize Lightning Checkout Modal
+- **Milestone:** M1 — Core Purchase Flow
+- **Summary:** Rework the Lightning checkout modal to consume real invoice payloads while ensuring seeded games use the developer wallet `piteousfrench82@walletofsatoshi.com` for end-to-end testing.
+- **Acceptance Criteria:**
+  1. Fetch and display live invoice data (amount, payment request, and status timeline) provided by the backend.
+  2. Confirm Docker seeding assigns every game’s Lightning address to `piteousfrench82@walletofsatoshi.com`.
+  3. Verify checkout remains functional across all seeded games with the developer wallet receiving payments.
+
+### Ticket M1-T003 — Consolidate Game Metric Components
+- **Milestone:** M1 — Core Purchase Flow
+- **Summary:** Deduplicate metric rows across storefront and game detail views into a shared, well-tested component.
+- **Acceptance Criteria:**
+  1. Replace duplicate metric helpers with a single reusable component covering existing use cases.
+  2. Preserve or improve visual parity and responsiveness for all screens currently displaying metrics.
+  3. Add component-level tests or stories to guard against regressions.
+
+### Ticket M1-T004 — Harden Home Screen State Machine
+- **Milestone:** M1 — Core Purchase Flow
+- **Summary:** Replace ad-hoc integer-based home screen state tracking with a typed, self-documenting state machine or router flow.
+- **Acceptance Criteria:**
+  1. Introduce named states (enum or route segments) for every screen transition on the home page.
+  2. Remove redundant handlers that manually reset selection state.
+  3. Add unit or integration coverage for the primary navigation paths.
+
+### Ticket M1-T005 — Extract Purchase Workflow Services
+- **Milestone:** M1 — Core Purchase Flow
+- **Summary:** Move purchase lookup, webhook reconciliation, download presigning, and refund transitions from FastAPI routes into a dedicated service layer.
+- **Acceptance Criteria:**
+  1. Create a purchase service encapsulating business logic currently embedded in API routes.
+  2. Update routes to call the service while preserving existing behavior and tests.
+  3. Extend or add tests to cover the service layer, ensuring all purchase scenarios remain validated.
 
 Post‑MVP (Nostr Re‑enable Roadmap)
 - NIP‑07 login, relay publish of release notes, reply ingestion and caching, zap receipt ingestion and aggregation.
