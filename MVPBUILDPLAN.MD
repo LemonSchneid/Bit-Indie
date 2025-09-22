@@ -200,7 +200,7 @@ M6 — Telemetry & Docs
   2. Remove redundant handlers that manually reset selection state.
   3. Add unit or integration coverage for the primary navigation paths.
 
-### Ticket M1-T005 — Extract Purchase Workflow Services
+### Ticket M1-T005 — Extract Purchase Workflow Services ✅ Done
 - **Milestone:** M1 — Core Purchase Flow
 - **Summary:** Move purchase lookup, webhook reconciliation, download presigning, and refund transitions from FastAPI routes into a dedicated service layer.
 - **Acceptance Criteria:**
