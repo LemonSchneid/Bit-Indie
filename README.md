@@ -128,14 +128,7 @@ MVP feature flags:
 
 - API: set `NOSTR_ENABLED=false` (default) to disable Nostr routes/services.
 - Web: set `NEXT_PUBLIC_NOSTR_ENABLED=false` (default) to hide Nostr UI.
-- Web mocks: set `NEXT_PUBLIC_API_MOCKS=true` to serve fixture data via MSW during UI development.
-
-### Frontend API mocks
-
-- Install MSW in the web workspace: `pnpm --filter web add -D msw` (install step not committed).
-- Generate the worker script once: `pnpx --filter web msw init public/`.
-- Set `NEXT_PUBLIC_API_MOCKS=true` in `.env.local` to boot the worker; the sample handlers return featured games, comments, reviews, and purchase flows for the `starpath-siege` demo game.
-- Disable the flag (set to `false`) to exercise the real API.
+- The catalog pulls real data from the FastAPI backend; run the Docker seed script to explore the full storefront.
 
 ### Full-stack dev loop
 
@@ -147,7 +140,7 @@ MVP feature flags:
 
   The API container applies migrations and runs the Simple-MVP seed script on boot. The Web service runs `next dev` with your repo mounted (hot reload) and binds to `localhost:3000`, using `http://api:8080` inside the compose network. Override by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml` when you no longer need the demo data.
 
-- Alternatively, run the web app locally (mocks off by default):
+- Alternatively, run the web app locally with the API running in another terminal:
 
   ```bash
   pnpm --filter web dev

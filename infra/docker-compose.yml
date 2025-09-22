@@ -61,7 +61,6 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://api:8080
       NEXT_PUBLIC_NOSTR_ENABLED: "false"
-      NEXT_PUBLIC_API_MOCKS: "false"
       NEXT_TELEMETRY_DISABLED: "1"
     command: sh -c "npm install && npm run dev"
     volumes:
@@ -78,11 +77,9 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://api:8080
         NEXT_PUBLIC_NOSTR_ENABLED: "false"
-        NEXT_PUBLIC_API_MOCKS: "false"
     environment:
       NEXT_PUBLIC_API_URL: http://api:8080
       NEXT_PUBLIC_NOSTR_ENABLED: "false"
-      NEXT_PUBLIC_API_MOCKS: "false"
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
       - "3000:3000"
