@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import {
   communityComments,
   discoverGames,
@@ -11,6 +9,7 @@ import {
   createPlaceholderGameDetail,
 } from "../components/home/data";
 import { GameDetailScreen } from "../components/home/game-detail-screen";
+import { useHomeStateMachine, HomeScreen } from "../components/home/home-state-machine";
 import { InfoForPlayersScreen } from "../components/home/info-for-players-screen";
 import { LightningCheckoutModal } from "../components/home/lightning-checkout-modal";
 import { IdentityWidget } from "../components/home/identity-widget";
@@ -18,38 +17,37 @@ import { PlatformRoadmapScreen } from "../components/home/platform-roadmap-scree
 import { ScreenSwitcher } from "../components/home/screen-switcher";
 import { SellGameScreen } from "../components/home/sell-game-screen";
 import { StorefrontScreen } from "../components/home/storefront-screen";
-import type { GameDetail } from "../components/home/types";
 import { MicroLabel } from "../components/home/ui";
 
 export default function HomePage() {
-  const [activeScreen, setActiveScreen] = useState(1);
-  const [selectedGame, setSelectedGame] = useState<GameDetail | null>(null);
-  const [showCheckout, setShowCheckout] = useState(false);
+  const {
+    state,
+    controls: { selectScreen, viewGameDetail, exitGameDetail, openCheckout, closeCheckout },
+  } = useHomeStateMachine();
+
+  const activeScreen = state.screen;
+  const selectedGame = state.mode === "screen" ? null : state.game;
+  const showCheckout = state.mode === "checkout";
 
   const handleGameSelect = (title: string) => {
     const detail = gameDetails[title] ?? createPlaceholderGameDetail(title);
-    setSelectedGame(detail);
-    setShowCheckout(false);
-    setActiveScreen(1);
+    viewGameDetail(detail);
   };
 
   const handleCloseDetail = () => {
-    setSelectedGame(null);
-    setShowCheckout(false);
+    exitGameDetail();
   };
 
-  const handleScreenSelect = (screen: number) => {
-    setSelectedGame(null);
-    setShowCheckout(false);
-    setActiveScreen(screen);
+  const handleScreenSelect = (screen: HomeScreen) => {
+    selectScreen(screen);
   };
 
   const handleLaunchCheckout = () => {
-    setShowCheckout(true);
+    openCheckout();
   };
 
   const handleCloseCheckout = () => {
-    setShowCheckout(false);
+    closeCheckout();
   };
 
   return (
@@ -91,7 +89,7 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              {activeScreen === 1 && (
+              {activeScreen === HomeScreen.Storefront && (
                 <StorefrontScreen
                   featured={featuredGames}
                   discover={discoverGames}
@@ -99,9 +97,9 @@ export default function HomePage() {
                   onGameSelect={handleGameSelect}
                 />
               )}
-              {activeScreen === 2 && <SellGameScreen />}
-              {activeScreen === 3 && <InfoForPlayersScreen />}
-              {activeScreen === 4 && <PlatformRoadmapScreen />}
+              {activeScreen === HomeScreen.SellGame && <SellGameScreen />}
+              {activeScreen === HomeScreen.InfoForPlayers && <InfoForPlayersScreen />}
+              {activeScreen === HomeScreen.PlatformRoadmap && <PlatformRoadmapScreen />}
             </>
           )}
         </main>

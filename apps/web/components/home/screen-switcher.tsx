@@ -1,26 +1,31 @@
 "use client";
 
+import { HomeScreen } from "./home-state-machine";
 import { cn } from "./utils";
 
-const labels = ["STOREFRONT", "SELL YOUR GAME", "INFO FOR PLAYERS", "PLATFORM ROADMAP"];
+const screenOptions: Array<{ id: HomeScreen; label: string }> = [
+  { id: HomeScreen.Storefront, label: "STOREFRONT" },
+  { id: HomeScreen.SellGame, label: "SELL YOUR GAME" },
+  { id: HomeScreen.InfoForPlayers, label: "INFO FOR PLAYERS" },
+  { id: HomeScreen.PlatformRoadmap, label: "PLATFORM ROADMAP" },
+];
 
 export function ScreenSwitcher({
   activeScreen,
   onSelect,
 }: {
-  activeScreen: number;
-  onSelect: (screen: number) => void;
+  activeScreen: HomeScreen;
+  onSelect: (screen: HomeScreen) => void;
 }) {
   return (
     <div className="flex flex-wrap justify-center gap-3">
-      {labels.map((label, index) => {
-        const screenIndex = index + 1;
-        const isActive = activeScreen === screenIndex;
+      {screenOptions.map((option) => {
+        const isActive = activeScreen === option.id;
         return (
           <button
-            key={label}
+            key={option.id}
             type="button"
-            onClick={() => onSelect(screenIndex)}
+            onClick={() => onSelect(option.id)}
             className={cn(
               "rounded-full border px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
               isActive
@@ -28,7 +33,7 @@ export function ScreenSwitcher({
                 : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-emerald-400/60 hover:text-emerald-200",
             )}
           >
-            {label}
+            {option.label}
           </button>
         );
       })}

@@ -192,7 +192,7 @@ M6 — Telemetry & Docs
   2. Preserve or improve visual parity and responsiveness for all screens currently displaying metrics.
   3. Add component-level tests or stories to guard against regressions.
 
-### Ticket M1-T004 — Harden Home Screen State Machine
+### Ticket M1-T004 — Harden Home Screen State Machine ✅ Done
 - **Milestone:** M1 — Core Purchase Flow
 - **Summary:** Replace ad-hoc integer-based home screen state tracking with a typed, self-documenting state machine or router flow.
 - **Acceptance Criteria:**
