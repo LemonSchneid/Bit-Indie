@@ -59,3 +59,19 @@ def test_seed_simple_mvp_populates_repeatable_catalog_fixture() -> None:
         assert review_ids == set(session.scalars(select(Review.id)).all())
         assert comment_ids == set(session.scalars(select(Comment.id)).all())
         assert purchase_ids == set(session.scalars(select(Purchase.id)).all())
+
+
+def test_seed_simple_mvp_assigns_developer_wallet() -> None:
+    """Every seeded game should expose the shared developer Lightning address."""
+
+    _create_schema()
+
+    seed_simple_mvp.seed()
+
+    with session_scope() as session:
+        games = session.scalars(select(Game)).all()
+
+        assert games, "expected seeded games to be available"
+        assert {
+            game.developer_lightning_address for game in games
+        } == {"piteousfrench82@walletofsatoshi.com"}
