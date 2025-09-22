@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import RLock
 from typing import Iterable
 
 from sqlalchemy import select
@@ -56,18 +57,20 @@ class ReleaseNoteReplyCache:
         self._ttl_seconds = float(ttl_seconds)
         self._max_size = int(max_size)
         self._entries: dict[str, _CacheEntry] = {}
+        self._lock = RLock()
 
     def get(self, key: str) -> list[ReleaseNoteReplySnapshot] | None:
         """Return cached snapshots for the supplied game when they are fresh."""
 
-        entry = self._entries.get(key)
-        if entry is None:
-            return None
-        now = time.monotonic()
-        if entry.expires_at <= now:
-            self._entries.pop(key, None)
-            return None
-        return list(entry.value)
+        with self._lock:
+            entry = self._entries.get(key)
+            if entry is None:
+                return None
+            now = time.monotonic()
+            if entry.expires_at <= now:
+                self._entries.pop(key, None)
+                return None
+            return list(entry.value)
 
     def set(self, key: str, value: Iterable[ReleaseNoteReplySnapshot]) -> None:
         """Store snapshots for the supplied key and evict stale entries if needed."""
@@ -75,19 +78,22 @@ class ReleaseNoteReplyCache:
         now = time.monotonic()
         expires_at = now + self._ttl_seconds
         snapshots = list(value)
-        self._entries[key] = _CacheEntry(expires_at=expires_at, value=snapshots)
-        if len(self._entries) > self._max_size:
-            oldest_key = min(
-                self._entries,
-                key=lambda item: self._entries[item].expires_at,
-            )
-            if oldest_key != key:
-                self._entries.pop(oldest_key, None)
+        entry = _CacheEntry(expires_at=expires_at, value=snapshots)
+        with self._lock:
+            self._entries[key] = entry
+            if len(self._entries) > self._max_size:
+                oldest_key = min(
+                    self._entries.items(),
+                    key=lambda item: item[1].expires_at,
+                )[0]
+                if oldest_key != key:
+                    self._entries.pop(oldest_key, None)
 
     def clear(self) -> None:
         """Remove all cached entries. Intended for use in tests."""
 
-        self._entries.clear()
+        with self._lock:
+            self._entries.clear()
 
 
 class ReleaseNoteReplyLoader:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -28,6 +29,7 @@ from proof_of_play_api.services.comment_thread import (
     NormalizedReleaseNoteReply,
     ReleaseNoteReplyCache,
     ReleaseNoteReplyLoader,
+    ReleaseNoteReplySnapshot,
     ReleaseNoteReplyNormalizer,
 )
 
@@ -200,6 +202,60 @@ def test_release_note_reply_loader_caches_snapshots() -> None:
         cleared = loader.load_snapshots(session=session, game_id=game_id)
 
     assert cleared == []
+
+
+def test_release_note_reply_cache_thread_safe_updates() -> None:
+    """Cache should handle concurrent access without data loss or exceptions."""
+
+    cache = ReleaseNoteReplyCache(ttl_seconds=60.0, max_size=32)
+    game_id = "game-threaded"
+    iterations = 25
+    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    exceptions: list[BaseException] = []
+    exception_lock = threading.Lock()
+
+    def record_exception(exc: BaseException) -> None:
+        with exception_lock:
+            exceptions.append(exc)
+
+    def make_snapshot(index: int) -> ReleaseNoteReplySnapshot:
+        return ReleaseNoteReplySnapshot(
+            comment_id=f"nostr:event-{index}",
+            game_id=game_id,
+            pubkey_hex="a" * 64,
+            body_md=f"body-{index}",
+            created_at=base_time + timedelta(minutes=index),
+            alias_pubkeys=("alias",),
+        )
+
+    def writer() -> None:
+        try:
+            for i in range(iterations):
+                cache.set(game_id, [make_snapshot(i)])
+        except BaseException as exc:  # pragma: no cover - defensive capture
+            record_exception(exc)
+
+    def reader() -> None:
+        try:
+            for _ in range(iterations):
+                cache.get(game_id)
+        except BaseException as exc:  # pragma: no cover - defensive capture
+            record_exception(exc)
+
+    threads = [threading.Thread(target=writer) for _ in range(3)] + [
+        threading.Thread(target=reader) for _ in range(3)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert not exceptions
+    latest = cache.get(game_id)
+    assert latest is not None
+    assert len(latest) == 1
+    assert latest[0].comment_id == f"nostr:event-{iterations - 1}"
+    assert latest[0].body_md == f"body-{iterations - 1}"
 
 
 def test_release_note_reply_normalizer_resolves_users_and_verification() -> None:
