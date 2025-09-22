@@ -77,12 +77,12 @@ def _create_schema() -> None:
 
 
 def _build_client(stub: _StubPaymentService, storage: object | None = None) -> TestClient:
-    """Return a FastAPI client with the payment service dependency overridden."""
+    """Return a FastAPI client with the payment and storage dependencies overridden."""
 
     app = create_application()
     app.dependency_overrides[get_payment_service] = lambda: stub
-    if storage is not None:
-        app.dependency_overrides[get_storage_service] = lambda: storage
+    resolved_storage = storage or _StubStorageService()
+    app.dependency_overrides[get_storage_service] = lambda: resolved_storage
     return TestClient(app)
 
 
