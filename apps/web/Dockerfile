@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Build-time public envs for Next.js (can be overridden via docker-compose build args)
-ARG NEXT_PUBLIC_API_URL=http://api:8080
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ARG NEXT_PUBLIC_NOSTR_ENABLED=false
 
 ENV NEXT_TELEMETRY_DISABLED=1 \

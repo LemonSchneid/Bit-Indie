@@ -1,11 +1,33 @@
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
-const configuredBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL?.trim() ||
-  process.env.API_URL?.trim() ||
-  DEFAULT_API_BASE_URL;
+function sanitizeBaseUrl(value: string | undefined | null): string | null {
+  if (!value) {
+    return null;
+  }
 
-export const apiBaseUrl = configuredBaseUrl.replace(/\/$/, "");
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/\/$/, "");
+}
+
+function resolveApiBaseUrl(): string {
+  const publicBaseUrl = sanitizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+
+  if (typeof window === "undefined") {
+    return (
+      sanitizeBaseUrl(process.env.API_URL) ||
+      publicBaseUrl ||
+      DEFAULT_API_BASE_URL
+    );
+  }
+
+  return publicBaseUrl || DEFAULT_API_BASE_URL;
+}
+
+export const apiBaseUrl = resolveApiBaseUrl();
 
 export function buildApiUrl(path: string): string {
   if (!path.startsWith("/")) {
