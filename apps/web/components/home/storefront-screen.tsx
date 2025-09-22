@@ -1,5 +1,6 @@
 "use client";
 
+import { MetricRow } from "./metrics";
 import type { DiscoverGame, FeaturedGame, LiveMetrics } from "./types";
 import { MicroLabel, NeonCard, Pill } from "./ui";
 import { cn, formatSats, formatStatus } from "./utils";
@@ -130,10 +131,18 @@ function LiveMetricsColumn({ metrics }: { metrics: LiveMetrics }) {
       <NeonCard className="flex-1 p-5">
         <MicroLabel>Live operations feed</MicroLabel>
         <div className="mt-4 space-y-4 text-sm text-slate-200">
-          <MetricRow label="API LATENCY" value={metrics.apiLatency} />
-          <MetricRow label="UPTIME" value={metrics.uptime} />
-          <MetricRow label="INVOICES" value={`${metrics.invoicesToday.toLocaleString()} today`} />
-          <MetricRow label="ZAPS / HR" value={`${metrics.zapsLastHour.toLocaleString()} sats`} />
+          <MetricRow variant="compact" label="API LATENCY" value={metrics.apiLatency} />
+          <MetricRow variant="compact" label="UPTIME" value={metrics.uptime} />
+          <MetricRow
+            variant="compact"
+            label="INVOICES"
+            value={`${metrics.invoicesToday.toLocaleString()} today`}
+          />
+          <MetricRow
+            variant="compact"
+            label="ZAPS / HR"
+            value={`${metrics.zapsLastHour.toLocaleString()} sats`}
+          />
         </div>
       </NeonCard>
       <NeonCard className="flex-1 p-5">
@@ -151,11 +160,3 @@ function LiveMetricsColumn({ metrics }: { metrics: LiveMetrics }) {
   );
 }
 
-function MetricRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="uppercase tracking-[0.4em] text-emerald-200/70">{label}</span>
-      <span className="font-semibold text-emerald-200">{value}</span>
-    </div>
-  );
-}
