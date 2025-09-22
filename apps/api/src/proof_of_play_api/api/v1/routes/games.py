@@ -42,6 +42,11 @@ from proof_of_play_api.services.game_publication import (
     get_game_publication_service,
 )
 from proof_of_play_api.services.game_promotion import update_game_featured_status
+from proof_of_play_api.services.guest_checkout import (
+    GuestCheckoutError,
+    GuestCheckoutService,
+    get_guest_checkout_service,
+)
 from proof_of_play_api.services.payments import (
     PaymentService,
     PaymentServiceError,
@@ -89,12 +94,23 @@ def create_game_invoice(
     http_request: Request,
     session: Session = Depends(get_session),
     payments: PaymentService = Depends(get_payment_service),
+    guest_checkout: GuestCheckoutService = Depends(get_guest_checkout_service),
 ) -> InvoiceCreateResponse:
     """Create a purchase record and Lightning invoice for the requested game."""
 
-    user = session.get(User, invoice_request.user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    user: User | None = None
+    if invoice_request.user_id:
+        user = session.get(User, invoice_request.user_id)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    elif invoice_request.anon_id:
+        try:
+            user = guest_checkout.ensure_guest_user(anon_id=invoice_request.anon_id)
+        except GuestCheckoutError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if user is None:  # pragma: no cover - defensive guard, validator ensures one id present
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User information missing.")
 
     game = session.get(Game, game_id)
     if game is None:
@@ -145,6 +161,7 @@ def create_game_invoice(
     check_url = str(http_request.url_for("read_purchase", purchase_id=purchase.id))
     return InvoiceCreateResponse(
         purchase_id=purchase.id,
+        user_id=user.id,
         invoice_id=invoice.invoice_id,
         payment_request=invoice.payment_request,
         amount_msats=price_msats,

@@ -14,15 +14,11 @@ import {
 } from "../lib/api";
 import type { InvoiceCreateRequest } from "../lib/api";
 import { getOrCreateAnonId } from "../lib/anon-id";
+import { loadGuestUserId, saveGuestUserId } from "../lib/guest-user-storage";
 import { nostrEnabled } from "../lib/flags";
 import { useInvoicePolling } from "../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../lib/hooks/use-stored-user-profile";
 import { buildQrCodeUrl } from "../lib/qr-code";
-import {
-  fetchLnurlPayParams,
-  requestLnurlInvoice,
-  resolveLightningPayEndpoint,
-} from "../lib/lightning";
 import { Modal } from "./ui/modal";
 
 type FlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
@@ -38,15 +34,6 @@ type GamePurchaseFlowProps = {
 };
 
 const POLL_INTERVAL_MS = 4000;
-
-function generateGuestPurchaseId(anonId: string): string {
-  const cryptoObject = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
-  if (cryptoObject && typeof cryptoObject.randomUUID === "function") {
-    return `guest-${anonId}-${cryptoObject.randomUUID()}`;
-  }
-  const randomSegment = Math.random().toString(16).slice(2, 10);
-  return `guest-${anonId}-${Date.now()}-${randomSegment}`;
-}
 
 function describeStatus(
   status: InvoiceStatus | null,
@@ -81,9 +68,6 @@ function describeStatus(
       return "This purchase was refunded. Generate a new invoice to retry.";
     case "PENDING":
     default:
-      if (isGuestCheckout) {
-        return "Pay the invoice with your Lightning wallet and keep the receipt for your records.";
-      }
       return "Waiting for payment confirmation. We refresh the status every few seconds.";
   }
 }
@@ -101,6 +85,8 @@ export function GamePurchaseFlow({
   const router = useRouter();
   const user = useStoredUserProfile();
   const isGuestCheckout = !user;
+  const [anonId] = useState(() => getOrCreateAnonId());
+  const [guestUserId, setGuestUserId] = useState<string | null>(() => loadGuestUserId(anonId));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
@@ -114,7 +100,12 @@ export function GamePurchaseFlow({
   const [receiptCopyState, setReceiptCopyState] = useState<CopyState>("idle");
 
   useEffect(() => {
-    if (!isPurchasable || !user || purchase || invoice) {
+    if (!isPurchasable || purchase || invoice) {
+      return;
+    }
+
+    const lookupUserId = user?.id ?? guestUserId;
+    if (!lookupUserId) {
       return;
     }
 
@@ -122,12 +113,16 @@ export function GamePurchaseFlow({
 
     const restorePurchase = async () => {
       try {
-        const existing = await getLatestPurchaseForGame(gameId, user.id);
+        const existing = await getLatestPurchaseForGame(gameId, lookupUserId);
         if (cancelled || !existing) {
           return;
         }
 
         setPurchase(existing);
+        if (!user && !guestUserId) {
+          setGuestUserId(existing.user_id);
+          saveGuestUserId(anonId, existing.user_id);
+        }
         if (existing.download_granted) {
           setFlowState("paid");
           setErrorMessage(null);
@@ -145,7 +140,7 @@ export function GamePurchaseFlow({
     return () => {
       cancelled = true;
     };
-  }, [gameId, invoice, isPurchasable, purchase, user]);
+  }, [anonId, gameId, guestUserId, invoice, isPurchasable, purchase, user]);
 
   useEffect(() => {
     if (!isModalOpen) {
@@ -165,14 +160,22 @@ export function GamePurchaseFlow({
     };
   }, [isModalOpen]);
 
-  const handlePurchaseUpdate = useCallback((latest: PurchaseRecord) => {
-    setPurchase(latest);
-    setErrorMessage(null);
+  const handlePurchaseUpdate = useCallback(
+    (latest: PurchaseRecord) => {
+      setPurchase(latest);
+      setErrorMessage(null);
 
-    if (latest.download_granted) {
-      setFlowState("paid");
-    }
-  }, []);
+      if (!user && !guestUserId) {
+        setGuestUserId(latest.user_id);
+        saveGuestUserId(anonId, latest.user_id);
+      }
+
+      if (latest.download_granted) {
+        setFlowState("paid");
+      }
+    },
+    [anonId, guestUserId, user],
+  );
 
   const handleInvoiceExpired = useCallback(() => {
     setFlowState("expired");
@@ -187,7 +190,7 @@ export function GamePurchaseFlow({
 
   useInvoicePolling({
     invoiceId: invoice?.purchase_id ?? null,
-    enabled: flowState === "polling" && Boolean(invoice) && !isGuestCheckout,
+    enabled: flowState === "polling" && Boolean(invoice),
     pollIntervalMs: POLL_INTERVAL_MS,
     onPurchase: handlePurchaseUpdate,
     onExpired: handleInvoiceExpired,
@@ -242,37 +245,35 @@ export function GamePurchaseFlow({
   }, [buildAvailable, gameId]);
 
   const receiptUrl = useMemo(() => {
-    if (!invoice || isGuestCheckout) {
+    if (!invoice) {
       return null;
     }
 
     return `/purchases/${invoice.purchase_id}/receipt`;
-  }, [invoice, isGuestCheckout]);
+  }, [invoice]);
 
   const receiptLinkToCopy = useMemo(() => {
     if (!invoice) {
       return "";
     }
 
-    if (!isGuestCheckout) {
-      if (receiptUrl) {
-        if (typeof window !== "undefined") {
-          try {
-            return new URL(receiptUrl, window.location.origin).toString();
-          } catch (error) {
-            console.error("Failed to build receipt link", error);
-          }
+    if (receiptUrl) {
+      if (typeof window !== "undefined") {
+        try {
+          return new URL(receiptUrl, window.location.origin).toString();
+        } catch (error) {
+          console.error("Failed to build receipt link", error);
         }
-        return receiptUrl;
       }
-      if (invoice.check_url) {
-        return invoice.check_url;
-      }
-      return "";
+      return receiptUrl;
     }
 
-    return invoice.payment_request;
-  }, [invoice, isGuestCheckout, receiptUrl]);
+    if (invoice.check_url) {
+      return invoice.check_url;
+    }
+
+    return "";
+  }, [invoice, receiptUrl]);
 
   useEffect(() => {
     setReceiptCopyState("idle");
@@ -305,45 +306,25 @@ export function GamePurchaseFlow({
     setPurchase(null);
 
     try {
+      let payload: InvoiceCreateRequest;
       if (user) {
-        const payload: InvoiceCreateRequest = { user_id: user.id };
-        const created = await createGameInvoice(gameId, payload);
-        setInvoice(created);
-        setFlowState("polling");
-        return;
+        payload = { user_id: user.id };
+      } else {
+        if (!isPurchasable) {
+          throw new Error("This game is not currently available for paid checkout.");
+        }
+        if (!anonId) {
+          throw new Error("Unable to establish a guest session. Refresh the page and try again.");
+        }
+        payload = { anon_id: anonId };
       }
 
-      if (!isPurchasable) {
-        throw new Error("This game is not currently available for paid checkout.");
+      const created = await createGameInvoice(gameId, payload);
+      setInvoice(created);
+      if (!user) {
+        setGuestUserId(created.user_id);
+        saveGuestUserId(anonId, created.user_id);
       }
-
-      const anonId = getOrCreateAnonId();
-      const normalizedLightningAddress = developerLightningAddress?.trim();
-      if (!normalizedLightningAddress) {
-        throw new Error(
-          "This developer has not configured a Lightning address yet. Please try again later.",
-        );
-      }
-
-      const endpoint = resolveLightningPayEndpoint({ lightningAddress: normalizedLightningAddress });
-      const payParams = await fetchLnurlPayParams(endpoint);
-      const amountSats = Math.max(1, Math.ceil(Number(priceMsats) / 1000));
-      const invoiceResponse = await requestLnurlInvoice(
-        payParams,
-        amountSats,
-        `Proof of Play — ${gameTitle}`,
-      );
-
-      const guestInvoice: InvoiceCreateResponse = {
-        purchase_id: generateGuestPurchaseId(anonId),
-        invoice_id: `lnurl-${Date.now()}`,
-        payment_request: invoiceResponse.pr,
-        amount_msats: amountSats * 1000,
-        invoice_status: "PENDING",
-        check_url: endpoint,
-      };
-
-      setInvoice(guestInvoice);
       setFlowState("polling");
     } catch (error) {
       setInvoice(null);
@@ -355,11 +336,9 @@ export function GamePurchaseFlow({
       }
     }
   }, [
-    developerLightningAddress,
+    anonId,
     gameId,
-    gameTitle,
     isPurchasable,
-    priceMsats,
     user,
   ]);
 
@@ -405,12 +384,14 @@ export function GamePurchaseFlow({
       return;
     }
 
+    const accountId = user?.id ?? guestUserId ?? invoice.user_id;
     const lines = [
       "Proof of Play — Lightning Purchase Receipt",
       "",
       `Game: ${gameTitle}`,
       `Purchase ID: ${invoice.purchase_id}`,
       `Invoice ID: ${invoice.invoice_id}`,
+      `Account ID: ${accountId ?? "—"}`,
       `Amount: ${priceLabel}`,
     ];
 
@@ -419,16 +400,10 @@ export function GamePurchaseFlow({
     }
 
     if (receiptLinkToCopy) {
-      const label = isGuestCheckout ? "Payment request" : "Receipt link";
-      lines.push(`${label}: ${receiptLinkToCopy}`);
+      lines.push(`Receipt link: ${receiptLinkToCopy}`);
     }
 
     lines.push("", "Keep this file so you can restore your purchase later.");
-    if (isGuestCheckout) {
-      lines.push(
-        "Guest checkout does not unlock downloads automatically. Share this receipt with the developer if you need support.",
-      );
-    }
 
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -442,10 +417,11 @@ export function GamePurchaseFlow({
   }, [
     developerLightningAddress,
     gameTitle,
+    guestUserId,
     invoice,
-    isGuestCheckout,
     priceLabel,
     receiptLinkToCopy,
+    user?.id,
   ]);
 
   const statusMessage = describeStatus(invoiceStatus, flowState, downloadUnlocked, isGuestCheckout);
@@ -634,21 +610,21 @@ export function GamePurchaseFlow({
         {!invoice ? (
           <div className="mt-6 space-y-4 text-sm text-slate-300">
             <p>
-              We&apos;ll create a one-time invoice linked to your Proof of Play account.
+              {user
+                ? "We'll create a one-time invoice linked to your Proof of Play account."
+                : "We'll create a guest purchase tied to this device. Save the receipt to restore downloads anywhere."}
             </p>
             <button
               type="button"
               onClick={handleCreateInvoice}
-              disabled={!user || flowState === "creating"}
+              disabled={flowState === "creating"}
               className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {flowState === "creating" ? "Creating invoice…" : "Generate Lightning invoice"}
             </button>
-            {!user ? (
-              <p className="text-xs text-amber-200">
-                {nostrEnabled
-                  ? "Sign in with your NIP-07 signer on the home page before continuing."
-                  : "Sign-in is disabled for the MVP. Use guest checkout below."}
+            {!user && nostrEnabled ? (
+              <p className="text-xs text-slate-400">
+                Sign in with your NIP-07 signer to sync purchases across devices automatically.
               </p>
             ) : null}
           </div>
@@ -672,7 +648,6 @@ export function GamePurchaseFlow({
                   </p>
                 ) : (
                   <p className="text-center text-xs text-slate-500">Generating QR code…</p>
-                )}
                 )}
               </div>
             </div>

@@ -10,6 +10,7 @@ export interface InvoiceCreateRequest {
 
 export interface InvoiceCreateResponse {
   purchase_id: string;
+  user_id: string;
   invoice_id: string;
   payment_request: string;
   amount_msats: number;

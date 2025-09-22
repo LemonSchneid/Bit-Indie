@@ -165,6 +165,7 @@ export function buildInvoiceResponse(purchaseId: string): InvoiceCreateResponse 
   const purchase = mockPurchases[purchaseId];
   return {
     purchase_id: purchase.id,
+    user_id: purchase.user_id,
     invoice_id: purchase.invoice_id,
     payment_request: "lnbc1demoexamplepp5d6cqzyssp5demoexample",
     amount_msats: purchase.amount_msats ?? mockGame.price_msats ?? 0,

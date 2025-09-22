@@ -148,6 +148,7 @@ def test_create_game_invoice_persists_purchase_and_returns_invoice() -> None:
     assert body["payment_request"] == "lnbc2500..."
     assert body["invoice_status"] == PurchaseInvoiceStatus.PENDING.value
     assert body["check_url"].endswith(f"/v1/purchases/{body['purchase_id']}")
+    assert body["user_id"] == user_id
     assert stub.invoices
     assert stub.invoices[0]["amount_msats"] == 5000
 
@@ -159,6 +160,53 @@ def test_create_game_invoice_persists_purchase_and_returns_invoice() -> None:
         assert purchase.amount_msats == 5000
         assert purchase.refund_requested is False
         assert purchase.refund_status is RefundStatus.NONE
+        assert purchase.user_id == user_id
+
+
+def test_create_game_invoice_creates_guest_user_for_anon_id() -> None:
+    """Guest checkout should persist a synthetic user and purchase record."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"anon_id": "guest-123"})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["user_id"]
+
+    with session_scope() as session:
+        purchase = session.get(Purchase, body["purchase_id"])
+        assert purchase is not None
+        assert purchase.user_id == body["user_id"]
+
+        user = session.get(User, body["user_id"])
+        assert user is not None
+        assert user.pubkey_hex == "anon:guest-123"
+        assert user.display_name == "Guest Player"
+
+
+def test_create_game_invoice_reuses_existing_guest_user() -> None:
+    """Creating multiple invoices with the same anon id should reuse the user."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        guest = User(pubkey_hex="anon:guest-456", display_name="Guest Player")
+        session.add(guest)
+        session.flush()
+        guest_id = guest.id
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"anon_id": "guest-456"})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["user_id"] == guest_id
 
 
 def test_create_game_invoice_rejects_invalid_price() -> None:
@@ -170,6 +218,19 @@ def test_create_game_invoice_rejects_invalid_price() -> None:
     client = _build_client(stub)
 
     response = client.post(f"/v1/games/{game_id}/invoice", json={"user_id": user_id})
+
+    assert response.status_code == 400
+
+
+def test_create_game_invoice_rejects_blank_anon_id() -> None:
+    """Guest checkout should enforce non-empty anonymous identifiers."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"anon_id": "   "})
 
     assert response.status_code == 400
 
@@ -250,6 +311,40 @@ def test_lookup_purchase_returns_latest_record_for_user_and_game() -> None:
     assert body["download_granted"] is True
 
 
+def test_lookup_purchase_accepts_anon_identifier() -> None:
+    """Guest purchases should be retrievable using the anon id."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        guest = User(pubkey_hex="anon:guest-lookup", display_name="Guest Player")
+        session.add(guest)
+        session.flush()
+        guest_id = guest.id
+
+        purchase = Purchase(
+            user_id=guest_id,
+            game_id=game_id,
+            invoice_id="hash333",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/lookup?game_id={game_id}&anon_id=guest-lookup")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == purchase_id
+    assert body["user_id"] == guest_id
+
+
 def test_lookup_purchase_returns_404_when_no_purchase_exists() -> None:
     """Lookup should return a 404 when the user has not purchased the game."""
 
@@ -261,6 +356,32 @@ def test_lookup_purchase_returns_404_when_no_purchase_exists() -> None:
     response = client.get(f"/v1/purchases/lookup?game_id={game_id}&user_id={user_id}")
 
     assert response.status_code == 404
+
+
+def test_lookup_purchase_returns_404_for_unknown_guest_id() -> None:
+    """Guest lookups should return 404 when the anon id has no purchases."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/lookup?game_id={game_id}&anon_id=missing-guest")
+
+    assert response.status_code == 404
+
+
+def test_lookup_purchase_rejects_blank_anon_id() -> None:
+    """Lookup should validate anonymous identifiers before querying."""
+
+    _create_schema()
+    _, game_id = _seed_game_with_price(price_msats=5000)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/purchases/lookup?game_id={game_id}&anon_id=   ")
+
+    assert response.status_code == 400
 
 
 def test_read_purchase_receipt_includes_related_details() -> None:
