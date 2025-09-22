@@ -184,7 +184,7 @@ M6 — Telemetry & Docs
   2. Confirm Docker seeding assigns every game’s Lightning address to `piteousfrench82@walletofsatoshi.com`.
   3. Verify checkout remains functional across all seeded games with the developer wallet receiving payments.
 
-### Ticket M1-T003 — Consolidate Game Metric Components
+### Ticket M1-T003 — Consolidate Game Metric Components ✅ Done
 - **Milestone:** M1 — Core Purchase Flow
 - **Summary:** Deduplicate metric rows across storefront and game detail views into a shared, well-tested component.
 - **Acceptance Criteria:**

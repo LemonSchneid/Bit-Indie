@@ -1,9 +1,10 @@
 "use client";
 
 import { ZapButton } from "../zap-button";
+import { MetricRow } from "./metrics";
 import type { GameDetail, MockComment } from "./types";
 import { MicroLabel, NeonCard, Pill } from "./ui";
-import { formatSats, formatZapAmount } from "./utils";
+import { formatZapAmount } from "./utils";
 
 export function GameDetailScreen({
   game,
@@ -88,9 +89,9 @@ export function GameDetailScreen({
             <NeonCard className="p-6">
               <MicroLabel>Release cadence</MicroLabel>
               <div className="mt-4 space-y-4 text-sm text-slate-300">
-                <GameMetric label="Last update" value={new Date(game.lastUpdated).toLocaleDateString()} />
-                <GameMetric label="Patch notes" value="Nightfall balance + crew pass" />
-                <GameMetric label="Refund rate" value="0.8%" />
+                <MetricRow label="Last update" value={new Date(game.lastUpdated).toLocaleDateString()} />
+                <MetricRow label="Patch notes" value="Nightfall balance + crew pass" />
+                <MetricRow label="Refund rate" value="0.8%" />
               </div>
             </NeonCard>
           </div>
@@ -133,30 +134,21 @@ export function GameDetailScreen({
           <NeonCard className="p-6">
             <MicroLabel>Purchase status</MicroLabel>
             <div className="mt-4 space-y-3 text-sm text-slate-200">
-              <GameMetric label="Price" value={priceDisplay} />
-              <GameMetric label="Lightning ready" value="Instant" />
-              <GameMetric label="Verified zaps" value="312,400 sats" />
+              <MetricRow label="Price" value={priceDisplay} />
+              <MetricRow label="Lightning ready" value="Instant" />
+              <MetricRow label="Verified zaps" value="312,400 sats" />
             </div>
           </NeonCard>
           <NeonCard className="p-6">
             <MicroLabel>Player sentiment</MicroLabel>
             <div className="mt-4 space-y-4 text-sm text-slate-300">
-              <GameMetric label="Rating" value="4.8 / 5" />
-              <GameMetric label="Verified reviews" value="124" />
-              <GameMetric label="Latest zap" value="2 min ago" />
+              <MetricRow label="Rating" value="4.8 / 5" />
+              <MetricRow label="Verified reviews" value="124" />
+              <MetricRow label="Latest zap" value="2 min ago" />
             </div>
           </NeonCard>
         </div>
       </div>
-    </div>
-  );
-}
-
-function GameMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="uppercase tracking-[0.35em] text-emerald-200/70">{label}</span>
-      <span className="font-semibold text-emerald-200">{value}</span>
     </div>
   );
 }
