@@ -137,7 +137,34 @@ MVP feature flags:
 - Set `NEXT_PUBLIC_API_MOCKS=true` in `.env.local` to boot the worker; the sample handlers return featured games, comments, reviews, and purchase flows for the `starpath-siege` demo game.
 - Disable the flag (set to `false`) to exercise the real API.
 
-### Seed sample marketplace data
+### Full-stack dev loop
 
-- Bring up the API stack (Docker or local virtualenv), then run `python -m proof_of_play_api.scripts.seed_simple_mvp` to insert the demo developer, game, comments, reviews, and purchases.
-- Use `python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a purchase to `PAID` during manual flows.
+- Start the full stack (Postgres, MinIO, FastAPI + Web) with seeded data and hot reload for Web:
+
+  ```bash
+  ./scripts/dev_bootstrap.sh
+  ```
+
+  The API container applies migrations and runs the Simple-MVP seed script on boot. The Web service runs `next dev` with your repo mounted (hot reload) and binds to `localhost:3000`, using `http://api:8080` inside the compose network. Override by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml` when you no longer need the demo data.
+
+- Alternatively, run the web app locally (mocks off by default):
+
+  ```bash
+  pnpm --filter web dev
+  ```
+
+  Visit `http://localhost:3000/games/starpath-siege` to exercise the seeded flow.
+
+- To mark a seeded purchase as paid (optional), run:
+
+  ```bash
+  python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id purchase-seed-pending
+  ```
+
+- Spin up the production-style stack (hot reload off, optimized build):
+
+  ```bash
+  ./scripts/dev_prod_stack.sh
+  ```
+
+  This brings up Postgres, MinIO, API, and a `next start` web container using the build in `apps/web/Dockerfile`.

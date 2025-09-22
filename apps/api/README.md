@@ -18,7 +18,8 @@ Feature flags:
 
 ### Seed demo data
 
-- Run `python -m proof_of_play_api.scripts.seed_simple_mvp` to seed the developer, game, comments, reviews, and purchases used by the Simple MVP demo.
+- When running via Docker (`./scripts/dev_bootstrap.sh`), migrations and the `seed_simple_mvp` script run automatically. Disable by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml`.
+- For manual runs, execute `python -m proof_of_play_api.scripts.seed_simple_mvp` to seed the demo developer/game/comments/purchases.
 - Use `python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a specific purchase to `PAID` during manual testing.
 
 ## Database migrations
