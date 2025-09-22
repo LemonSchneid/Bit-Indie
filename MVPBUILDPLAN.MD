@@ -168,7 +168,7 @@ M6 — Telemetry & Docs
 
 ## Tickets (Active Enforcement)
 
-### Ticket M1-T001 — Sunset Mock Storefront Data
+### Ticket M1-T001 — Sunset Mock Storefront Data ✅ Done
 - **Milestone:** M1 — Core Purchase Flow
 - **Summary:** Remove the Next.js mock storefront fixtures now that Docker seeding provides real catalog data.
 - **Acceptance Criteria:**

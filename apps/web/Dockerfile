@@ -5,12 +5,10 @@ WORKDIR /app
 # Build-time public envs for Next.js (can be overridden via docker-compose build args)
 ARG NEXT_PUBLIC_API_URL=http://api:8080
 ARG NEXT_PUBLIC_NOSTR_ENABLED=false
-ARG NEXT_PUBLIC_API_MOCKS=false
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
-    NEXT_PUBLIC_NOSTR_ENABLED=${NEXT_PUBLIC_NOSTR_ENABLED} \
-    NEXT_PUBLIC_API_MOCKS=${NEXT_PUBLIC_API_MOCKS}
+    NEXT_PUBLIC_NOSTR_ENABLED=${NEXT_PUBLIC_NOSTR_ENABLED}
 
 COPY package.json package-lock.json* pnpm-lock.yaml* ./
 COPY . ./

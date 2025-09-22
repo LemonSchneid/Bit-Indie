@@ -68,8 +68,8 @@ export default async function GamesCatalogPage(): Promise<JSX.Element> {
           </h1>
           <p className="max-w-3xl text-base text-slate-300">
             These listings load directly from the FastAPI backend. Seed the demo data to explore the full purchase flow for
-            Starpath Siege, Chronorift Tactics, Lumen Forge, Echoes of the Deep, and Quantum Drift Rally without touching
-            static mocks.
+            Starpath Siege, Chronorift Tactics, Lumen Forge, Echoes of the Deep, and Quantum Drift Rally using the Docker
+            Compose bootstrap script.
           </p>
         </header>
 
