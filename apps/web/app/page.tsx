@@ -85,7 +85,9 @@ export default function HomePage() {
                 onBack={handleCloseDetail}
                 onLaunchCheckout={handleLaunchCheckout}
               />
-              {showCheckout ? <LightningCheckoutModal onClose={handleCloseCheckout} /> : null}
+              {showCheckout && selectedGame ? (
+                <LightningCheckoutModal onClose={handleCloseCheckout} game={selectedGame} />
+              ) : null}
             </>
           ) : (
             <>

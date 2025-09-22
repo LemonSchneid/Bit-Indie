@@ -87,6 +87,7 @@ export const discoverGames: DiscoverGame[] = [
 
 export const gameDetails: Record<string, GameDetail> = {
   "Starpath Siege": {
+    id: "game-seed-001",
     title: "Starpath Siege",
     status: "FEATURED",
     category: "EARLY ACCESS",
@@ -104,6 +105,7 @@ export const gameDetails: Record<string, GameDetail> = {
     tipRecommended: 300,
   },
   "Chronorift Tactics": {
+    id: "game-seed-002",
     title: "Chronorift Tactics",
     status: "DISCOVER",
     category: "EARLY ACCESS",
@@ -121,6 +123,7 @@ export const gameDetails: Record<string, GameDetail> = {
     tipRecommended: 250,
   },
   "Lumen Forge": {
+    id: "game-seed-003",
     title: "Lumen Forge",
     status: "FEATURED",
     category: "FINISHED",
@@ -138,6 +141,7 @@ export const gameDetails: Record<string, GameDetail> = {
     tipRecommended: 350,
   },
   "Echoes of the Deep": {
+    id: "game-seed-004",
     title: "Echoes of the Deep",
     status: "DISCOVER",
     category: "EARLY ACCESS",
@@ -155,6 +159,7 @@ export const gameDetails: Record<string, GameDetail> = {
     tipRecommended: 220,
   },
   "Quantum Drift Rally": {
+    id: "game-seed-005",
     title: "Quantum Drift Rally",
     status: "DISCOVER",
     category: "PROTOTYPE",
@@ -378,6 +383,7 @@ export const identityBenefits: IdentityBenefit[] = [
 
 export function createPlaceholderGameDetail(title: string): GameDetail {
   return {
+    id: null,
     title,
     status: "DISCOVER",
     category: "ADVENTURE",

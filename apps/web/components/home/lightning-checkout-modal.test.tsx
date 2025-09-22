@@ -6,6 +6,21 @@ import type { ModalProps } from "../ui/modal";
 
 const modalModulePath = require.resolve("../ui/modal");
 
+const mockGame = {
+  id: "game-test",
+  title: "Test Game",
+  status: "FEATURED",
+  category: "EARLY ACCESS",
+  version: "1.0.0",
+  lastUpdated: "2024-01-01",
+  description: [] as string[],
+  coverArt: "",
+  developer: "Orbit Foundry",
+  lightningAddress: "piteousfrench82@walletofsatoshi.com",
+  priceSats: 150,
+  tipRecommended: 300,
+} as const;
+
 test("lightning checkout modal wires modal props and content", async () => {
   let capturedProps: ModalProps | null = null;
 
@@ -25,7 +40,9 @@ test("lightning checkout modal wires modal props and content", async () => {
     const { LightningCheckoutModal } = await import("./lightning-checkout-modal");
 
     const onClose = () => undefined;
-    const html = renderToStaticMarkup(<LightningCheckoutModal onClose={onClose} />);
+    const html = renderToStaticMarkup(
+      <LightningCheckoutModal onClose={onClose} game={{ ...mockGame }} />,
+    );
 
     assert.ok(capturedProps, "modal props should be captured from stub");
     const props = capturedProps as ModalProps;
@@ -36,7 +53,7 @@ test("lightning checkout modal wires modal props and content", async () => {
       "container classes should include centering utilities",
     );
     assert.ok(html.includes("Lightning checkout"));
-    assert.ok(html.includes("QR CODE"));
+    assert.ok(html.includes("BOLT11 invoice"));
     assert.ok(html.includes("Purchase summary"));
   } finally {
     cachedModule.exports = originalExports;

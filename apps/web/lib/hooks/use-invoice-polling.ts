@@ -30,6 +30,8 @@ export function useInvoicePolling({
       return;
     }
 
+    const activeInvoiceId = invoiceId;
+
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -45,7 +47,7 @@ export function useInvoicePolling({
 
     async function poll() {
       try {
-        const purchase = await getPurchase(invoiceId);
+        const purchase = await getPurchase(activeInvoiceId);
         if (cancelled) {
           return;
         }

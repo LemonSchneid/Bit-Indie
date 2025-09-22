@@ -176,7 +176,7 @@ M6 — Telemetry & Docs
   2. Ensure the seeded data path remains the source for storefront listings in development.
   3. Update any documentation or scripts that previously pointed to the mock data, if applicable.
 
-### Ticket M1-T002 — Productionize Lightning Checkout Modal
+### Ticket M1-T002 — Productionize Lightning Checkout Modal ✅ Done
 - **Milestone:** M1 — Core Purchase Flow
 - **Summary:** Rework the Lightning checkout modal to consume real invoice payloads while ensuring seeded games use the developer wallet `piteousfrench82@walletofsatoshi.com` for end-to-end testing.
 - **Acceptance Criteria:**

@@ -17,6 +17,7 @@ export type DiscoverGame = {
 };
 
 export type GameDetail = {
+  id: string | null;
   title: string;
   status: string;
   category: string;
