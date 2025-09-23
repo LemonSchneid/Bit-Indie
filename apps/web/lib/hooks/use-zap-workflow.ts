@@ -359,10 +359,7 @@ export function createZapWorkflowController(options: ZapWorkflowOptions): ZapWor
 }
 
 export function useZapWorkflow(options: ZapWorkflowOptions): ZapWorkflowView {
-  const normalizedOptions = useMemo(
-    () => ({ ...options }),
-    [options.lightningAddress, options.lnurl, options.comment],
-  );
+  const normalizedOptions = useMemo(() => ({ ...options }), [options]);
   const controllerRef = useRef<ZapWorkflowController | null>(null);
   if (!controllerRef.current) {
     controllerRef.current = createZapWorkflowController(normalizedOptions);

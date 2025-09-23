@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -24,6 +25,14 @@ from proof_of_play_api.db.models import (
     User,
 )
 from proof_of_play_api.main import create_application
+
+
+NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
+
+pytestmark = pytest.mark.skipif(
+    not NOSTR_ENABLED,
+    reason="Nostr features are disabled for the Simple MVP",
+)
 
 
 @pytest.fixture(autouse=True)

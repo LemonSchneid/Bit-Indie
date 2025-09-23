@@ -21,20 +21,6 @@ function formatPubkey(pubkey: string): string {
 }
 
 export function LoginCard(): JSX.Element {
-  if (!nostrEnabled) {
-    return (
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Sign in</h3>
-          <p className="mt-3 text-sm text-slate-300">
-            Account-based sign-in is disabled for the Simple MVP. Use guest checkout to purchase builds and save the receipt to
-            restore access later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const { hasSigner, state, message, profile, signIn, updateProfile } = useNostrLogin();
   const [developerState, setDeveloperState] = useState<LoginState>(profile?.is_developer ? "success" : "idle");
   const [developerMessage, setDeveloperMessage] = useState<string | null>(
@@ -97,6 +83,20 @@ export function LoginCard(): JSX.Element {
       }
     }
   }, [profile, developerState, updateProfile]);
+
+  if (!nostrEnabled) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Sign in</h3>
+          <p className="mt-3 text-sm text-slate-300">
+            Account-based sign-in is disabled for the Simple MVP. Use guest checkout to purchase builds and save the receipt to
+            restore access later.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

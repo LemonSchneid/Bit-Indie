@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 import math
+import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -24,6 +25,14 @@ from proof_of_play_api.db.models import (
 from proof_of_play_api.main import create_application
 from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
 from proof_of_play_api.services.review_ranking import compute_review_helpful_score
+
+
+NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
+
+pytestmark = pytest.mark.skipif(
+    not NOSTR_ENABLED,
+    reason="Nostr features are disabled for the Simple MVP",
+)
 
 
 ZAP_RECEIPT_KIND = 9735

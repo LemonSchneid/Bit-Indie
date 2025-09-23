@@ -68,7 +68,7 @@ export function useNostrLogin(): {
 
     const signerAvailable = typeof window !== "undefined" && Boolean(window.nostr?.signEvent);
     setHasSigner(signerAvailable);
-  }, [nostrEnabled]);
+  }, []);
 
   useEffect(() => {
     if (!nostrEnabled || typeof window === "undefined") {
@@ -98,7 +98,7 @@ export function useNostrLogin(): {
       );
       window.removeEventListener("storage", handleStorage);
     };
-  }, [nostrEnabled]);
+  }, []);
 
   const persistProfile = useCallback((nextProfile: UserProfile) => {
     if (!nostrEnabled) {
@@ -106,7 +106,7 @@ export function useNostrLogin(): {
     }
     setProfile(nextProfile);
     saveUserProfile(nextProfile);
-  }, [nostrEnabled]);
+  }, []);
 
   const signIn = useCallback(async (options?: SignInOptions) => {
     if (!nostrEnabled) {
@@ -166,7 +166,7 @@ export function useNostrLogin(): {
         setMessage("Login failed due to an unexpected error.");
       }
     }
-  }, [nostrEnabled, persistProfile, state]);
+  }, [persistProfile, state]);
 
   const resetFeedback = useCallback(() => {
     setMessage(null);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -40,6 +41,14 @@ from proof_of_play_api.services.proof_of_work import (
     count_leading_zero_bits,
 )
 from proof_of_play_api.services.rate_limiting import COMMENT_RATE_LIMIT_MAX_ITEMS
+
+
+NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
+
+pytestmark = pytest.mark.skipif(
+    not NOSTR_ENABLED,
+    reason="Nostr features are disabled for the Simple MVP",
+)
 
 
 @pytest.fixture(autouse=True)

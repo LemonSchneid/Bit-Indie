@@ -41,7 +41,7 @@ function formatCategory(category: GameDraft["category"]): string {
     case "FINISHED":
       return "Finished";
     default:
-      return category.replaceAll("_", " ").toLowerCase();
+      return category.split("_").join(" ").toLowerCase();
   }
 }
 

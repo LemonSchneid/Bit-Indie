@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
@@ -13,6 +14,14 @@ from proof_of_play_api.db.models import User
 from proof_of_play_api.main import create_application
 from proof_of_play_api.services.auth import reset_login_challenge_store
 from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
+
+
+NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
+
+pytestmark = pytest.mark.skipif(
+    not NOSTR_ENABLED,
+    reason="Nostr features are disabled for the Simple MVP",
+)
 
 
 LOGIN_KIND = 22242
@@ -158,4 +167,3 @@ def test_verify_login_requires_challenge_tag() -> None:
 
     response = client.post("/v1/auth/verify", json={"event": payload})
     assert response.status_code == 400
-
