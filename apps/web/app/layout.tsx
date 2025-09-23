@@ -28,14 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </Link>
                 <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
               </div>
-              <nav className="flex items-center gap-3 text-sm text-slate-300">
-                <Link
-                  href="/games"
-                  className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
-                >
-                  View catalog
-                </Link>
-              </nav>
+              <span className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Simple MVP preview</span>
             </div>
           </header>
 

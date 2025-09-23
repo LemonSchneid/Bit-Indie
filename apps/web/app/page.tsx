@@ -1,109 +1,32 @@
-"use client";
+import { CatalogGrid } from "../components/catalog/catalog-grid";
+import { listCatalogGames } from "../lib/api";
 
-import {
-  communityComments,
-  discoverGames,
-  featuredGames,
-  gameDetails,
-  liveMetrics,
-  createPlaceholderGameDetail,
-} from "../components/home/data";
-import { GameDetailScreen } from "../components/home/game-detail-screen";
-import { useHomeStateMachine, HomeScreen } from "../components/home/home-state-machine";
-import { InfoForPlayersScreen } from "../components/home/info-for-players-screen";
-import { LightningCheckoutModal } from "../components/home/lightning-checkout-modal";
-import { IdentityWidget } from "../components/home/identity-widget";
-import { PlatformRoadmapScreen } from "../components/home/platform-roadmap-screen";
-import { ScreenSwitcher } from "../components/home/screen-switcher";
-import { SellGameScreen } from "../components/home/sell-game-screen";
-import { StorefrontScreen } from "../components/home/storefront-screen";
-import { MicroLabel } from "../components/home/ui";
-
-export default function HomePage() {
-  const {
-    state,
-    controls: { selectScreen, viewGameDetail, exitGameDetail, openCheckout, closeCheckout },
-  } = useHomeStateMachine();
-
-  const activeScreen = state.screen;
-  const selectedGame = state.mode === "screen" ? null : state.game;
-  const showCheckout = state.mode === "checkout";
-
-  const handleGameSelect = (title: string) => {
-    const detail = gameDetails[title] ?? createPlaceholderGameDetail(title);
-    viewGameDetail(detail);
-  };
-
-  const handleCloseDetail = () => {
-    exitGameDetail();
-  };
-
-  const handleScreenSelect = (screen: HomeScreen) => {
-    selectScreen(screen);
-  };
-
-  const handleLaunchCheckout = () => {
-    openCheckout();
-  };
-
-  const handleCloseCheckout = () => {
-    closeCheckout();
-  };
+export default async function HomePage(): Promise<JSX.Element> {
+  const games = await listCatalogGames();
 
   return (
-    <div className="relative overflow-hidden">
+    <main className="relative overflow-hidden bg-slate-950 text-slate-100">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
-      <div className="absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
-        <header className="space-y-8">
-          <div className="space-y-6">
-            <div className="space-y-4 text-center">
-              <div className="flex justify-center">
-                <MicroLabel>Proof of Play marketplace</MicroLabel>
-              </div>
-              <div className="mx-auto max-w-3xl space-y-4">
-                <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl text-center">
-                  Neon storefront for indie worlds powered by Lightning.
-                </h1>
-                <p className="mx-auto max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
-                  Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
-                </p>
-              </div>
-            </div>
-            <IdentityWidget />
+      <div className="absolute inset-y-0 right-0 -z-10 w-full max-w-3xl bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
+
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-16 px-6 py-16">
+        <section className="space-y-6 text-center">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.55em] text-emerald-300/70">
+            Proof of Play marketplace
+          </p>
+          <div className="space-y-5">
+            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Explore seeded builds and test the Lightning checkout flow.
+            </h1>
+            <p className="mx-auto max-w-2xl text-base text-slate-300">
+              The catalog below loads directly from the FastAPI backend. Each listing is part of the Simple-MVP seed so you
+              can exercise the full purchase pipeline, download gating, and review flow while we continue iterating.
+            </p>
           </div>
-          <ScreenSwitcher activeScreen={activeScreen} onSelect={handleScreenSelect} />
-        </header>
-        <main className="space-y-10 pb-16">
-          {selectedGame ? (
-            <>
-              <GameDetailScreen
-                game={selectedGame}
-                comments={communityComments}
-                onBack={handleCloseDetail}
-                onLaunchCheckout={handleLaunchCheckout}
-              />
-              {showCheckout && selectedGame ? (
-                <LightningCheckoutModal onClose={handleCloseCheckout} game={selectedGame} />
-              ) : null}
-            </>
-          ) : (
-            <>
-              {activeScreen === HomeScreen.Storefront && (
-                <StorefrontScreen
-                  featured={featuredGames}
-                  discover={discoverGames}
-                  metrics={liveMetrics}
-                  onGameSelect={handleGameSelect}
-                />
-              )}
-              {activeScreen === HomeScreen.SellGame && <SellGameScreen />}
-              {activeScreen === HomeScreen.InfoForPlayers && <InfoForPlayersScreen />}
-              {activeScreen === HomeScreen.PlatformRoadmap && <PlatformRoadmapScreen />}
-            </>
-          )}
-        </main>
+        </section>
+
+        <CatalogGrid games={games} />
       </div>
-    </div>
+    </main>
   );
 }
