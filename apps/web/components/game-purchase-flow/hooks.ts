@@ -275,8 +275,27 @@ export function useGamePurchaseFlow({
   }, [invoice?.payment_request]);
 
   const handleCreateInvoice = useCallback(async () => {
-    setFlowState("creating");
     setErrorMessage(null);
+
+    let existing: PurchaseRecord | null = null;
+    if (user) {
+      try {
+        existing = await getLatestPurchaseForGame(gameId, user.id);
+      } catch (_error) {
+        // Ignore lookup errors and attempt to generate a fresh invoice below.
+      }
+
+      if (existing) {
+        if (existing.download_granted || existing.invoice_status === "PAID") {
+          setPurchase(existing);
+          setInvoice(null);
+          setFlowState("paid");
+          return;
+        }
+      }
+    }
+
+    setFlowState("creating");
     setInvoice(null);
     setPurchase(null);
 
