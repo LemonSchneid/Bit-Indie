@@ -138,7 +138,7 @@ MVP feature flags:
   ./scripts/dev_bootstrap.sh
   ```
 
-  The API container applies migrations and runs the Simple-MVP seed script on boot. The Web service runs `next dev` with your repo mounted (hot reload) and binds to `localhost:3000`, using `http://api:8080` inside the compose network. Override by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml` when you no longer need the demo data.
+  The API container applies migrations and runs the Simple-MVP seed script on boot. The Web service runs `next dev` with your repo mounted (hot reload) and binds to `localhost:3000`, using `http://api:8080` inside the compose network. Override by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml` when you no longer need the demo data. Only the development web container is started by default; the production build stays behind a Compose profile to avoid port conflicts during local work.
 
 - Alternatively, run the web app locally with the API running in another terminal:
 
@@ -160,4 +160,4 @@ MVP feature flags:
   ./scripts/dev_prod_stack.sh
   ```
 
-  This brings up Postgres, MinIO, API, and a `next start` web container using the build in `apps/web/Dockerfile`.
+  This brings up Postgres, MinIO, API, and a `next start` web container using the build in `apps/web/Dockerfile`, enabling the Compose `prod` profile under the hood.

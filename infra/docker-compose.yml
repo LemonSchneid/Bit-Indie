@@ -73,6 +73,8 @@ services:
       - api
 
   web-prod:
+    profiles:
+      - prod
     build:
       context: ../apps/web
       args:

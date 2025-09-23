@@ -10,4 +10,4 @@ if [ ! -f "$COMPOSE_FILE" ]; then
 fi
 
 echo "Starting Proof of Play production-like stack..."
-docker compose -f "$COMPOSE_FILE" up --build postgres minio api web-prod
+docker compose -f "$COMPOSE_FILE" --profile prod up --build postgres minio api web-prod

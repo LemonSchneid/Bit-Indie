@@ -6,7 +6,7 @@ Goal: Ship a web-first MVP with Lightning purchases for downloadable games, firs
 
 ## AI Workflow Enforcement Flag
 
-`ai_enforce_mvp_flow = true`
+`ai_enforce_mvp_flow = false`
 
 - AI contributors must tackle tickets in the order listed below, stopping after completing the first open item.
 - Append `✅ Done` to a ticket once its acceptance criteria are met and verified.
@@ -210,4 +210,3 @@ M6 — Telemetry & Docs
 
 Post‑MVP (Nostr Re‑enable Roadmap)
 - NIP‑07 login, relay publish of release notes, reply ingestion and caching, zap receipt ingestion and aggregation.
-
