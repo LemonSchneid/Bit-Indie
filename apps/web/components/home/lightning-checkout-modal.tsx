@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   createGameInvoice,
+  getLatestPurchaseForGame,
   type InvoiceCreateRequest,
   type InvoiceCreateResponse,
   type InvoiceStatus,
@@ -26,6 +27,15 @@ type LightningCheckoutModalProps = {
 };
 
 type CopyState = "idle" | "copied" | "error";
+
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 function formatTimestamp(date: Date | null): string {
   if (!date) {
@@ -65,15 +75,24 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
   const invoiceActive = Boolean(invoice);
 
   const amountLabel = useMemo(() => {
-    if (typeof invoice?.amount_msats === "number") {
-      const sats = Math.max(1, Math.round(invoice.amount_msats / 1000));
+    const purchaseAmount = purchase?.amount_msats;
+    if (typeof purchaseAmount === "number" && purchaseAmount > 0) {
+      const sats = Math.max(1, Math.round(purchaseAmount / 1000));
       return `${sats.toLocaleString()} sats`;
     }
+
+    const invoiceAmount = invoice?.amount_msats;
+    if (typeof invoiceAmount === "number" && invoiceAmount > 0) {
+      const sats = Math.max(1, Math.round(invoiceAmount / 1000));
+      return `${sats.toLocaleString()} sats`;
+    }
+
     if (typeof game.priceSats === "number") {
       return `${game.priceSats.toLocaleString()} sats`;
     }
+
     return "—";
-  }, [invoice?.amount_msats, game.priceSats]);
+  }, [purchase?.amount_msats, invoice?.amount_msats, game.priceSats]);
 
   const statusMessage = describeInvoiceStatus(
     invoiceStatus,
@@ -127,8 +146,31 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
     let cancelled = false;
 
     const createInvoice = async () => {
-      setFlowState("creating");
       setErrorMessage(null);
+
+      if (user) {
+        try {
+          const existing = await getLatestPurchaseForGame(gameId, user.id);
+          if (cancelled) {
+            return;
+          }
+
+          if (existing && (existing.download_granted || existing.invoice_status === "PAID")) {
+            const createdAt = parseDate(existing.created_at) ?? new Date();
+            setPurchase(existing);
+            setInvoiceCreatedAt(createdAt);
+            setFlowState(existing.download_granted ? "paid" : "polling");
+            return;
+          }
+        } catch (_error) {
+          if (cancelled) {
+            return;
+          }
+          // Ignore lookup errors so a fresh invoice can still be generated.
+        }
+      }
+
+      setFlowState("creating");
 
       try {
         let payload: InvoiceCreateRequest;
@@ -248,9 +290,11 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
     setErrorMessage(message);
   }, []);
 
+  const invoiceIdToPoll = invoice?.purchase_id ?? purchase?.id ?? null;
+
   useInvoicePolling({
-    invoiceId: invoice?.purchase_id ?? null,
-    enabled: flowState === "polling" && Boolean(invoice?.purchase_id),
+    invoiceId: invoiceIdToPoll,
+    enabled: flowState === "polling" && Boolean(invoiceIdToPoll),
     onPurchase: handlePurchaseUpdate,
     onExpired: handleInvoiceExpired,
     onError: handlePollingError,
@@ -258,7 +302,8 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
 
   const timelineSteps = useMemo<InvoiceStep[]>(() => {
     const expired = invoiceStatus === "EXPIRED" || flowState === "expired";
-    const createdTimestamp = invoiceActive ? formatTimestamp(invoiceCreatedAt) : "--";
+    const invoiceCreated = Boolean(invoiceCreatedAt);
+    const createdTimestamp = invoiceCreated ? formatTimestamp(invoiceCreatedAt) : "--";
     const paymentTimestamp = invoiceStatus === "PAID" ? formatTimestamp(paymentConfirmedAt) : "--";
     const downloadTimestamp = downloadUnlocked ? formatTimestamp(downloadUnlockedAt) : "--";
 
@@ -267,7 +312,7 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
       ? "done"
       : expired
       ? "pending"
-      : invoiceActive
+      : invoiceCreated
       ? "active"
       : "pending";
 
@@ -284,7 +329,7 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
     return [
       {
         label: "Invoice created",
-        status: invoiceActive ? "done" : flowState === "creating" ? "active" : "pending",
+        status: invoiceCreated ? "done" : flowState === "creating" ? "active" : "pending",
         timestamp: createdTimestamp,
       },
       {
@@ -307,7 +352,6 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
     downloadUnlocked,
     downloadUnlockedAt,
     flowState,
-    invoiceActive,
     invoiceCreatedAt,
     invoiceStatus,
     paymentConfirmedAt,
@@ -511,13 +555,13 @@ export function LightningCheckoutModal({ onClose, game }: LightningCheckoutModal
               <div className="flex items-center justify-between">
                 <span className="uppercase tracking-[0.35em] text-slate-400">Invoice ID</span>
                 <span className="font-mono text-[11px] text-slate-300">
-                  {invoice?.invoice_id ?? "—"}
+                  {invoice?.invoice_id ?? purchase?.invoice_id ?? "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="uppercase tracking-[0.35em] text-slate-400">Purchase ID</span>
                 <span className="font-mono text-[11px] text-slate-300">
-                  {invoice?.purchase_id ?? "—"}
+                  {invoice?.purchase_id ?? purchase?.id ?? "—"}
                 </span>
               </div>
             </div>
