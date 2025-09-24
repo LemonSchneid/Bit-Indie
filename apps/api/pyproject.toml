@@ -3,12 +3,12 @@ requires = ["setuptools>=67", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "proof-of-play-api"
+name = "bit-indie-api"
 version = "0.1.0"
-description = "FastAPI service for the Proof of Play marketplace."
+description = "FastAPI service for the Bit Indie marketplace."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{name = "Proof of Play"}]
+authors = [{name = "Bit Indie"}]
 dependencies = [
     "fastapi>=0.110,<0.112",
     "pydantic>=2.7,<3.0",

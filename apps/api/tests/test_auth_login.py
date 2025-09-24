@@ -9,11 +9,11 @@ import sqlalchemy as sa
 import pytest
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import User
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.auth import reset_login_challenge_store
-from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import User
+from bit_indie_api.main import create_application
+from bit_indie_api.services.auth import reset_login_challenge_store
+from bit_indie_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
 
 
 NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
@@ -56,13 +56,13 @@ def _sign_event(secret_key: int, *, challenge: str, created_at: int) -> dict[str
     """Construct and sign a login event for use in tests."""
 
     pubkey_hex = derive_xonly_public_key(secret_key).hex()
-    tags = [["challenge", challenge], ["client", "proof-of-play-tests"]]
+    tags = [["challenge", challenge], ["client", "bit-indie-tests"]]
     base_event = {
         "pubkey": pubkey_hex,
         "created_at": created_at,
         "kind": LOGIN_KIND,
         "tags": tags,
-        "content": "Proof of Play login",
+        "content": "Bit Indie login",
     }
     event_id = calculate_event_id(**base_event)
     signature = schnorr_sign(bytes.fromhex(event_id), secret_key)
@@ -157,7 +157,7 @@ def test_verify_login_requires_challenge_tag() -> None:
         "created_at": created_at,
         "kind": LOGIN_KIND,
         "tags": [],
-        "content": "Proof of Play login",
+        "content": "Bit Indie login",
     }
     event_id = calculate_event_id(**base_event)
     signature = schnorr_sign(bytes.fromhex(event_id), secret_key)

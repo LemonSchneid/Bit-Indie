@@ -11,17 +11,17 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from proof_of_play_api.core.config import NostrPublisherSettings
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.core.config import NostrPublisherSettings
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
     ReleaseNotePublishQueue,
     User,
 )
-from proof_of_play_api.services.nostr import derive_xonly_public_key, verify_signed_event
-from proof_of_play_api.services.nostr_publisher import (
+from bit_indie_api.services.nostr import derive_xonly_public_key, verify_signed_event
+from bit_indie_api.services.nostr_publisher import (
     ReleaseNotePublisher,
 )
 
@@ -291,7 +291,7 @@ def test_publish_release_note_emits_metrics(monkeypatch: pytest.MonkeyPatch) -> 
     metrics = _CapturingMetrics()
     perf_stub = _PerfCounterStub()
     monkeypatch.setattr(
-        "proof_of_play_api.services.nostr_publisher.perf_counter", perf_stub
+        "bit_indie_api.services.nostr_publisher.perf_counter", perf_stub
     )
 
     def _handler(request: httpx.Request) -> httpx.Response:

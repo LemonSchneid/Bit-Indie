@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from proof_of_play_api.db.models import Review, User
-from proof_of_play_api.services.review_ranking import (
+from bit_indie_api.db.models import Review, User
+from bit_indie_api.services.review_ranking import (
     compute_review_helpful_score,
     update_review_helpful_score,
 )

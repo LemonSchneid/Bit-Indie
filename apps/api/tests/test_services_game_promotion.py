@@ -9,8 +9,8 @@ import pytest
 
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -20,7 +20,7 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.services.game_promotion import (
+from bit_indie_api.services.game_promotion import (
     evaluate_featured_eligibility,
     update_game_featured_status,
 )

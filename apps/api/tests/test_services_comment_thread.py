@@ -7,8 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Comment,
     Developer,
     Game,
@@ -20,7 +20,7 @@ from proof_of_play_api.db.models import (
     Zap,
     ZapTargetType,
 )
-from proof_of_play_api.services.comment_thread import (
+from bit_indie_api.services.comment_thread import (
     CommentDTO,
     CommentDTOBuilder,
     CommentSource,

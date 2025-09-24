@@ -20,4 +20,4 @@ EXPOSE 8080
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
-CMD ["uvicorn", "proof_of_play_api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "bit_indie_api.main:app", "--host", "0.0.0.0", "--port", "8080"]

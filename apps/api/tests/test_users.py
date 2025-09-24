@@ -2,11 +2,11 @@ import os
 
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.core.config import clear_settings_cache, get_settings
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import User
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.session_tokens import create_session_token
+from bit_indie_api.core.config import clear_settings_cache, get_settings
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import User
+from bit_indie_api.main import create_application
+from bit_indie_api.services.session_tokens import create_session_token
 
 
 def _create_schema() -> None:

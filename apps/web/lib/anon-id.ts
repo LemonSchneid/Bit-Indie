@@ -1,6 +1,6 @@
 "use client";
 
-const ANON_ID_STORAGE_KEY = "proof-of-play:anon-id";
+const ANON_ID_STORAGE_KEY = "bit-indie:anon-id";
 
 function generateAnonId(): string {
   try {

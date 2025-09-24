@@ -6,7 +6,7 @@ import types
 
 import pytest
 
-from proof_of_play_api.core import telemetry
+from bit_indie_api.core import telemetry
 
 
 @pytest.fixture(autouse=True)

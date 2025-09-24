@@ -10,13 +10,13 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from proof_of_play_api.api.v1.routes.comments import (
+from bit_indie_api.api.v1.routes.comments import (
     get_comment_thread_service,
     get_comment_workflow,
     get_raw_comment_body,
 )
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Comment,
     Developer,
     Game,
@@ -26,21 +26,21 @@ from proof_of_play_api.db.models import (
     ReleaseNoteReply,
     User,
 )
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.comment_thread import (
+from bit_indie_api.main import create_application
+from bit_indie_api.services.comment_thread import (
     CommentAuthorDTO,
     CommentDTO,
     CommentSource,
     encode_npub,
 )
-from proof_of_play_api.schemas.comment import CommentCreateRequest
+from bit_indie_api.schemas.comment import CommentCreateRequest
 from sqlalchemy.orm import Session
-from proof_of_play_api.services.proof_of_work import (
+from bit_indie_api.services.proof_of_work import (
     PROOF_OF_WORK_DIFFICULTY_BITS,
     calculate_proof_of_work_hash,
     count_leading_zero_bits,
 )
-from proof_of_play_api.services.rate_limiting import COMMENT_RATE_LIMIT_MAX_ITEMS
+from bit_indie_api.services.rate_limiting import COMMENT_RATE_LIMIT_MAX_ITEMS
 
 
 NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"

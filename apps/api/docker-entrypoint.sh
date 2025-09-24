@@ -23,7 +23,7 @@ if [ "${RUN_DB_MIGRATIONS:-1}" = "1" ]; then
 fi
 
 if [ "${RUN_SIMPLE_MVP_SEED:-0}" = "1" ]; then
-  python -m proof_of_play_api.scripts.seed_simple_mvp || echo "Seed script failed (continuing startup)" >&2
+  python -m bit_indie_api.scripts.seed_simple_mvp || echo "Seed script failed (continuing startup)" >&2
 fi
 
 exec "$@"

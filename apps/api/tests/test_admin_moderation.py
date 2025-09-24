@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.api.v1.routes.comments import get_comment_thread_service
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.api.v1.routes.comments import get_comment_thread_service
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Comment,
     Developer,
     Game,
@@ -24,7 +24,7 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.main import create_application
+from bit_indie_api.main import create_application
 
 
 NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"

@@ -326,7 +326,7 @@ export function useGamePurchaseFlow({
       const invoiceResponse = await requestLnurlInvoice(
         payParams,
         amountSats,
-        `Proof of Play — ${gameTitle}`,
+        `Bit Indie — ${gameTitle}`,
       );
 
       const guestInvoice: InvoiceCreateResponse = {
@@ -403,7 +403,7 @@ export function useGamePurchaseFlow({
     }
 
     const lines = [
-      "Proof of Play — Lightning Purchase Receipt",
+      "Bit Indie — Lightning Purchase Receipt",
       "",
       `Game: ${gameTitle}`,
       `Purchase ID: ${invoice.purchase_id}`,
@@ -431,7 +431,7 @@ export function useGamePurchaseFlow({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `proof-of-play-receipt-${invoice.purchase_id}.txt`;
+    anchor.download = `bit-indie-receipt-${invoice.purchase_id}.txt`;
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);

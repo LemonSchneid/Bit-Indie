@@ -1,10 +1,10 @@
-# 🎮 Proof of Play — Lightning‑First Indie Game Marketplace
+# 🎮 Bit Indie — Lightning‑First Indie Game Marketplace
 
 ---
 
 ## 1. Core Vision (Simple MVP)
 
-Proof of Play is a **Bitcoin‑native indie game store**. For the MVP we focus on:
+Bit Indie is a **Bitcoin‑native indie game store**. For the MVP we focus on:
 
 - Lightning purchases for downloadable games.
 - First‑party comments and verified‑purchase reviews.
@@ -30,7 +30,7 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 ---
 
-## 4. Proof of Play (the Platform)
+## 4. Bit Indie (the Platform)
 
 - First‑party API and DB at launch; no public relay dependency.
 - Revenue: sales cut; platform tips via LNURL (optional UI).
@@ -102,7 +102,7 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 ## ✅ Summary
 
-Proof of Play = a Lightning‑first indie game marketplace. Nostr integrations are preserved in code behind feature flags and will be re‑enabled after MVP.
+Bit Indie = a Lightning‑first indie game marketplace. Nostr integrations are preserved in code behind feature flags and will be re‑enabled after MVP.
 
 ---
 
@@ -151,7 +151,7 @@ MVP feature flags:
 - To mark a seeded purchase as paid (optional), run:
 
   ```bash
-  python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id purchase-seed-pending
+  python -m bit_indie_api.scripts.mark_purchase_paid --purchase-id purchase-seed-pending
   ```
 
 - Spin up the production-style stack (hot reload off, optimized build):

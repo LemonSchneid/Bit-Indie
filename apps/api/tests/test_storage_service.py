@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from proof_of_play_api.services.storage import (
+from bit_indie_api.services.storage import (
     GameAssetKind,
     PresignedDownload,
     StorageService,

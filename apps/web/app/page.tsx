@@ -12,7 +12,7 @@ export default async function HomePage(): Promise<JSX.Element> {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-16 px-6 py-16">
         <section className="space-y-6 text-center">
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.55em] text-emerald-300/70">
-            Proof of Play marketplace
+            Bit Indie marketplace
           </p>
           <div className="space-y-5">
             <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">

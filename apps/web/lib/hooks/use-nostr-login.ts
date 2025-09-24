@@ -162,9 +162,9 @@ export function useNostrLogin(): {
         created_at: Math.floor(Date.now() / 1000),
         tags: [
           ["challenge", challenge.challenge],
-          ["client", "proof-of-play-web"],
+          ["client", "bit-indie-web"],
         ],
-        content: "Proof of Play login",
+        content: "Bit Indie login",
       };
 
       const signedEvent = await signer.signEvent(unsignedEvent);
@@ -172,7 +172,7 @@ export function useNostrLogin(): {
 
       persistSession(response.user, response.session_token);
       setState("success");
-      setMessage("Your Nostr identity is linked to Proof of Play.");
+      setMessage("Your Nostr identity is linked to Bit Indie.");
     } catch (error) {
       setState("error");
       if (error instanceof Error) {

@@ -7,12 +7,12 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.core.config import clear_nostr_publisher_settings_cache
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import Developer, Game, GameStatus, User
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
-from proof_of_play_api.services.zap_ledger import ZapLedger
+from bit_indie_api.core.config import clear_nostr_publisher_settings_cache
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import Developer, Game, GameStatus, User
+from bit_indie_api.main import create_application
+from bit_indie_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
+from bit_indie_api.services.zap_ledger import ZapLedger
 
 
 @pytest.fixture(autouse=True)
@@ -88,10 +88,10 @@ def test_zap_summary_endpoint_returns_totals(monkeypatch: pytest.MonkeyPatch) ->
     game = _seed_game()
     service = ZapLedger()
 
-    first_event = _build_event(1010, [["proof-of-play-zap-target", "GAME", game.id, "150000"]])
+    first_event = _build_event(1010, [["bit-indie-zap-target", "GAME", game.id, "150000"]])
     second_tags = [
-        ["proof-of-play-zap-target", "GAME", game.id, "25000", "FORWARDED"],
-        ["proof-of-play-zap-target", "PLATFORM", "", "4000", "FORWARDED"],
+        ["bit-indie-zap-target", "GAME", game.id, "25000", "FORWARDED"],
+        ["bit-indie-zap-target", "PLATFORM", "", "4000", "FORWARDED"],
     ]
     second_event = _build_event(2020, second_tags, created_at=int(datetime.now(tz=timezone.utc).timestamp()) + 60)
 

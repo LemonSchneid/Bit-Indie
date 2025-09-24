@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     BuildScanStatus,
     Developer,
     Game,
@@ -25,16 +25,16 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.main import create_application
-from proof_of_play_api.schemas.game import PublishRequirementCode
-from proof_of_play_api.services.auth import reset_login_challenge_store
-from proof_of_play_api.services.storage import (
+from bit_indie_api.main import create_application
+from bit_indie_api.schemas.game import PublishRequirementCode
+from bit_indie_api.services.auth import reset_login_challenge_store
+from bit_indie_api.services.storage import (
     GameAssetKind,
     PresignedUpload,
     get_storage_service,
     reset_storage_service,
 )
-from proof_of_play_api.services.nostr_publisher import (
+from bit_indie_api.services.nostr_publisher import (
     PublishOutcome,
     get_release_note_publisher,
 )

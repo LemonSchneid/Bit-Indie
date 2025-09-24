@@ -103,7 +103,7 @@ export function LoginCard(): JSX.Element {
       <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
         <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Sign in</h3>
         <p className="mt-3 text-sm text-slate-300">
-          Connect a NIP-07 browser signer to create or load your Proof of Play account using your Nostr public key.
+          Connect a NIP-07 browser signer to create or load your Bit Indie account using your Nostr public key.
         </p>
 
         {profile ? (
@@ -119,7 +119,7 @@ export function LoginCard(): JSX.Element {
             <p className="mt-1 font-mono text-xs uppercase tracking-widest">{formatPubkey(profile.pubkey_hex)}</p>
             {profile.is_developer ? (
               <p className="mt-4 text-xs text-emerald-100/80">
-                Your Proof of Play account can publish and manage game listings.
+                Your Bit Indie account can publish and manage game listings.
               </p>
             ) : (
               <>
