@@ -11,6 +11,13 @@ import {
   type GameDraft,
   type GameReview,
 } from "../../../lib/api";
+import {
+  formatCategory,
+  formatDateLabel,
+  formatPriceMsats,
+  formatStatus,
+  formatZapAmount,
+} from "../../../lib/format";
 import { nostrEnabled } from "../../../lib/flags";
 
 type GamePageProps = {
@@ -18,84 +25,6 @@ type GamePageProps = {
     slug: string;
   };
 };
-
-function formatPriceMsats(value: number | null): string {
-  if (value === null) {
-    return "Free download";
-  }
-
-  const sats = value / 1000;
-  if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
-  }
-
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
-}
-
-function formatCategory(category: GameDraft["category"]): string {
-  switch (category) {
-    case "PROTOTYPE":
-      return "Prototype";
-    case "EARLY_ACCESS":
-      return "Early Access";
-    case "FINISHED":
-      return "Finished";
-    default:
-      return category.split("_").join(" ").toLowerCase();
-  }
-}
-
-function formatStatus(status: GameDraft["status"]): string {
-  switch (status) {
-    case "UNLISTED":
-      return "Unlisted preview";
-    case "DISCOVER":
-      return "Discover";
-    case "FEATURED":
-      return "Featured";
-    default:
-      return status;
-  }
-}
-
-function formatUpdatedAt(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Recently updated";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatReviewDate(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Recently posted";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatCommentDate(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Just now";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 function formatNpub(value: string | null): string {
   if (!value) {
@@ -121,19 +50,6 @@ function formatPubkeyHex(value: string | null): string {
   }
 
   return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)}`;
-}
-
-function formatZapAmount(msats: number): string {
-  if (!Number.isFinite(msats) || msats <= 0) {
-    return "0 sats";
-  }
-
-  const sats = msats / 1000;
-  if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
-  }
-
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
 }
 
 function getDescriptionParagraphs(description: string | null): string[] {
@@ -225,7 +141,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
 
   const descriptionParagraphs = getDescriptionParagraphs(game.description_md);
   const priceLabel = formatPriceMsats(game.price_msats);
-  const updatedLabel = formatUpdatedAt(game.updated_at);
+  const updatedLabel = formatDateLabel(game.updated_at, { fallback: "Recently updated" });
   const hasPaidPrice = game.price_msats != null && game.price_msats > 0;
   const buildAvailable = Boolean(game.build_object_key);
   const checkoutAvailable = hasPaidPrice && game.active;
@@ -449,7 +365,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                         </p>
                         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
                           <time dateTime={comment.created_at} className="text-slate-400">
-                            {formatCommentDate(comment.created_at)}
+                            {formatDateLabel(comment.created_at, { fallback: "Just now" })}
                           </time>
                           {isNostrReply ? (
                             <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
@@ -556,7 +472,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             </span>
                           )}
                           <time dateTime={review.created_at} className="text-slate-400">
-                            {formatReviewDate(review.created_at)}
+                            {formatDateLabel(review.created_at, { fallback: "Recently posted" })}
                           </time>
                         </div>
                       </div>

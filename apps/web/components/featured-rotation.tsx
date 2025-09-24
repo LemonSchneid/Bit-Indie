@@ -4,23 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { type FeaturedGameSummary } from "../lib/api";
+import { formatCategory, formatDateLabel, formatPriceMsats } from "../lib/format";
 
 type FeaturedRotationProps = {
   entries: FeaturedGameSummary[];
 };
-
-function formatPriceMsats(value: number | null): string {
-  if (value == null) {
-    return "Free download";
-  }
-
-  const sats = value / 1000;
-  if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
-  }
-
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
-}
 
 function formatRefundRate(rate: number): string {
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -30,26 +18,6 @@ function formatRefundRate(rate: number): string {
   const percentage = Math.max(0, Math.min(rate, 1)) * 100;
   const fractionDigits = percentage >= 10 ? 0 : 1;
   return `${percentage.toLocaleString(undefined, { maximumFractionDigits: fractionDigits })}% refund rate`;
-}
-
-function formatCategory(category: string): string {
-  return category
-    .split("_")
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function formatUpdatedAt(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Updated recently";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Element | null {
@@ -81,7 +49,7 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
   const { game } = current;
   const priceLabel = formatPriceMsats(game.price_msats);
   const refundLabel = formatRefundRate(current.refund_rate);
-  const updatedLabel = formatUpdatedAt(game.updated_at);
+  const updatedLabel = formatDateLabel(game.updated_at, { fallback: "Updated recently" });
 
   return (
     <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-lg shadow-emerald-500/10 backdrop-blur">
