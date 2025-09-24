@@ -10,10 +10,12 @@ import {
   UserProfile,
   createGameDraft,
   updateGameDraft,
+  updateUserLightningAddress,
 } from "../lib/api";
 
 interface GameDraftFormProps {
   user: UserProfile;
+  onUserUpdate?: (user: UserProfile) => void;
 }
 
 type FormState = "idle" | "submitting" | "success" | "error";
@@ -146,18 +148,20 @@ function mapDraftToValues(draft: GameDraft): GameDraftFormValues {
   };
 }
 
-export function GameDraftForm({ user }: GameDraftFormProps): JSX.Element {
+export function GameDraftForm({ user, onUserUpdate }: GameDraftFormProps): JSX.Element {
   const [values, setValues] = useState<GameDraftFormValues>(() => createInitialValues());
   const [draft, setDraft] = useState<GameDraft | null>(null);
   const [state, setState] = useState<FormState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [lightningAddress, setLightningAddress] = useState<string>(user.lightning_address ?? "");
 
   useEffect(() => {
     setValues(createInitialValues());
     setDraft(null);
     setState("idle");
     setMessage(null);
-  }, [user.id]);
+    setLightningAddress(user.lightning_address ?? "");
+  }, [user.id, user.lightning_address]);
 
   const buttonLabel = useMemo(() => {
     if (state === "submitting") {
@@ -191,6 +195,22 @@ export function GameDraftForm({ user }: GameDraftFormProps): JSX.Element {
       setMessage(null);
 
       try {
+        const normalizedLightning = lightningAddress.trim();
+        if (!normalizedLightning) {
+          setState("error");
+          setMessage("Add a Lightning address to receive payouts from your game.");
+          return;
+        }
+
+        const currentLightning = (user.lightning_address ?? "").trim();
+        if (normalizedLightning !== currentLightning) {
+          const updatedUser = await updateUserLightningAddress(user.id, normalizedLightning);
+          setLightningAddress(updatedUser.lightning_address ?? "");
+          if (typeof onUserUpdate === "function") {
+            onUserUpdate(updatedUser);
+          }
+        }
+
         let savedDraft: GameDraft;
         if (draft) {
           const updatePayload: UpdateGameDraftRequest = buildUpdatePayload(values, user.id);
@@ -213,7 +233,7 @@ export function GameDraftForm({ user }: GameDraftFormProps): JSX.Element {
         }
       }
     },
-    [draft, state, user.id, values],
+    [draft, lightningAddress, onUserUpdate, state, user.id, user.lightning_address, values],
   );
 
   const handleStartNewDraft = useCallback(() => {
@@ -275,6 +295,27 @@ export function GameDraftForm({ user }: GameDraftFormProps): JSX.Element {
             placeholder="my-cyber-adventure"
           />
           <p className="mt-1 text-xs text-slate-400">Slugs are lower-case and appear in the public URL for your game.</p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="developer-lightning-address"
+            className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400"
+          >
+            Lightning address for payouts
+          </label>
+          <input
+            id="developer-lightning-address"
+            name="lightning_address"
+            value={lightningAddress}
+            onChange={(event) => setLightningAddress(event.target.value)}
+            required
+            className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white shadow-inner shadow-black/40 focus:border-emerald-400 focus:outline-none"
+            placeholder="dev@wallet.example.com"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            We automatically send 85% of each confirmed purchase to this address and retain 15% for platform upkeep.
+          </p>
         </div>
 
         <div>

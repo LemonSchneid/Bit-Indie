@@ -97,13 +97,12 @@ S3_ENDPOINT=http://localhost:9000       # MinIO in dev
 S3_ACCESS_KEY=...
 S3_SECRET_KEY=...
 
-# Payments (choose one)
-LN_PROVIDER=lnbits                        # or btcpay
-LNBITS_API_URL=https://legend.lnbits.com/api/v1
-LNBITS_API_KEY=...
-LNBITS_WALLET_ID=...
-BTCPAY_URL=
-BTCPAY_API_KEY=
+# Payments
+LN_PROVIDER=opennode
+OPENNODE_API_BASE_URL=https://api.opennode.com
+OPENNODE_API_KEY=...
+OPENNODE_PLATFORM_WALLET=...
+OPENNODE_WEBHOOK_SECRET=
 
 # Feature flags (MVP: Nostr off)
 NOSTR_ENABLED=false

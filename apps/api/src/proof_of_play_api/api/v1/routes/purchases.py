@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import Purchase
 from proof_of_play_api.schemas.purchase import (
-    LnBitsWebhookPayload,
+    OpenNodeWebhookPayload,
     PurchaseDownloadRequest,
     PurchaseDownloadResponse,
     PurchaseRead,
@@ -129,17 +129,17 @@ def read_purchase_receipt(
 
 
 @router.post(
-    "/lnbits/webhook",
-    summary="Process LNbits webhook callbacks for invoice status changes",
+    "/opennode/webhook",
+    summary="Process OpenNode webhook callbacks for invoice status changes",
 )
-def handle_lnbits_webhook(
-    payload: LnBitsWebhookPayload,
+def handle_opennode_webhook(
+    payload: OpenNodeWebhookPayload,
     workflow: PurchaseWorkflowService = Depends(get_purchase_workflow_service),
 ) -> dict[str, str]:
-    """Verify invoice status with LNbits and persist any state transitions."""
+    """Verify invoice status with OpenNode and persist any state transitions."""
 
     try:
-        processed = workflow.reconcile_lnbits_webhook(invoice_id=payload.payment_hash)
+        processed = workflow.reconcile_opennode_webhook(invoice_id=payload.id)
     except PurchaseWorkflowError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -197,7 +197,7 @@ def request_purchase_refund(
 
 __all__ = [
     "create_purchase_download_link",
-    "handle_lnbits_webhook",
+    "handle_opennode_webhook",
     "lookup_purchase",
     "request_purchase_refund",
     "read_purchase_receipt",

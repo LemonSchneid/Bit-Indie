@@ -182,7 +182,7 @@ export function LoginCard(): JSX.Element {
         </button>
       </div>
 
-      {profile?.is_developer ? <GameDraftForm user={profile} /> : null}
+      {profile?.is_developer ? <GameDraftForm user={profile} onUserUpdate={updateProfile} /> : null}
     </div>
   );
 }

@@ -57,6 +57,16 @@ class MissingDeveloperProfileError(GameDraftingError):
         )
 
 
+class MissingLightningAddressError(GameDraftingError):
+    """Raised when a developer attempts to draft games without a payout address."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Add a Lightning address to your developer profile before submitting games.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 class GameNotFoundError(GameDraftingError):
     """Raised when a requested game record is not present in the database."""
 
@@ -170,6 +180,8 @@ class GameDraftingService:
         """Persist a new draft for the requesting developer."""
 
         developer = self.get_developer(session=session, user_id=request.user_id)
+        if not (developer.user and (developer.user.lightning_address or "").strip()):
+            raise MissingLightningAddressError()
         self._ensure_slug_available(session=session, slug=request.slug)
         self._validate_price(request.price_msats)
 
@@ -196,6 +208,10 @@ class GameDraftingService:
         game = self.authorize_game_access(
             session=session, user_id=request.user_id, game_id=game_id
         )
+
+        developer = game.developer
+        if developer and not (developer.user and (developer.user.lightning_address or "").strip()):
+            raise MissingLightningAddressError()
 
         updates = request.model_dump(exclude_unset=True, exclude={"user_id"})
 
@@ -418,6 +434,7 @@ __all__ = [
     "BuildScanFailedError",
     "InvalidPriceError",
     "MissingDeveloperProfileError",
+    "MissingLightningAddressError",
     "PublishChecklistResult",
     "PublishRequirementsNotMetError",
     "SlugConflictError",

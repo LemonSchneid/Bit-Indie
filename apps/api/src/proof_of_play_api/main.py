@@ -13,6 +13,7 @@ from proof_of_play_api.api.v1.routes.games import router as games_router
 from proof_of_play_api.api.v1.routes.health import router as health_router
 from proof_of_play_api.api.v1.routes.nostr import router as nostr_router
 from proof_of_play_api.api.v1.routes.purchases import router as purchases_router
+from proof_of_play_api.api.v1.routes.users import router as users_router
 from proof_of_play_api.api.v1.routes.reviews import router as reviews_router
 from proof_of_play_api.api.v1.routes.zaps import router as zaps_router
 from proof_of_play_api.core.config import get_settings
@@ -44,6 +45,7 @@ def create_application() -> FastAPI:
     application.include_router(admin_refunds_router)
     application.include_router(admin_stats_router)
     application.include_router(developers_router)
+    application.include_router(users_router)
     application.include_router(games_router)
     application.include_router(comments_router)
     application.include_router(reviews_router)

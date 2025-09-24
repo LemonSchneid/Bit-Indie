@@ -87,6 +87,14 @@ class RefundStatus(str, enum.Enum):
     PAID = "PAID"
 
 
+class PayoutStatus(str, enum.Enum):
+    """Lifecycle states for automated Lightning payouts."""
+
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class ZapTargetType(str, enum.Enum):
     """Entities that can receive Lightning zap receipts."""
 
@@ -293,6 +301,22 @@ class Purchase(TimestampMixin, Base):
         server_default=RefundStatus.NONE.value,
     )
     playtime_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    developer_payout_status: Mapped[PayoutStatus] = mapped_column(
+        SqlEnum(PayoutStatus, name="payout_status", native_enum=False),
+        nullable=False,
+        default=PayoutStatus.PENDING,
+        server_default=PayoutStatus.PENDING.value,
+    )
+    developer_payout_reference: Mapped[str | None] = mapped_column(String(120))
+    developer_payout_error: Mapped[str | None] = mapped_column(String(500))
+    platform_payout_status: Mapped[PayoutStatus] = mapped_column(
+        SqlEnum(PayoutStatus, name="payout_status", native_enum=False),
+        nullable=False,
+        default=PayoutStatus.PENDING,
+        server_default=PayoutStatus.PENDING.value,
+    )
+    platform_payout_reference: Mapped[str | None] = mapped_column(String(120))
+    platform_payout_error: Mapped[str | None] = mapped_column(String(500))
 
     user: Mapped[User] = relationship(back_populates="purchases")
     game: Mapped[Game] = relationship(back_populates="purchases")
@@ -597,6 +621,7 @@ __all__ = [
     "GameStatus",
     "BuildScanStatus",
     "InvoiceStatus",
+    "PayoutStatus",
     "ModerationFlag",
     "ModerationFlagReason",
     "ModerationFlagStatus",

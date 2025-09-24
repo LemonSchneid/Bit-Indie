@@ -13,6 +13,7 @@ from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import (
     DownloadAuditLog,
     InvoiceStatus,
+    PayoutStatus,
     Purchase,
     RefundStatus,
 )
@@ -179,8 +180,8 @@ class PurchaseWorkflowService:
             raise PurchaseNotFoundError()
         return purchase
 
-    def reconcile_lnbits_webhook(self, *, invoice_id: str) -> bool:
-        """Update purchase state using the latest LNbits invoice information."""
+    def reconcile_opennode_webhook(self, *, invoice_id: str) -> bool:
+        """Update purchase state using the latest OpenNode invoice information."""
 
         purchase = self.session.scalar(
             select(Purchase).where(Purchase.invoice_id == invoice_id)
@@ -200,6 +201,7 @@ class PurchaseWorkflowService:
                 purchase.paid_at = datetime.now(timezone.utc)
             if status_info.amount_msats is not None:
                 purchase.amount_msats = status_info.amount_msats
+            self._process_revenue_payouts(purchase=purchase)
         elif not status_info.pending and purchase.invoice_status is InvoiceStatus.PENDING:
             purchase.invoice_status = InvoiceStatus.EXPIRED
 
@@ -254,6 +256,101 @@ class PurchaseWorkflowService:
         self.session.flush()
 
         return PurchaseDownloadResult(purchase=purchase, download=download)
+
+    def _process_revenue_payouts(self, *, purchase: Purchase) -> None:
+        """Trigger revenue payouts to the developer and platform owners."""
+
+        game = purchase.game
+        if game is None:
+            return
+
+        amount_msats = purchase.amount_msats or 0
+        if amount_msats <= 0:
+            return
+
+        developer_share = (amount_msats * 85) // 100
+        platform_share = amount_msats - developer_share
+
+        developer_share_rounded = (developer_share // 1000) * 1000
+        developer_remainder = developer_share - developer_share_rounded
+        developer_share = developer_share_rounded
+        platform_share += developer_remainder
+
+        platform_share_rounded = (platform_share // 1000) * 1000
+        platform_remainder = platform_share - platform_share_rounded
+        platform_share = platform_share_rounded
+        developer_share += platform_remainder
+
+        if developer_share == 0 and amount_msats >= 1000:
+            developer_share = 1000
+            platform_share = max(0, amount_msats - developer_share)
+            platform_share = (platform_share // 1000) * 1000
+            developer_share = amount_msats - platform_share
+
+        developer_address = game.developer_lightning_address
+        platform_address = self.payments.platform_wallet_address
+
+        if purchase.developer_payout_status is not PayoutStatus.COMPLETED:
+            self._execute_payout(
+                purchase=purchase,
+                recipient="developer",
+                address=developer_address,
+                amount_msats=developer_share,
+                status_attr="developer_payout_status",
+                reference_attr="developer_payout_reference",
+                error_attr="developer_payout_error",
+            )
+
+        if purchase.platform_payout_status is not PayoutStatus.COMPLETED:
+            self._execute_payout(
+                purchase=purchase,
+                recipient="platform",
+                address=platform_address,
+                amount_msats=platform_share,
+                status_attr="platform_payout_status",
+                reference_attr="platform_payout_reference",
+                error_attr="platform_payout_error",
+            )
+
+    def _execute_payout(
+        self,
+        *,
+        purchase: Purchase,
+        recipient: str,
+        address: str | None,
+        amount_msats: int,
+        status_attr: str,
+        reference_attr: str,
+        error_attr: str,
+    ) -> None:
+        """Issue a payout through the payment provider and persist the outcome."""
+
+        status: PayoutStatus
+        reference: str | None = None
+        error_message: str | None = None
+
+        if amount_msats <= 0:
+            status = PayoutStatus.COMPLETED
+        elif not address:
+            status = PayoutStatus.FAILED
+            error_message = f"Missing Lightning address for {recipient} payout."
+        else:
+            try:
+                result = self.payments.send_payout(
+                    amount_msats=amount_msats,
+                    lightning_address=address,
+                    memo=f"Proof of Play purchase {purchase.id} ({recipient})",
+                )
+            except PaymentServiceError as exc:
+                status = PayoutStatus.FAILED
+                error_message = str(exc)
+            else:
+                status = PayoutStatus.COMPLETED
+                reference = result.payout_id
+
+        setattr(purchase, status_attr, status)
+        setattr(purchase, reference_attr, reference)
+        setattr(purchase, error_attr, error_message)
 
     def request_refund(self, *, purchase_id: str, user_id: str) -> Purchase:
         """Flag a paid purchase for refund review."""
