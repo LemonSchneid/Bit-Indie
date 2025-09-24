@@ -113,41 +113,47 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         containerClassName="items-center justify-center px-4 py-6"
-        contentClassName="relative w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 p-8 shadow-2xl shadow-emerald-500/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)] before:content-[''] after:pointer-events-none after:absolute after:-right-28 after:top-1/3 after:-z-10 after:h-64 after:w-64 after:rounded-full after:bg-[radial-gradient(circle,_rgba(59,130,246,0.2),_transparent_70%)] after:content-['']"
+        contentClassName="relative flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-emerald-500/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)] before:content-[''] after:pointer-events-none after:absolute after:-right-28 after:top-1/3 after:-z-10 after:h-64 after:w-64 after:rounded-full after:bg-[radial-gradient(circle,_rgba(59,130,246,0.2),_transparent_70%)] after:content-['']"
         backdropClassName="bg-slate-950/80 backdrop-blur-sm"
         backdropAriaLabel="Close checkout"
         ariaLabel="Lightning checkout"
       >
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(false)}
-          className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/60 text-slate-300 transition hover:text-white"
-          aria-label="Close checkout"
-        >
-          <span aria-hidden>×</span>
-        </button>
-        <InvoicePanel
-          gameTitle={props.gameTitle}
-          priceLabel={props.priceLabel}
-          hasAccount={!isGuestCheckout}
-          flowState={flowState}
-          errorMessage={errorMessage}
-          invoice={invoice}
-          isGuestCheckout={isGuestCheckout}
-          statusMessage={statusMessage}
-          copyState={copyState}
-          receiptCopyState={receiptCopyState}
-          receiptLinkToCopy={receiptLinkToCopy}
-          receiptUrl={receiptUrl}
-          qrCodeUrl={qrCodeUrl}
-          qrGenerationFailed={qrGenerationFailed}
-          downloadUnlocked={downloadUnlocked}
-          buildAvailable={props.buildAvailable}
-          onCreateInvoice={handleCreateInvoice}
-          onCopyInvoice={handleCopyInvoice}
-          onCopyReceiptLink={handleCopyReceiptLink}
-          onDownloadReceipt={handleDownloadReceipt}
-        />
+        <div className="relative flex-1 overflow-y-auto px-6 pb-8 pt-3 min-h-0">
+          <div className="sticky top-0 z-10 -mx-6 flex justify-end bg-slate-950/95 px-6 pt-2 pb-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/60 text-slate-300 transition hover:text-white"
+              aria-label="Close checkout"
+            >
+              <span aria-hidden>×</span>
+            </button>
+          </div>
+          <div className="space-y-6 pt-4">
+            <InvoicePanel
+              gameTitle={props.gameTitle}
+              priceLabel={props.priceLabel}
+              hasAccount={!isGuestCheckout}
+              flowState={flowState}
+              errorMessage={errorMessage}
+              invoice={invoice}
+              isGuestCheckout={isGuestCheckout}
+              statusMessage={statusMessage}
+              copyState={copyState}
+              receiptCopyState={receiptCopyState}
+              receiptLinkToCopy={receiptLinkToCopy}
+              receiptUrl={receiptUrl}
+              qrCodeUrl={qrCodeUrl}
+              qrGenerationFailed={qrGenerationFailed}
+              downloadUnlocked={downloadUnlocked}
+              buildAvailable={props.buildAvailable}
+              onCreateInvoice={handleCreateInvoice}
+              onCopyInvoice={handleCopyInvoice}
+              onCopyReceiptLink={handleCopyReceiptLink}
+              onDownloadReceipt={handleDownloadReceipt}
+            />
+          </div>
+        </div>
       </Modal>
     </>
   );

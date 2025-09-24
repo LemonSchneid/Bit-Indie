@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -63,9 +61,9 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:8080
       NEXT_PUBLIC_NOSTR_ENABLED: "false"
       NEXT_TELEMETRY_DISABLED: "1"
-    command: sh -c "corepack enable && pnpm install && pnpm dev"
+    command: sh -c "corepack enable && pnpm --dir /app install && pnpm --dir /app dev"
     volumes:
-      - ../apps/web:/app
+      - ${WEB_APP_PATH:-../apps/web}:/app
       - /app/node_modules
     ports:
       - "3000:3000"

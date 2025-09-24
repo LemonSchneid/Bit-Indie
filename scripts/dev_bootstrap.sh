@@ -11,4 +11,5 @@ if [ ! -f "$COMPOSE_FILE" ]; then
 fi
 
 echo "Starting Bit Indie development stack..."
+export WEB_APP_PATH="$REPO_ROOT/apps/web"
 docker compose -f "$COMPOSE_FILE" up --build postgres minio api web
