@@ -13,12 +13,16 @@ from proof_of_play_api.db.models import (
     Game,
     GameStatus,
     InvoiceStatus,
+    PayoutStatus,
     Purchase,
     RefundStatus,
     User,
 )
 from proof_of_play_api.services.guest_checkout import GuestCheckoutService
-from proof_of_play_api.services.payments import InvoiceStatus as ProviderInvoiceStatus
+from proof_of_play_api.services.payments import (
+    InvoiceStatus as ProviderInvoiceStatus,
+    PayoutResult,
+)
 from proof_of_play_api.services.purchase_workflow import (
     MissingLookupIdentifierError,
     PurchaseBuildUnavailableError,
@@ -35,12 +39,28 @@ class _StubPaymentService:
 
     def __init__(self) -> None:
         self.status_responses: dict[str, ProviderInvoiceStatus] = {}
+        self.payout_requests: list[tuple[str, int]] = []
+        self.platform_wallet_address = "platform@ln.example.com"
 
     def get_invoice_status(self, *, invoice_id: str) -> ProviderInvoiceStatus:
         try:
             return self.status_responses[invoice_id]
         except KeyError:  # pragma: no cover - defensive guard for unexpected calls
             raise AssertionError(f"Unexpected status lookup for {invoice_id}.")
+
+    def send_payout(
+        self,
+        *,
+        amount_msats: int,
+        lightning_address: str,
+        memo: str | None = None,
+    ) -> PayoutResult:
+        self.payout_requests.append((lightning_address, amount_msats))
+        return PayoutResult(
+            payout_id=f"payout-{len(self.payout_requests)}",
+            status="COMPLETED",
+            amount_msats=amount_msats,
+        )
 
 
 class _StubStorageService:
@@ -79,6 +99,7 @@ def _create_developer(session) -> tuple[User, Developer]:
     """Persist and return a developer with their user account."""
 
     user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+    user.lightning_address = "dev@ln.example.com"
     session.add(user)
     session.flush()
 
@@ -221,7 +242,7 @@ def test_lookup_purchase_supports_guest_identifier() -> None:
         assert result.user_id == guest.id
 
 
-def test_reconcile_lnbits_webhook_marks_purchase_paid() -> None:
+def test_reconcile_opennode_webhook_marks_purchase_paid() -> None:
     """Webhook reconciliation should mark the purchase as paid and grant downloads."""
 
     _create_schema()
@@ -251,7 +272,7 @@ def test_reconcile_lnbits_webhook_marks_purchase_paid() -> None:
         session.flush()
 
         service = _build_service(session, payments=payments)
-        processed = service.reconcile_lnbits_webhook(invoice_id="hash123")
+        processed = service.reconcile_opennode_webhook(invoice_id="hash123")
 
         assert processed is True
         session.refresh(purchase)
@@ -259,15 +280,21 @@ def test_reconcile_lnbits_webhook_marks_purchase_paid() -> None:
         assert purchase.download_granted is True
         assert purchase.amount_msats == 6_000
         assert purchase.paid_at is not None
+        assert purchase.developer_payout_status is PayoutStatus.COMPLETED
+        assert purchase.platform_payout_status is PayoutStatus.COMPLETED
+        assert payments.payout_requests == [
+            ("dev@ln.example.com", 5_000),
+            ("platform@ln.example.com", 1_000),
+        ]
 
 
-def test_reconcile_lnbits_webhook_returns_false_for_unknown_invoice() -> None:
+def test_reconcile_opennode_webhook_returns_false_for_unknown_invoice() -> None:
     """Webhook reconciliation should ignore invoices that do not map to purchases."""
 
     _create_schema()
     with session_scope() as session:
         service = _build_service(session)
-        assert service.reconcile_lnbits_webhook(invoice_id="missing") is False
+        assert service.reconcile_opennode_webhook(invoice_id="missing") is False
 
 
 def test_create_download_link_records_audit_log() -> None:

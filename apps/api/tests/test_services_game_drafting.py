@@ -52,6 +52,7 @@ def _create_developer(session) -> tuple[User, Developer]:
     """Persist and return a developer and their linked user."""
 
     user = User(pubkey_hex=f"developer-{uuid.uuid4().hex}")
+    user.lightning_address = "dev@ln.example.com"
     session.add(user)
     session.flush()
 

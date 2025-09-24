@@ -23,7 +23,7 @@ Symptoms:
 Runbook steps:
 
 1. Validate payment provider env:
-   - `LN_PROVIDER=lnbits` and `LNBITS_*` vars present and correct.
+   - `LN_PROVIDER=opennode` and `OPENNODE_*` vars present and correct.
 2. Inspect provider status page/logs; test issuing an invoice directly via provider API.
 3. Check API logs around `POST /v1/games/:id/invoices` for validation errors.
 4. If paid but not unlocked, verify webhook/polling logic for invoice status and DB `download_granted` updates.

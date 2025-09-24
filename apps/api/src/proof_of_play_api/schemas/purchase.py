@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, model_validator
 
-from proof_of_play_api.db.models import InvoiceStatus, RefundStatus
+from proof_of_play_api.db.models import InvoiceStatus, PayoutStatus, RefundStatus
 
 
 class InvoiceCreateRequest(BaseModel):
@@ -37,6 +37,7 @@ class InvoiceCreateResponse(BaseModel):
     amount_msats: int
     invoice_status: InvoiceStatus
     check_url: AnyUrl
+    hosted_checkout_url: AnyUrl | None = None
 
 
 class PurchaseRead(BaseModel):
@@ -52,16 +53,23 @@ class PurchaseRead(BaseModel):
     download_granted: bool
     refund_requested: bool
     refund_status: RefundStatus
+    developer_payout_status: PayoutStatus
+    developer_payout_reference: str | None
+    developer_payout_error: str | None
+    platform_payout_status: PayoutStatus
+    platform_payout_reference: str | None
+    platform_payout_error: str | None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class LnBitsWebhookPayload(BaseModel):
-    """Incoming payload from the LNbits webhook integration."""
+class OpenNodeWebhookPayload(BaseModel):
+    """Incoming payload from the OpenNode webhook integration."""
 
-    payment_hash: str = Field(..., min_length=1, max_length=120)
+    id: str = Field(..., min_length=1, max_length=120)
+    status: str | None = Field(default=None, max_length=50)
 
 
 class PurchaseDownloadRequest(BaseModel):
@@ -146,7 +154,7 @@ class RefundPayoutResponse(BaseModel):
 __all__ = [
     "InvoiceCreateRequest",
     "InvoiceCreateResponse",
-    "LnBitsWebhookPayload",
+    "OpenNodeWebhookPayload",
     "PurchaseDownloadRequest",
     "PurchaseDownloadResponse",
     "PurchaseRead",

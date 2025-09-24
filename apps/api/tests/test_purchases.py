@@ -10,6 +10,7 @@ from proof_of_play_api.db.models import (
     Game,
     GameStatus,
     InvoiceStatus as PurchaseInvoiceStatus,
+    PayoutStatus,
     Purchase,
     RefundStatus,
     Review,
@@ -19,6 +20,7 @@ from proof_of_play_api.main import create_application
 from proof_of_play_api.services.payments import (
     CreatedInvoice,
     InvoiceStatus as ProviderInvoiceStatus,
+    PayoutResult,
     get_payment_service,
     reset_payment_service,
 )
@@ -38,6 +40,8 @@ class _StubPaymentService:
             checking_id="check123",
         )
         self.status_responses: dict[str, ProviderInvoiceStatus] = {}
+        self.payout_requests: list[tuple[str, int]] = []
+        self.platform_wallet_address = "platform@ln.example.com"
 
     def create_invoice(self, *, amount_msats: int, memo: str, webhook_url: str) -> CreatedInvoice:
         self.invoices.append(
@@ -55,6 +59,20 @@ class _StubPaymentService:
             return self.status_responses[invoice_id]
         except KeyError:  # pragma: no cover - defensive guard for unexpected calls
             raise AssertionError(f"Unexpected status lookup for {invoice_id}.")
+
+    def send_payout(
+        self,
+        *,
+        amount_msats: int,
+        lightning_address: str,
+        memo: str | None = None,
+    ) -> PayoutResult:
+        self.payout_requests.append((lightning_address, amount_msats))
+        return PayoutResult(
+            payout_id=f"payout-{len(self.payout_requests)}",
+            status="COMPLETED",
+            amount_msats=amount_msats,
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -93,6 +111,7 @@ def _seed_game_with_price(
 
     with session_scope() as session:
         user = User(pubkey_hex="buyer-pubkey")
+        user.lightning_address = "dev@ln.example.com"
         session.add(user)
         session.flush()
         user_id = user.id
@@ -454,7 +473,7 @@ def test_webhook_marks_purchase_as_paid() -> None:
     stub.status_responses["hash123"] = ProviderInvoiceStatus(paid=True, pending=False, amount_msats=5000)
     client = _build_client(stub)
 
-    response = client.post("/v1/purchases/lnbits/webhook", json={"payment_hash": "hash123"})
+    response = client.post("/v1/purchases/opennode/webhook", json={"id": "hash123", "status": "paid"})
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
@@ -466,6 +485,12 @@ def test_webhook_marks_purchase_as_paid() -> None:
         assert refreshed.download_granted is True
         assert refreshed.paid_at is not None
         assert refreshed.amount_msats == 5000
+        assert refreshed.developer_payout_status is PayoutStatus.COMPLETED
+        assert refreshed.platform_payout_status is PayoutStatus.COMPLETED
+        assert stub.payout_requests == [
+            ("dev@ln.example.com", 4000),
+            ("platform@ln.example.com", 1000),
+        ]
 
 
 def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
@@ -506,7 +531,7 @@ def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
     stub.status_responses["hash123"] = ProviderInvoiceStatus(paid=True, pending=False, amount_msats=5000)
     client = _build_client(stub)
 
-    response = client.post("/v1/purchases/lnbits/webhook", json={"payment_hash": "hash123"})
+    response = client.post("/v1/purchases/opennode/webhook", json={"id": "hash123", "status": "paid"})
 
     assert response.status_code == 200
 
@@ -514,6 +539,10 @@ def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
         game = session.get(Game, game_id)
         assert game is not None
         assert game.status is GameStatus.DISCOVER
+    assert stub.payout_requests == [
+        ("dev@ln.example.com", 4000),
+        ("platform@ln.example.com", 1000),
+    ]
 
 
 def test_webhook_expires_unpaid_invoice() -> None:
@@ -537,7 +566,7 @@ def test_webhook_expires_unpaid_invoice() -> None:
     stub.status_responses["hash999"] = ProviderInvoiceStatus(paid=False, pending=False, amount_msats=5000)
     client = _build_client(stub)
 
-    response = client.post("/v1/purchases/lnbits/webhook", json={"payment_hash": "hash999"})
+    response = client.post("/v1/purchases/opennode/webhook", json={"id": "hash999", "status": "expired"})
 
     assert response.status_code == 200
 
@@ -547,6 +576,7 @@ def test_webhook_expires_unpaid_invoice() -> None:
         assert refreshed.invoice_status is PurchaseInvoiceStatus.EXPIRED
         assert refreshed.download_granted is False
         assert refreshed.paid_at is None
+    assert stub.payout_requests == []
 
 
 def test_create_download_link_returns_signed_url_and_logs_event() -> None:

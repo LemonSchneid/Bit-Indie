@@ -15,7 +15,7 @@ from proof_of_play_api.services.nostr import SECP256K1_N
 DEFAULT_STORAGE_PROVIDER = "s3"
 DEFAULT_S3_PRESIGN_EXPIRATION_SECONDS = 3600
 DEFAULT_S3_REGION = "us-east-1"
-DEFAULT_PAYMENT_PROVIDER = "lnbits"
+DEFAULT_PAYMENT_PROVIDER = "opennode"
 DEFAULT_PUBLIC_WEB_URL = "http://localhost:3000"
 DEFAULT_NOSTR_REQUEST_TIMEOUT_SECONDS = 10.0
 DEFAULT_NOSTR_BACKOFF_SECONDS = 60
@@ -260,12 +260,13 @@ class PaymentsConfigurationError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class LnBitsSettings:
-    """Configuration describing how to talk to an LNbits wallet."""
+class OpenNodeSettings:
+    """Configuration describing how to talk to the OpenNode API."""
 
-    api_url: str
+    api_base_url: str
     api_key: str
-    wallet_id: str
+    platform_wallet_address: str
+    callback_secret: str | None
 
 
 @dataclass(frozen=True)
@@ -273,7 +274,7 @@ class PaymentSettings:
     """High level payment provider configuration for the application."""
 
     provider: str
-    lnbits: LnBitsSettings
+    opennode: OpenNodeSettings
 
 
 def _normalize_base_url(url: str) -> str:
@@ -287,20 +288,20 @@ def get_payment_settings() -> PaymentSettings:
     """Return cached payment provider settings derived from the environment."""
 
     provider = os.getenv("LN_PROVIDER", DEFAULT_PAYMENT_PROVIDER).strip().lower()
-    if provider != "lnbits":
-        msg = "Only the 'lnbits' Lightning provider is currently supported."
+    if provider != "opennode":
+        msg = "Only the 'opennode' Lightning provider is currently supported."
         raise PaymentsConfigurationError(msg)
 
-    api_url = os.getenv("LNBITS_API_URL")
-    api_key = os.getenv("LNBITS_API_KEY")
-    wallet_id = os.getenv("LNBITS_WALLET_ID")
+    api_url = os.getenv("OPENNODE_API_BASE_URL", "https://api.opennode.com")
+    api_key = os.getenv("OPENNODE_API_KEY")
+    platform_wallet = os.getenv("OPENNODE_PLATFORM_WALLET")
+    callback_secret = os.getenv("OPENNODE_WEBHOOK_SECRET")
 
     missing = [
         name
         for name, value in (
-            ("LNBITS_API_URL", api_url),
-            ("LNBITS_API_KEY", api_key),
-            ("LNBITS_WALLET_ID", wallet_id),
+            ("OPENNODE_API_KEY", api_key),
+            ("OPENNODE_PLATFORM_WALLET", platform_wallet),
         )
         if not (value and value.strip())
     ]
@@ -309,12 +310,13 @@ def get_payment_settings() -> PaymentSettings:
         msg = f"Missing required payment environment variables: {formatted}."
         raise PaymentsConfigurationError(msg)
 
-    settings = LnBitsSettings(
-        api_url=_normalize_base_url(api_url.strip()),
+    settings = OpenNodeSettings(
+        api_base_url=_normalize_base_url(api_url.strip()),
         api_key=api_key.strip(),
-        wallet_id=wallet_id.strip(),
+        platform_wallet_address=platform_wallet.strip(),
+        callback_secret=callback_secret.strip() if callback_secret and callback_secret.strip() else None,
     )
-    return PaymentSettings(provider=provider, lnbits=settings)
+    return PaymentSettings(provider=provider, opennode=settings)
 
 
 def clear_payment_settings_cache() -> None:
