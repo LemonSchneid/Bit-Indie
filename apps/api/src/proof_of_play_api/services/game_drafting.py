@@ -24,6 +24,7 @@ from proof_of_play_api.services.game_promotion import update_game_featured_statu
 from proof_of_play_api.services.game_publication import GamePublicationService
 from proof_of_play_api.services.malware_scanner import (
     BuildScanResult,
+    BuildScanStatus as ScannerBuildScanStatus,
     MalwareScannerService,
     get_malware_scanner,
 )
@@ -321,11 +322,12 @@ class GameDraftingService:
             size_bytes=game.build_size_bytes,
             checksum_sha256=game.checksum_sha256,
         )
-        game.build_scan_status = result.status
+        scanner_status = ScannerBuildScanStatus(result.status.value)
+        game.build_scan_status = BuildScanStatus(scanner_status.value)
         game.build_scan_message = result.message
         game.build_scanned_at = datetime.now(timezone.utc)
 
-        if result.status is BuildScanStatus.FAILED:
+        if scanner_status is ScannerBuildScanStatus.FAILED:
             raise BuildScanFailedError(result.message)
 
     def _validate_price(self, price_msats: int | None) -> None:
