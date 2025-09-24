@@ -67,4 +67,5 @@ class LoginSuccessResponse(BaseModel):
     """Response payload when a login attempt succeeds."""
 
     user: UserRead
+    session_token: str
 

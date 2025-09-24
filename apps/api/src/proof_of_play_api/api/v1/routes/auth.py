@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.core.config import get_settings
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import User
 from proof_of_play_api.schemas.auth import (
@@ -27,6 +28,7 @@ from proof_of_play_api.services.nostr import (
     SignatureVerificationError,
     verify_signed_event,
 )
+from proof_of_play_api.services.session_tokens import create_session_token
 
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
@@ -114,7 +116,16 @@ async def verify_login(
         ) from exc
 
     user = _get_or_create_user(session=session, pubkey_hex=event.pubkey)
-    return LoginSuccessResponse(user=UserRead.model_validate(user))
+    settings = get_settings()
+    session_token = create_session_token(
+        user_id=user.id,
+        secret=settings.session_secret,
+        ttl_seconds=settings.session_ttl_seconds,
+    )
+    return LoginSuccessResponse(
+        user=UserRead.model_validate(user),
+        session_token=session_token,
+    )
 
 
 def _get_or_create_user(*, session: Session, pubkey_hex: str) -> User:

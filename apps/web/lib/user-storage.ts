@@ -1,7 +1,12 @@
-import type { UserProfile } from "./api";
+import type { UserProfile } from "./api/auth";
 
 export const USER_PROFILE_STORAGE_KEY = "proof-of-play:user-profile";
 export const USER_PROFILE_STORAGE_EVENT = "proof-of-play:user-profile-changed";
+
+type StoredUserState = {
+  profile: UserProfile;
+  session_token: string | null;
+};
 
 function isUserProfile(value: unknown): value is UserProfile {
   if (typeof value !== "object" || value === null) {
@@ -26,11 +31,26 @@ function isUserProfile(value: unknown): value is UserProfile {
   return hasValidStrings && hasValidFlags && hasOptionalFields;
 }
 
-function parseStoredProfile(raw: string): UserProfile | null {
+function isStoredUserState(value: unknown): value is StoredUserState {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<StoredUserState>;
+  return (
+    isUserProfile(candidate.profile) &&
+    (candidate.session_token === null || typeof candidate.session_token === "string")
+  );
+}
+
+function parseStoredState(raw: string): StoredUserState | null {
   try {
     const value = JSON.parse(raw);
-    if (isUserProfile(value)) {
+    if (isStoredUserState(value)) {
       return value;
+    }
+    if (isUserProfile(value)) {
+      return { profile: value, session_token: null };
     }
     return null;
   } catch (error) {
@@ -48,16 +68,37 @@ export function loadStoredUserProfile(): UserProfile | null {
     return null;
   }
 
-  return parseStoredProfile(raw);
+  const state = parseStoredState(raw);
+  return state ? state.profile : null;
+}
+
+export function loadStoredSessionToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  const state = parseStoredState(raw);
+  return state ? state.session_token : null;
 }
 
 export function saveUserProfile(profile: UserProfile): void {
+  const token = loadStoredSessionToken();
+  saveUserSession(profile, token);
+}
+
+export function saveUserSession(profile: UserProfile, sessionToken: string | null): void {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    window.localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    const state: StoredUserState = { profile, session_token: sessionToken };
+    window.localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     return;
   }

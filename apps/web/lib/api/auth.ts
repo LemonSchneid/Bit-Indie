@@ -31,6 +31,7 @@ export interface UserProfile {
 
 export interface LoginSuccessResponse {
   user: UserProfile;
+  session_token: string;
 }
 
 export async function requestLoginChallenge(): Promise<LoginChallengeResponse> {
