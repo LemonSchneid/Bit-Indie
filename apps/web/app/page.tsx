@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { CatalogGrid } from "../components/catalog/catalog-grid";
 import { listCatalogGames } from "../lib/api";
 
@@ -11,6 +13,16 @@ export default async function HomePage(): Promise<JSX.Element> {
 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-16 px-6 py-16">
         <section className="space-y-6 text-center">
+          <div className="flex justify-center">
+            <Image
+              src="/bit-indie-logo.svg"
+              alt="Bit Indie logo"
+              width={220}
+              height={220}
+              priority
+              className="drop-shadow-[0_20px_45px_rgba(139,92,246,0.35)]"
+            />
+          </div>
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.55em] text-emerald-300/70">
             Bit Indie marketplace
           </p>
