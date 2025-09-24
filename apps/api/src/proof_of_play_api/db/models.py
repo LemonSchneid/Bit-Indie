@@ -50,6 +50,16 @@ class GameStatus(str, enum.Enum):
     FEATURED = "FEATURED"
 
 
+class BuildScanStatus(str, enum.Enum):
+    """Possible outcomes when scanning an uploaded build for malware."""
+
+    NOT_SCANNED = "NOT_SCANNED"
+    PENDING = "PENDING"
+    CLEAN = "CLEAN"
+    INFECTED = "INFECTED"
+    FAILED = "FAILED"
+
+
 class GameCategory(str, enum.Enum):
     """High-level descriptors for the maturity of a game build."""
 
@@ -205,6 +215,14 @@ class Game(TimestampMixin, Base):
     build_object_key: Mapped[str | None] = mapped_column(String(500))
     build_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    build_scan_status: Mapped[BuildScanStatus] = mapped_column(
+        SqlEnum(BuildScanStatus, name="build_scan_status", native_enum=False),
+        nullable=False,
+        default=BuildScanStatus.NOT_SCANNED,
+        server_default=BuildScanStatus.NOT_SCANNED.value,
+    )
+    build_scan_message: Mapped[str | None] = mapped_column(String(500))
+    build_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     release_note_event_id: Mapped[str | None] = mapped_column(
         String(128), unique=True
@@ -577,6 +595,7 @@ __all__ = [
     "Game",
     "GameCategory",
     "GameStatus",
+    "BuildScanStatus",
     "InvoiceStatus",
     "ModerationFlag",
     "ModerationFlagReason",

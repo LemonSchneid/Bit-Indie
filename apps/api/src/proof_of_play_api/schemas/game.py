@@ -7,7 +7,7 @@ from datetime import datetime
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field, field_validator
 
-from proof_of_play_api.db.models import GameCategory, GameStatus
+from proof_of_play_api.db.models import BuildScanStatus, GameCategory, GameStatus
 
 
 class GameBase(BaseModel):
@@ -108,6 +108,9 @@ class GameRead(BaseModel):
     build_object_key: str | None
     build_size_bytes: int | None
     checksum_sha256: str | None
+    build_scan_status: BuildScanStatus
+    build_scan_message: str | None
+    build_scanned_at: datetime | None
     active: bool
     developer_lightning_address: str | None = None
     release_note_event_id: str | None = None
@@ -136,6 +139,7 @@ class PublishRequirementCode(str, enum.Enum):
     DESCRIPTION = "DESCRIPTION"
     COVER_IMAGE = "COVER_IMAGE"
     BUILD_UPLOAD = "BUILD_UPLOAD"
+    MALWARE_SCAN = "MALWARE_SCAN"
 
 
 class GamePublishRequirement(BaseModel):

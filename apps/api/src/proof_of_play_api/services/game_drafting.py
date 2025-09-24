@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Iterable
 
 from pydantic import AnyUrl
@@ -10,7 +11,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 from starlette import status
 
-from proof_of_play_api.db.models import Developer, Game, User
+from proof_of_play_api.db.models import BuildScanStatus, Developer, Game, User
 from proof_of_play_api.schemas.game import (
     GameCreateRequest,
     GamePublishChecklist,
@@ -21,6 +22,11 @@ from proof_of_play_api.schemas.game import (
 )
 from proof_of_play_api.services.game_promotion import update_game_featured_status
 from proof_of_play_api.services.game_publication import GamePublicationService
+from proof_of_play_api.services.malware_scanner import (
+    BuildScanResult,
+    MalwareScannerService,
+    get_malware_scanner,
+)
 from proof_of_play_api.services.nostr_publisher import ReleaseNotePublisher
 
 
@@ -87,6 +93,14 @@ class InvalidBuildObjectKeyError(GameDraftingError):
         )
 
 
+class BuildScanFailedError(GameDraftingError):
+    """Raised when the malware scanner cannot complete its analysis."""
+
+    def __init__(self, detail: str | None = None) -> None:
+        message = detail or "Malware scan failed. Please try again later."
+        super().__init__(message, status_code=status.HTTP_502_BAD_GATEWAY)
+
+
 class InvalidPriceError(GameDraftingError):
     """Raised when a price fails domain validation rules."""
 
@@ -117,6 +131,11 @@ class PublishRequirementsNotMetError(GameDraftingError):
 
 class GameDraftingService:
     """Encapsulate domain logic for creating, updating, and publishing game drafts."""
+
+    def __init__(self, *, build_scanner: MalwareScannerService | None = None) -> None:
+        """Initialize the service with injectable dependencies for testing."""
+
+        self._build_scanner = build_scanner or get_malware_scanner()
 
     def get_developer(self, *, session: Session, user_id: str) -> Developer:
         """Return the developer profile for a user or raise an error if unavailable."""
@@ -192,10 +211,16 @@ class GameDraftingService:
         if new_build_key:
             self._validate_build_key(game=game, build_object_key=new_build_key)
 
+        build_fields = {"build_object_key", "build_size_bytes", "checksum_sha256"}
+        build_metadata_updated = any(field in updates for field in build_fields)
+
         for field, value in updates.items():
             if isinstance(value, AnyUrl):
                 value = str(value)
             setattr(game, field, value)
+
+        if build_metadata_updated:
+            self._apply_build_scan(game=game)
 
         session.flush()
         session.refresh(game)
@@ -278,6 +303,31 @@ class GameDraftingService:
         if not build_object_key.startswith(expected_prefix):
             raise InvalidBuildObjectKeyError()
 
+    def _apply_build_scan(self, *, game: Game) -> None:
+        """Run malware scanning whenever build metadata is modified."""
+
+        if not (
+            game.build_object_key
+            and game.build_size_bytes is not None
+            and game.checksum_sha256
+        ):
+            game.build_scan_status = BuildScanStatus.NOT_SCANNED
+            game.build_scan_message = None
+            game.build_scanned_at = None
+            return
+
+        result: BuildScanResult = self._build_scanner.scan(
+            object_key=game.build_object_key,
+            size_bytes=game.build_size_bytes,
+            checksum_sha256=game.checksum_sha256,
+        )
+        game.build_scan_status = result.status
+        game.build_scan_message = result.message
+        game.build_scanned_at = datetime.now(timezone.utc)
+
+        if result.status is BuildScanStatus.FAILED:
+            raise BuildScanFailedError(result.message)
+
     def _validate_price(self, price_msats: int | None) -> None:
         """Ensure prices are either unset or divisible by 1,000 milli-satoshis."""
 
@@ -333,6 +383,22 @@ class GameDraftingService:
                     message="Upload a downloadable build with size and checksum recorded.",
                 )
             )
+        elif game.build_scan_status is not BuildScanStatus.CLEAN:
+            status_message = {
+                BuildScanStatus.NOT_SCANNED: "Run a malware scan on the uploaded build before publishing.",
+                BuildScanStatus.PENDING: "Wait for the malware scan to finish before publishing.",
+                BuildScanStatus.INFECTED: "Replace the build with a clean version. Malware was detected.",
+                BuildScanStatus.FAILED: "Resolve the malware scan error before publishing.",
+            }.get(
+                game.build_scan_status,
+                "Complete the malware scan before publishing.",
+            )
+            missing.append(
+                GamePublishRequirement(
+                    code=PublishRequirementCode.MALWARE_SCAN,
+                    message=status_message,
+                )
+            )
 
         return missing
 
@@ -340,13 +406,14 @@ class GameDraftingService:
 def get_game_drafting_service() -> GameDraftingService:
     """Return a new `GameDraftingService` instance for request-scoped operations."""
 
-    return GameDraftingService()
+    return GameDraftingService(build_scanner=get_malware_scanner())
 
 
 __all__ = [
     "GameDraftingError",
     "GameDraftingService",
     "InvalidBuildObjectKeyError",
+    "BuildScanFailedError",
     "InvalidPriceError",
     "MissingDeveloperProfileError",
     "PublishChecklistResult",

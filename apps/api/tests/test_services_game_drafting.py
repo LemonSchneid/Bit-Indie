@@ -5,6 +5,7 @@ import pytest
 
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
 from proof_of_play_api.db.models import (
+    BuildScanStatus,
     Developer,
     GameStatus,
     InvoiceStatus,
@@ -13,12 +14,21 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.schemas.game import GameCreateRequest, GameUpdateRequest
+from proof_of_play_api.schemas.game import (
+    GameCreateRequest,
+    GamePublishRequest,
+    GameUpdateRequest,
+    PublishRequirementCode,
+)
 from proof_of_play_api.services.game_drafting import (
+    BuildScanFailedError,
     GameDraftingService,
     InvalidPriceError,
+    PublishRequirementsNotMetError,
     SlugConflictError,
 )
+from proof_of_play_api.services.malware_scanner import BuildScanResult
+from proof_of_play_api.services.game_publication import GamePublicationService
 
 
 @pytest.fixture(autouse=True)
@@ -50,6 +60,32 @@ def _create_developer(session) -> tuple[User, Developer]:
     session.flush()
 
     return user, developer
+
+
+class _StubScanner:
+    """Test double returning a fixed malware scan result."""
+
+    def __init__(self, result: BuildScanResult) -> None:
+        self._result = result
+        self.calls: list[tuple[str, int, str]] = []
+
+    def scan(
+        self, *, object_key: str, size_bytes: int, checksum_sha256: str
+    ) -> BuildScanResult:
+        self.calls.append((object_key, size_bytes, checksum_sha256))
+        return self._result
+
+
+class _StubPublisher:
+    """Test double that tracks release note publication attempts."""
+
+    def __init__(self) -> None:
+        self.published = 0
+
+    def publish_release_note(self, *, session, game, reference=None) -> None:  # noqa: D401
+        """Record that the publish hook would have been called."""
+
+        self.published += 1
 
 
 def test_create_draft_rejects_duplicate_slug() -> None:
@@ -162,3 +198,136 @@ def test_update_draft_refreshes_featured_status() -> None:
         )
 
         assert updated.status is GameStatus.FEATURED
+
+
+def test_update_draft_records_malware_scan_result() -> None:
+    """Updating build metadata should persist the scanner status and message."""
+
+    _create_schema()
+    scanner = _StubScanner(BuildScanResult(BuildScanStatus.CLEAN, "Clean build."))
+    service = GameDraftingService(build_scanner=scanner)
+
+    with session_scope() as session:
+        user, _ = _create_developer(session)
+        game = service.create_draft(
+            session=session,
+            request=GameCreateRequest(
+                user_id=user.id,
+                title="Zero Horizon",
+                slug="zero-horizon",
+            ),
+        )
+
+        update_request = GameUpdateRequest(
+            user_id=user.id,
+            build_object_key=f"games/{game.id}/build/zero-horizon.zip",
+            build_size_bytes=2_097_152,
+            checksum_sha256="a" * 64,
+        )
+
+        updated = service.update_draft(
+            session=session,
+            game_id=game.id,
+            request=update_request,
+        )
+
+        assert updated.build_scan_status is BuildScanStatus.CLEAN
+        assert updated.build_scan_message == "Clean build."
+        assert updated.build_scanned_at is not None
+        assert scanner.calls == [
+            (f"games/{game.id}/build/zero-horizon.zip", 2_097_152, "a" * 64)
+        ]
+
+
+def test_update_draft_raises_when_scan_fails() -> None:
+    """A failed malware scan should abort the draft update."""
+
+    _create_schema()
+    scanner = _StubScanner(BuildScanResult(BuildScanStatus.FAILED, "Scan failed."))
+    service = GameDraftingService(build_scanner=scanner)
+
+    with session_scope() as session:
+        user, _ = _create_developer(session)
+        game = service.create_draft(
+            session=session,
+            request=GameCreateRequest(
+                user_id=user.id,
+                title="Ionosphere",
+                slug="ionosphere",
+            ),
+        )
+
+        update_request = GameUpdateRequest(
+            user_id=user.id,
+            build_object_key=f"games/{game.id}/build/ionosphere.zip",
+            build_size_bytes=1_000_000,
+            checksum_sha256="b" * 64,
+        )
+
+        with pytest.raises(BuildScanFailedError):
+            service.update_draft(
+                session=session,
+                game_id=game.id,
+                request=update_request,
+            )
+
+        assert scanner.calls == [
+            (f"games/{game.id}/build/ionosphere.zip", 1_000_000, "b" * 64)
+        ]
+
+
+def test_publish_game_requires_clean_malware_scan() -> None:
+    """Publishing should fail when the latest scan flagged malware."""
+
+    _create_schema()
+    scanner = _StubScanner(
+        BuildScanResult(BuildScanStatus.INFECTED, "Malware detected.")
+    )
+    service = GameDraftingService(build_scanner=scanner)
+    publication = GamePublicationService()
+    publisher = _StubPublisher()
+
+    with session_scope() as session:
+        user, _ = _create_developer(session)
+        game = service.create_draft(
+            session=session,
+            request=GameCreateRequest(
+                user_id=user.id,
+                title="Signal Break",
+                slug="signal-break",
+                summary="Break signals",
+                description_md="## Synopsis\n\nShort wave puzzles.",
+                cover_url="https://cdn.example.com/covers/signal-break.png",
+            ),
+        )
+
+        update_request = GameUpdateRequest(
+            user_id=user.id,
+            build_object_key=f"games/{game.id}/build/signal-break.zip",
+            build_size_bytes=3_145_728,
+            checksum_sha256="c" * 64,
+        )
+        updated = service.update_draft(
+            session=session,
+            game_id=game.id,
+            request=update_request,
+        )
+
+        assert updated.build_scan_status is BuildScanStatus.INFECTED
+
+        publish_request = GamePublishRequest(user_id=user.id)
+
+        with pytest.raises(PublishRequirementsNotMetError) as exc_info:
+            service.publish_game(
+                session=session,
+                game_id=game.id,
+                request=publish_request,
+                publisher=publisher,
+                publication=publication,
+            )
+
+        requirement_codes = {
+            requirement.code for requirement in exc_info.value.missing_requirements
+        }
+        assert PublishRequirementCode.MALWARE_SCAN in requirement_codes
+        assert publisher.published == 0
