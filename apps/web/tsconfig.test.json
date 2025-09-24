@@ -19,6 +19,8 @@
     "lib/hooks/use-zap-workflow.ts",
     "lib/hooks/use-zap-workflow.test.tsx",
     "components/zap-button.tsx",
+    "components/game-purchase-flow/**/*.ts",
+    "components/game-purchase-flow/**/*.tsx",
     "components/ui/**/*.ts",
     "components/ui/**/*.tsx"
   ],
