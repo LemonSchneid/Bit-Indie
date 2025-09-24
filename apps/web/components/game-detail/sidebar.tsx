@@ -1,0 +1,78 @@
+import { GamePurchaseFlow } from "../game-purchase-flow";
+import { ZapButton } from "../zap-button";
+
+type GameDetailSidebarProps = {
+  hasPaidPrice: boolean;
+  checkoutAvailable: boolean;
+  priceLabel: string;
+  buildAvailable: boolean;
+  gameId: string;
+  gameTitle: string;
+  priceMsats: number | null;
+  developerLightningAddress: string | null;
+};
+
+export function GameDetailSidebar({
+  hasPaidPrice,
+  checkoutAvailable,
+  priceLabel,
+  buildAvailable,
+  gameId,
+  gameTitle,
+  priceMsats,
+  developerLightningAddress,
+}: GameDetailSidebarProps): JSX.Element {
+  return (
+    <aside className="space-y-5">
+      {hasPaidPrice ? (
+        checkoutAvailable ? (
+          <GamePurchaseFlow
+            gameId={gameId}
+            gameTitle={gameTitle}
+            priceMsats={priceMsats}
+            priceLabel={priceLabel}
+            buildAvailable={buildAvailable}
+            developerLightningAddress={developerLightningAddress}
+          />
+        ) : (
+          <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Checkout locked</h2>
+            <p className="mt-3 text-sm text-slate-300">
+              Lightning checkout opens once this listing is published. The developer can finish their launch checklist to make purchases available.
+            </p>
+          </div>
+        )
+      ) : (
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Free download</h2>
+          <p className="mt-3 text-sm text-slate-300">
+            This build will be shared for free once the developer uploads the files. Check back soon for the download link.
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Tip the developer</h2>
+        <p className="mt-3 text-sm text-slate-300">
+          Lightning zaps go straight to the creator&apos;s wallet. Say thanks for the latest build or boost morale for the next update.
+        </p>
+        <div className="mt-4">
+          <ZapButton recipientLabel={`${gameTitle} developer`} comment={`Zap for ${gameTitle}`} />
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Release status</h2>
+        <p>
+          Unlisted games are ready for direct sharing. Developers can finalize their launch checklist to move into the public catalog.
+        </p>
+        <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-200">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em]">Visibility</p>
+          <p className="mt-1 text-sm">
+            Share this link with playtesters to gather feedback before promoting the game to the Discover feed.
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}

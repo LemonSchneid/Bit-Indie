@@ -219,7 +219,7 @@ M7 — Code Health & Refactors
   2. Update `GameDetailPage`, the catalog grid, and the featured rotation components to consume the shared helpers without altering existing copy.
   3. Add targeted unit tests covering the shared formatting helpers.
 
-### Ticket M7-T002 — Modularize Game Detail Page
+### Ticket M7-T002 — Modularize Game Detail Page ✅ Done
 - **Milestone:** M7 — Code Health & Refactors
 - **Summary:** Split the monolithic game detail route into composable sections to simplify maintenance and testing.
 - **Acceptance Criteria:**
