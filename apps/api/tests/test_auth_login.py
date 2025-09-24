@@ -107,6 +107,8 @@ def test_verify_login_creates_user_record() -> None:
     body = response.json()
     assert body["user"]["pubkey_hex"] == signed_event["pubkey"]
     assert body["user"]["is_developer"] is False
+    assert isinstance(body["session_token"], str)
+    assert body["session_token"]
     assert body["user"]["created_at"] is not None
     assert body["user"]["updated_at"] is not None
     created_at = datetime.fromisoformat(body["user"]["created_at"])

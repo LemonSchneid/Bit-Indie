@@ -12,8 +12,9 @@ import {
 import {
   USER_PROFILE_STORAGE_EVENT,
   USER_PROFILE_STORAGE_KEY,
+  loadStoredSessionToken,
   loadStoredUserProfile,
-  saveUserProfile,
+  saveUserSession,
 } from "../user-storage";
 import { nostrEnabled } from "../flags";
 
@@ -59,6 +60,7 @@ export function useNostrLogin(): {
   const [state, setState] = useState<NostrLoginState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(() => (nostrEnabled ? loadStoredUserProfile() : null));
+  const [sessionToken, setSessionToken] = useState<string | null>(() => (nostrEnabled ? loadStoredSessionToken() : null));
 
   useEffect(() => {
     if (!nostrEnabled) {
@@ -77,6 +79,7 @@ export function useNostrLogin(): {
 
     const refreshProfile = () => {
       setProfile(loadStoredUserProfile());
+      setSessionToken(loadStoredSessionToken());
     };
 
     const handleStorage = (event: StorageEvent) => {
@@ -100,13 +103,25 @@ export function useNostrLogin(): {
     };
   }, []);
 
-  const persistProfile = useCallback((nextProfile: UserProfile) => {
+  const persistSession = useCallback((nextProfile: UserProfile, token: string | null) => {
     if (!nostrEnabled) {
       return;
     }
     setProfile(nextProfile);
-    saveUserProfile(nextProfile);
+    setSessionToken(token);
+    saveUserSession(nextProfile, token);
   }, []);
+
+  const updateProfile = useCallback(
+    (nextProfile: UserProfile) => {
+      if (!nostrEnabled) {
+        return;
+      }
+      setProfile(nextProfile);
+      saveUserSession(nextProfile, sessionToken);
+    },
+    [sessionToken],
+  );
 
   const signIn = useCallback(async (options?: SignInOptions) => {
     if (!nostrEnabled) {
@@ -155,7 +170,7 @@ export function useNostrLogin(): {
       const signedEvent = await signer.signEvent(unsignedEvent);
       const response: LoginSuccessResponse = await verifyLoginEvent(signedEvent);
 
-      persistProfile(response.user);
+      persistSession(response.user, response.session_token);
       setState("success");
       setMessage("Your Nostr identity is linked to Proof of Play.");
     } catch (error) {
@@ -166,7 +181,7 @@ export function useNostrLogin(): {
         setMessage("Login failed due to an unexpected error.");
       }
     }
-  }, [persistProfile, state]);
+  }, [persistSession, state]);
 
   const resetFeedback = useCallback(() => {
     setMessage(null);
@@ -182,6 +197,6 @@ export function useNostrLogin(): {
     profile,
     signIn,
     resetFeedback,
-    updateProfile: persistProfile,
+    updateProfile,
   };
 }

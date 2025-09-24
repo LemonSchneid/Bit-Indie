@@ -25,6 +25,8 @@ DEFAULT_NOSTR_INGESTION_TIMEOUT_SECONDS = 10.0
 DEFAULT_NOSTR_INGESTION_BATCH_LIMIT = 200
 DEFAULT_NOSTR_INGESTION_LOOKBACK_SECONDS = 86_400
 DEFAULT_MAX_BUILD_SIZE_BYTES = 5 * 1024 * 1024 * 1024
+DEFAULT_SESSION_SECRET = "dev-session-secret"
+DEFAULT_SESSION_TTL_SECONDS = 24 * 60 * 60
 
 
 DEFAULT_ALLOWED_ORIGINS: Tuple[str, ...] = ("http://localhost:3000",)
@@ -88,6 +90,8 @@ class ApiSettings:
     allowed_origins: Tuple[str, ...] = DEFAULT_ALLOWED_ORIGINS
     nostr_enabled: bool = False
     max_build_size_bytes: int = DEFAULT_MAX_BUILD_SIZE_BYTES
+    session_secret: str = DEFAULT_SESSION_SECRET
+    session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS
 
     @classmethod
     def from_environment(cls) -> "ApiSettings":
@@ -95,6 +99,15 @@ class ApiSettings:
 
         origins = cls._parse_origins(os.getenv("API_ORIGINS"))
         nostr_enabled = _parse_bool(os.getenv("NOSTR_ENABLED"), default=False)
+        session_secret = os.getenv("API_SESSION_SECRET", DEFAULT_SESSION_SECRET).strip()
+        if not session_secret:
+            session_secret = DEFAULT_SESSION_SECRET
+        session_ttl = _parse_int(
+            os.getenv("API_SESSION_TTL_SECONDS"),
+            default=DEFAULT_SESSION_TTL_SECONDS,
+        )
+        if session_ttl <= 0:
+            session_ttl = DEFAULT_SESSION_TTL_SECONDS
         max_build_size = _parse_int(
             os.getenv("MAX_BUILD_SIZE_BYTES"),
             default=DEFAULT_MAX_BUILD_SIZE_BYTES,
@@ -103,6 +116,8 @@ class ApiSettings:
             allowed_origins=origins,
             nostr_enabled=nostr_enabled,
             max_build_size_bytes=max_build_size,
+            session_secret=session_secret,
+            session_ttl_seconds=session_ttl,
         )
 
     @staticmethod

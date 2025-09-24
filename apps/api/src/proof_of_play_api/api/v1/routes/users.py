@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from proof_of_play_api.api.security import require_authenticated_user_id
 from proof_of_play_api.db import get_session
 from proof_of_play_api.db.models import User
 from proof_of_play_api.schemas.user import UserLightningAddressUpdate, UserRead
@@ -22,8 +23,15 @@ def update_user_lightning_address(
     user_id: str,
     request: UserLightningAddressUpdate,
     session: Session = Depends(get_session),
+    authenticated_user_id: str = Depends(require_authenticated_user_id),
 ) -> UserRead:
     """Persist the Lightning address used for developer payouts."""
+
+    if authenticated_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to update this user.",
+        )
 
     user = session.get(User, user_id)
     if user is None:
