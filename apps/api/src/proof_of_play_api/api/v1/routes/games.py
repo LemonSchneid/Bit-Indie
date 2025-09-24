@@ -135,7 +135,7 @@ def create_game_invoice(
         )
 
     base_url = str(http_request.base_url).rstrip("/")
-    webhook_url = f"{base_url}/v1/purchases/lnbits/webhook"
+    webhook_url = f"{base_url}/v1/purchases/opennode/webhook"
     memo = f"Proof of Play - {game.title}"
 
     try:
@@ -167,6 +167,7 @@ def create_game_invoice(
         amount_msats=price_msats,
         invoice_status=purchase.invoice_status,
         check_url=check_url,
+        hosted_checkout_url=invoice.hosted_checkout_url,
     )
 
 

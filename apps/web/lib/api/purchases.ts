@@ -2,6 +2,7 @@ import { buildApiUrl, requestJson } from "./core";
 
 export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
 export type RefundStatus = "NONE" | "REQUESTED" | "APPROVED" | "DENIED" | "PAID";
+export type PayoutStatus = "PENDING" | "COMPLETED" | "FAILED";
 
 export interface InvoiceCreateRequest {
   user_id?: string;
@@ -16,6 +17,7 @@ export interface InvoiceCreateResponse {
   amount_msats: number;
   invoice_status: InvoiceStatus;
   check_url: string;
+  hosted_checkout_url: string | null;
 }
 
 export interface PurchaseRecord {
@@ -29,6 +31,12 @@ export interface PurchaseRecord {
   download_granted: boolean;
   refund_requested: boolean;
   refund_status: RefundStatus;
+  developer_payout_status: PayoutStatus;
+  developer_payout_reference: string | null;
+  developer_payout_error: string | null;
+  platform_payout_status: PayoutStatus;
+  platform_payout_reference: string | null;
+  platform_payout_error: string | null;
   created_at: string;
   updated_at: string;
 }

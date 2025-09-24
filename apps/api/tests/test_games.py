@@ -158,6 +158,7 @@ def _create_user_and_developer(*, with_developer: bool) -> str:
 
     with session_scope() as session:
         user = User(pubkey_hex=f"user-pubkey-{next(_user_pubkey_sequence)}")
+        user.lightning_address = "dev@ln.example.com"
         session.add(user)
         session.flush()
         user_id = user.id

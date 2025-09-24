@@ -337,6 +337,7 @@ export function useGamePurchaseFlow({
         amount_msats: amountSats * 1000,
         invoice_status: "PENDING",
         check_url: endpoint,
+        hosted_checkout_url: null,
       };
 
       setInvoice(guestInvoice);
