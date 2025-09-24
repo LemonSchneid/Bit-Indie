@@ -1,0 +1,110 @@
+import { type GameReview } from "../../lib/api";
+import { formatDateLabel, formatZapAmount } from "../../lib/format";
+import { ZapButton } from "../zap-button";
+
+import { ReviewBadge } from "./review-badge";
+import { getReviewParagraphs } from "./utils";
+
+type GameReviewsSectionProps = {
+  gameTitle: string;
+  reviews: GameReview[];
+  reviewsError: string | null;
+  showZapButtons?: boolean;
+};
+
+export function GameReviewsSection({
+  gameTitle,
+  reviews,
+  reviewsError,
+  showZapButtons = true,
+}: GameReviewsSectionProps): JSX.Element {
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)]" />
+      <div className="absolute -left-24 bottom-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.15),_transparent_70%)]" />
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Community reviews</h2>
+          <p className="mt-2 text-xl font-semibold text-white">Zap-powered player feedback</p>
+        </div>
+        <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
+          Verified purchase badges confirm the reviewer bought the game. Zap totals reveal how many sats other players tipped their feedback.
+        </p>
+      </div>
+
+      {reviewsError ? (
+        <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">{reviewsError}</p>
+      ) : reviews.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
+          No reviews yet. Share the download link to gather the first wave of community impressions.
+        </p>
+      ) : (
+        <div className="mt-6 space-y-6">
+          {reviews.map((review) => {
+            const paragraphs = getReviewParagraphs(review.body_md);
+            const trimmedBody = review.body_md.trim();
+            const displayParagraphs = paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
+            const zapLabel = formatZapAmount(review.total_zap_msats);
+            const reviewerName = review.author.display_name || "the reviewer";
+            const zapComment = `Zap for review ${review.id} on ${gameTitle}`;
+
+            return (
+              <article
+                key={review.id}
+                className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-lg shadow-emerald-500/10"
+              >
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-3">
+                    {review.title ? (
+                      <h3 className="text-lg font-semibold text-white">{review.title}</h3>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                      {review.rating != null ? (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-amber-100">
+                          <span aria-hidden className="text-base leading-none text-amber-300">★</span>
+                          <span className="font-semibold text-amber-100">{review.rating}/5</span>
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/80">Rating</span>
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Comment only
+                        </span>
+                      )}
+                      <time dateTime={review.created_at} className="text-slate-400">
+                        {formatDateLabel(review.created_at, { fallback: "Recently posted" })}
+                      </time>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {review.is_verified_purchase ? (
+                      <ReviewBadge
+                        label="Verified Purchase"
+                        icon="✓"
+                        tone="emerald"
+                        tooltip="This review comes from a player who paid for the build through Bit Indie."
+                      />
+                    ) : null}
+                    <ReviewBadge
+                      label={`Received ${zapLabel}`}
+                      icon="⚡"
+                      tone="amber"
+                      tooltip="Lightning zaps tipped to this review. More sats signal that players found it especially helpful."
+                    />
+                    {showZapButtons ? (
+                      <ZapButton recipientLabel={reviewerName} comment={zapComment} className="inline-block" />
+                    ) : null}
+                  </div>
+                </header>
+                <div className="mt-4 space-y-3 text-base leading-7 text-slate-200">
+                  {displayParagraphs.map((paragraph, index) => (
+                    <p key={`${review.id}-paragraph-${index}`}>{paragraph}</p>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
