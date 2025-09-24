@@ -12,15 +12,12 @@ import {
   getGameDownloadUrl,
   getLatestPurchaseForGame,
 } from "../../lib/api";
-import { getOrCreateAnonId } from "../../lib/anon-id";
 import { useInvoicePolling } from "../../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
 import { buildQrCodeUrl } from "../../lib/qr-code";
-import {
-  fetchLnurlPayParams,
-  requestLnurlInvoice,
-  resolveLightningPayEndpoint,
-} from "../../lib/lightning";
+import { createGuestInvoice } from "./guest-invoice";
+import { createPurchasePollingHandlers } from "./purchase-polling";
+import { buildReceiptDownloadLines, extractReceiptIdFromInput } from "./receipt-handling";
 
 export type InvoiceFlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
 export type CopyState = "idle" | "copied" | "error";
@@ -63,15 +60,6 @@ export function describeInvoiceStatus(
       }
       return "Waiting for payment confirmation. We refresh the status every few seconds.";
   }
-}
-
-function generateGuestPurchaseId(anonId: string): string {
-  const cryptoObject = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
-  if (cryptoObject && typeof cryptoObject.randomUUID === "function") {
-    return `guest-${anonId}-${cryptoObject.randomUUID()}`;
-  }
-  const randomSegment = Math.random().toString(16).slice(2, 10);
-  return `guest-${anonId}-${Date.now()}-${randomSegment}`;
 }
 
 export type UseGamePurchaseFlowOptions = {
@@ -141,25 +129,17 @@ export function useGamePurchaseFlow({
     };
   }, [gameId, invoice, isPurchasable, purchase, user]);
 
-  const handlePurchaseUpdate = useCallback((latest: PurchaseRecord) => {
-    setPurchase(latest);
-    setErrorMessage(null);
-
-    if (latest.download_granted) {
-      setFlowState("paid");
-    }
-  }, []);
-
-  const handleInvoiceExpired = useCallback(() => {
-    setFlowState("expired");
-    setErrorMessage(
-      "The Lightning invoice is no longer payable. Generate a new invoice to try again.",
-    );
-  }, []);
-
-  const handlePollingError = useCallback((message: string) => {
-    setErrorMessage(message);
-  }, []);
+  const { handlePurchaseUpdate, handleInvoiceExpired, handlePollingError } = useMemo(
+    () =>
+      createPurchasePollingHandlers({
+        onPurchaseUpdate: (latest: PurchaseRecord) => {
+          setPurchase(latest);
+        },
+        onFlowStateChange: setFlowState,
+        onErrorMessage: setErrorMessage,
+      }),
+    [setFlowState, setErrorMessage, setPurchase],
+  );
 
   useInvoicePolling({
     invoiceId: invoice?.purchase_id ?? null,
@@ -312,34 +292,11 @@ export function useGamePurchaseFlow({
         throw new Error("This game is not currently available for paid checkout.");
       }
 
-      const anonId = getOrCreateAnonId();
-      const normalizedLightningAddress = developerLightningAddress?.trim();
-      if (!normalizedLightningAddress) {
-        throw new Error(
-          "This developer has not configured a Lightning address yet. Please try again later.",
-        );
-      }
-
-      const endpoint = resolveLightningPayEndpoint({ lightningAddress: normalizedLightningAddress });
-      const payParams = await fetchLnurlPayParams(endpoint);
-      const amountSats = Math.max(1, Math.ceil(Number(priceMsats) / 1000));
-      const invoiceResponse = await requestLnurlInvoice(
-        payParams,
-        amountSats,
-        `Bit Indie — ${gameTitle}`,
-      );
-
-      const guestInvoice: InvoiceCreateResponse = {
-        purchase_id: generateGuestPurchaseId(anonId),
-        user_id: "guest",
-        invoice_id: `lnurl-${Date.now()}`,
-        payment_request: invoiceResponse.pr,
-        amount_msats: amountSats * 1000,
-        invoice_status: "PENDING",
-        check_url: endpoint,
-        hosted_checkout_url: null,
-      };
-
+      const guestInvoice = await createGuestInvoice({
+        developerLightningAddress,
+        priceMsats,
+        gameTitle,
+      });
       setInvoice(guestInvoice);
       setFlowState("polling");
     } catch (error) {
@@ -402,30 +359,14 @@ export function useGamePurchaseFlow({
       return;
     }
 
-    const lines = [
-      "Bit Indie — Lightning Purchase Receipt",
-      "",
-      `Game: ${gameTitle}`,
-      `Purchase ID: ${invoice.purchase_id}`,
-      `Invoice ID: ${invoice.invoice_id}`,
-      `Amount: ${priceLabel}`,
-    ];
-
-    if (developerLightningAddress) {
-      lines.push(`Lightning address: ${developerLightningAddress}`);
-    }
-
-    if (receiptLinkToCopy) {
-      const label = isGuestCheckout ? "Payment request" : "Receipt link";
-      lines.push(`${label}: ${receiptLinkToCopy}`);
-    }
-
-    lines.push("", "Keep this file so you can restore your purchase later.");
-    if (isGuestCheckout) {
-      lines.push(
-        "Guest checkout does not unlock downloads automatically. Share this receipt with the developer if you need support.",
-      );
-    }
+    const lines = buildReceiptDownloadLines({
+      developerLightningAddress,
+      gameTitle,
+      invoice,
+      isGuestCheckout,
+      priceLabel,
+      receiptLinkToCopy,
+    });
 
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -457,21 +398,7 @@ export function useGamePurchaseFlow({
 
       setShowReceiptLookup(false);
       setManualReceiptId("");
-      let receiptId = trimmed;
-      try {
-        const maybeUrl = new URL(trimmed);
-        const segments = maybeUrl.pathname.split("/").filter(Boolean);
-        const idSegment = segments[segments.length - 2] === "purchases" ? segments[segments.length - 1] : null;
-        if (idSegment) {
-          receiptId = idSegment;
-        }
-      } catch (_error) {
-        const match = trimmed.match(/purchases\/(.+?)(?:\/|$)/);
-        if (match?.[1]) {
-          receiptId = match[1];
-        }
-      }
-
+      const receiptId = extractReceiptIdFromInput(trimmed);
       router.push(`/purchases/${encodeURIComponent(receiptId)}/receipt`);
     },
     [manualReceiptId, router],

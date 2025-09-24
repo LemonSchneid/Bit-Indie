@@ -227,7 +227,7 @@ M7 — Code Health & Refactors
   2. Ensure data-fetching logic is isolated from presentation concerns.
   3. Add tests or stories that exercise the new components.
 
-### Ticket M7-T003 — Decompose Purchase Flow Hook
+### Ticket M7-T003 — Decompose Purchase Flow Hook ✅ Done
 - **Milestone:** M7 — Code Health & Refactors
 - **Summary:** Break `useGamePurchaseFlow` into smaller hooks/services so each behavior can be tested independently.
 - **Acceptance Criteria:**
