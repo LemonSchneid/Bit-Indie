@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 from proof_of_play_api.db import session_scope
 from proof_of_play_api.db.models import (
+    BuildScanStatus,
     Comment,
     Developer,
     Game,
@@ -205,6 +206,9 @@ def seed() -> None:
             game.build_object_key = entry.get("build_object_key")
             game.build_size_bytes = entry.get("build_size_bytes")
             game.checksum_sha256 = entry.get("checksum_sha256")
+            game.build_scan_status = BuildScanStatus.CLEAN
+            game.build_scan_message = "Seed data: build vetted for demo purposes."
+            game.build_scanned_at = now - timedelta(hours=1)
             game.active = entry.get("active", True)
 
             updated_at_override = entry.get("updated_at")

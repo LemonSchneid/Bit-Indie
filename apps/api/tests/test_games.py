@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
 from proof_of_play_api.db.models import (
+    BuildScanStatus,
     Developer,
     Game,
     GameCategory,
@@ -361,6 +362,9 @@ def test_update_game_draft_applies_changes() -> None:
     assert body["build_object_key"] == f"games/{game_id}/build/build.zip"
     assert body["build_size_bytes"] == 4096
     assert body["checksum_sha256"] == "a" * 64
+    assert body["build_scan_status"] == BuildScanStatus.CLEAN.value
+    assert body["build_scan_message"] == "No malware detected in build metadata."
+    assert body["build_scanned_at"] is not None
 
     with session_scope() as session:
         stored = session.get(Game, game_id)
@@ -372,6 +376,9 @@ def test_update_game_draft_applies_changes() -> None:
         assert stored.build_object_key == f"games/{game_id}/build/build.zip"
         assert stored.build_size_bytes == 4096
         assert stored.checksum_sha256 == "a" * 64
+        assert stored.build_scan_status is BuildScanStatus.CLEAN
+        assert stored.build_scan_message == "No malware detected in build metadata."
+        assert stored.build_scanned_at is not None
 
 
 def test_update_game_draft_rejects_invalid_build_key() -> None:

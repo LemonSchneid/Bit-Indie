@@ -17,6 +17,9 @@ export interface GameDraft {
   build_object_key: string | null;
   build_size_bytes: number | null;
   checksum_sha256: string | null;
+  build_scan_status: "NOT_SCANNED" | "PENDING" | "CLEAN" | "INFECTED" | "FAILED";
+  build_scan_message: string | null;
+  build_scanned_at: string | null;
   active: boolean;
   developer_lightning_address: string | null;
   created_at: string;
@@ -70,6 +73,9 @@ export interface UpdateGameDraftRequest {
   cover_url?: string | null;
   trailer_url?: string | null;
   category?: GameCategory;
+  build_object_key?: string | null;
+  build_size_bytes?: number | null;
+  checksum_sha256?: string | null;
 }
 
 export interface PublishGameRequest {
