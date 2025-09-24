@@ -11,9 +11,9 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from proof_of_play_api.core.config import NostrIngestorSettings
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.core.config import NostrIngestorSettings
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -22,7 +22,7 @@ from proof_of_play_api.db.models import (
     ReleaseNoteReplyHiddenReason,
     User,
 )
-from proof_of_play_api.workers.release_note_ingestor import (
+from bit_indie_api.workers.release_note_ingestor import (
     ReleaseNoteIngestionJob,
     ReleaseNoteReplyIngestor,
 )

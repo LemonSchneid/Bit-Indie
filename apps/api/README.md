@@ -1,6 +1,6 @@
-# Proof of Play API
+# Bit Indie API
 
-This directory houses the FastAPI service for the Proof of Play marketplace. For the Simple‑MVP, Nostr features are disabled and the API focuses on purchases, comments, reviews, and admin.
+This directory houses the FastAPI service for the Bit Indie marketplace. For the Simple‑MVP, Nostr features are disabled and the API focuses on purchases, comments, reviews, and admin.
 
 ## Local development
 
@@ -19,8 +19,8 @@ Feature flags:
 ### Seed demo data
 
 - When running via Docker (`./scripts/dev_bootstrap.sh`), migrations and the `seed_simple_mvp` script run automatically. Disable by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml`.
-- For manual runs, execute `python -m proof_of_play_api.scripts.seed_simple_mvp` to seed the demo developer/game/comments/purchases.
-- Use `python -m proof_of_play_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a specific purchase to `PAID` during manual testing.
+- For manual runs, execute `python -m bit_indie_api.scripts.seed_simple_mvp` to seed the demo developer/game/comments/purchases.
+- Use `python -m bit_indie_api.scripts.mark_purchase_paid --purchase-id <id>` to flip a specific purchase to `PAID` during manual testing.
 
 ## Database migrations
 

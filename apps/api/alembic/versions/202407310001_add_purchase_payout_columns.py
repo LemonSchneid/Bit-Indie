@@ -5,7 +5,7 @@ from __future__ import annotations
 from alembic import op
 import sqlalchemy as sa
 
-from proof_of_play_api.db.models import PayoutStatus
+from bit_indie_api.db.models import PayoutStatus
 
 # revision identifiers, used by Alembic.
 revision = "202407310001"

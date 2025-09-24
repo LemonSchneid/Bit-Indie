@@ -6,8 +6,8 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     DownloadAuditLog,
     Game,
@@ -18,12 +18,12 @@ from proof_of_play_api.db.models import (
     RefundStatus,
     User,
 )
-from proof_of_play_api.services.guest_checkout import GuestCheckoutService
-from proof_of_play_api.services.payments import (
+from bit_indie_api.services.guest_checkout import GuestCheckoutService
+from bit_indie_api.services.payments import (
     InvoiceStatus as ProviderInvoiceStatus,
     PayoutResult,
 )
-from proof_of_play_api.services.purchase_workflow import (
+from bit_indie_api.services.purchase_workflow import (
     MissingLookupIdentifierError,
     PurchaseBuildUnavailableError,
     PurchaseNotDownloadableError,
@@ -31,7 +31,7 @@ from proof_of_play_api.services.purchase_workflow import (
     PurchasePermissionError,
     PurchaseWorkflowService,
 )
-from proof_of_play_api.services.storage import PresignedDownload
+from bit_indie_api.services.storage import PresignedDownload
 
 
 class _StubPaymentService:

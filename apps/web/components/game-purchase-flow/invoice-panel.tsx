@@ -65,7 +65,7 @@ export function InvoicePanel({
       {!invoice ? (
         <div className="mt-6 space-y-4 text-sm text-slate-300">
           {hasAccount ? (
-            <p>We&apos;ll create a one-time invoice linked to your Proof of Play account.</p>
+            <p>We&apos;ll create a one-time invoice linked to your Bit Indie account.</p>
           ) : (
             <p>
               Guest checkout sends sats directly to the developer. Save the receipt so you can restore the download later.

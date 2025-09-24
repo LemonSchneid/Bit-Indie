@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import Comment, Game, GameStatus, Purchase, Review
-from proof_of_play_api.scripts import seed_simple_mvp
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import Comment, Game, GameStatus, Purchase, Review
+from bit_indie_api.scripts import seed_simple_mvp
 
 
 @pytest.fixture(autouse=True)

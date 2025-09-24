@@ -1,4 +1,4 @@
-"""Alembic environment configuration for the Proof of Play API."""
+"""Alembic environment configuration for the Bit Indie API."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from proof_of_play_api.core.config import get_database_settings
-from proof_of_play_api.db import Base
-from proof_of_play_api.db import models  # noqa: F401  # ensure models are imported for metadata discovery
+from bit_indie_api.core.config import get_database_settings
+from bit_indie_api.db import Base
+from bit_indie_api.db import models  # noqa: F401  # ensure models are imported for metadata discovery
 
 config = context.config
 

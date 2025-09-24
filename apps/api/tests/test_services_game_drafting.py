@@ -3,8 +3,8 @@ import uuid
 
 import pytest
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     BuildScanStatus,
     Developer,
     GameStatus,
@@ -14,21 +14,21 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.schemas.game import (
+from bit_indie_api.schemas.game import (
     GameCreateRequest,
     GamePublishRequest,
     GameUpdateRequest,
     PublishRequirementCode,
 )
-from proof_of_play_api.services.game_drafting import (
+from bit_indie_api.services.game_drafting import (
     BuildScanFailedError,
     GameDraftingService,
     InvalidPriceError,
     PublishRequirementsNotMetError,
     SlugConflictError,
 )
-from proof_of_play_api.services.malware_scanner import BuildScanResult
-from proof_of_play_api.services.game_publication import GamePublicationService
+from bit_indie_api.services.malware_scanner import BuildScanResult
+from bit_indie_api.services.game_publication import GamePublicationService
 
 
 @pytest.fixture(autouse=True)

@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -17,14 +17,14 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.proof_of_work import (
+from bit_indie_api.main import create_application
+from bit_indie_api.services.proof_of_work import (
     PROOF_OF_WORK_DIFFICULTY_BITS,
     calculate_proof_of_work_hash,
     count_leading_zero_bits,
 )
-from proof_of_play_api.services.rate_limiting import REVIEW_RATE_LIMIT_MAX_ITEMS
-from proof_of_play_api.services.review_ranking import update_review_helpful_score
+from bit_indie_api.services.rate_limiting import REVIEW_RATE_LIMIT_MAX_ITEMS
+from bit_indie_api.services.review_ranking import update_review_helpful_score
 
 
 @pytest.fixture(autouse=True)

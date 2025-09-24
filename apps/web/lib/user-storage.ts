@@ -1,7 +1,7 @@
 import type { UserProfile } from "./api/auth";
 
-export const USER_PROFILE_STORAGE_KEY = "proof-of-play:user-profile";
-export const USER_PROFILE_STORAGE_EVENT = "proof-of-play:user-profile-changed";
+export const USER_PROFILE_STORAGE_KEY = "bit-indie:user-profile";
+export const USER_PROFILE_STORAGE_EVENT = "bit-indie:user-profile-changed";
 
 type StoredUserState = {
   profile: UserProfile;

@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     DownloadAuditLog,
     Game,
@@ -16,15 +16,15 @@ from proof_of_play_api.db.models import (
     Review,
     User,
 )
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.payments import (
+from bit_indie_api.main import create_application
+from bit_indie_api.services.payments import (
     CreatedInvoice,
     InvoiceStatus as ProviderInvoiceStatus,
     PayoutResult,
     get_payment_service,
     reset_payment_service,
 )
-from proof_of_play_api.services.storage import PresignedDownload, get_storage_service
+from bit_indie_api.services.storage import PresignedDownload, get_storage_service
 from sqlalchemy import select
 
 

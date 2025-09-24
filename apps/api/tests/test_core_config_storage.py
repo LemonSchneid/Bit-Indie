@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from proof_of_play_api.core.config import (
+from bit_indie_api.core.config import (
     StorageConfigurationError,
     StorageSettings,
     clear_storage_settings_cache,

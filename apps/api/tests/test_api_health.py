@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.core.config import clear_settings_cache
-from proof_of_play_api.main import create_application
+from bit_indie_api.core.config import clear_settings_cache
+from bit_indie_api.main import create_application
 
 
 def _build_client() -> TestClient:

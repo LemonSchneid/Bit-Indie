@@ -9,8 +9,8 @@ import pytest
 
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -19,8 +19,8 @@ from proof_of_play_api.db.models import (
     ZapSource,
     ZapTargetType,
 )
-from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
-from proof_of_play_api.services.zap_ledger import ZapLedger, ZapLedgerParseError
+from bit_indie_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
+from bit_indie_api.services.zap_ledger import ZapLedger, ZapLedgerParseError
 
 
 @pytest.fixture(autouse=True)
@@ -91,8 +91,8 @@ def test_record_event_updates_totals() -> None:
     service = ZapLedger()
 
     tags = [
-        ["proof-of-play-zap-target", "GAME", game.id, "125000", "DIRECT"],
-        ["proof-of-play-zap-target", "PLATFORM", "", "5000", "FORWARDED"],
+        ["bit-indie-zap-target", "GAME", game.id, "125000", "DIRECT"],
+        ["bit-indie-zap-target", "PLATFORM", "", "5000", "FORWARDED"],
     ]
     event = _build_event(1337, tags)
 
@@ -130,7 +130,7 @@ def test_record_event_is_idempotent() -> None:
     game = _seed_game()
     service = ZapLedger()
 
-    tags = [["proof-of-play-zap-target", "GAME", game.id, "32000"]]
+    tags = [["bit-indie-zap-target", "GAME", game.id, "32000"]]
     event = _build_event(4242, tags)
 
     with session_scope() as session:
@@ -151,7 +151,7 @@ def test_record_event_logs_parse_error(caplog: pytest.LogCaptureFixture) -> None
     service = ZapLedger()
     caplog.set_level(logging.WARNING)
 
-    malformed_event = _build_event(7777, [["proof-of-play-zap-target", "GAME"]])
+    malformed_event = _build_event(7777, [["bit-indie-zap-target", "GAME"]])
 
     with session_scope() as session:
         with pytest.raises(ZapLedgerParseError):
@@ -167,7 +167,7 @@ def test_record_event_tracks_forwarded_source() -> None:
     game = _seed_game()
     service = ZapLedger()
 
-    forwarded_tags = [["proof-of-play-zap-target", "GAME", game.id, "22000", "FORWARDED"]]
+    forwarded_tags = [["bit-indie-zap-target", "GAME", game.id, "22000", "FORWARDED"]]
     forwarded_event = _build_event(9001, forwarded_tags)
 
     with session_scope() as session:
@@ -176,7 +176,7 @@ def test_record_event_tracks_forwarded_source() -> None:
         assert len(totals) == 1
         assert totals[0].zap_source == ZapSource.FORWARDED
 
-    direct_tags = [["proof-of-play-zap-target", "GAME", game.id, "8000"]]
+    direct_tags = [["bit-indie-zap-target", "GAME", game.id, "8000"]]
     direct_event = _build_event(1338, direct_tags, created_at=int(datetime.now(tz=timezone.utc).timestamp()) + 60)
 
     with session_scope() as session:

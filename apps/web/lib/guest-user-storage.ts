@@ -1,4 +1,4 @@
-const GUEST_USER_STORAGE_PREFIX = "proof-of-play:guest-user:";
+const GUEST_USER_STORAGE_PREFIX = "bit-indie:guest-user:";
 
 function buildKey(anonId: string): string {
   return `${GUEST_USER_STORAGE_PREFIX}${anonId}`;

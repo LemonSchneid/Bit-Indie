@@ -10,7 +10,7 @@ export default async function GamesCatalogPage(): Promise<JSX.Element> {
         <header className="space-y-3">
           <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Catalog</p>
           <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-            Browse playable builds from the Proof of Play sandbox.
+            Browse playable builds from the Bit Indie sandbox.
           </h1>
           <p className="max-w-3xl text-base text-slate-300">
             These listings load directly from the FastAPI backend. Seed the demo data to explore the full purchase flow for

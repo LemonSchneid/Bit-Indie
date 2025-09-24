@@ -10,5 +10,5 @@ if [ ! -f "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
-echo "Starting Proof of Play development stack..."
+echo "Starting Bit Indie development stack..."
 docker compose -f "$COMPOSE_FILE" up --build postgres minio api web

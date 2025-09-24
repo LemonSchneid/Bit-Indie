@@ -6,22 +6,22 @@ from datetime import datetime, timezone
 
 import pytest
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     InvoiceStatus,
     Purchase,
     User,
 )
-from proof_of_play_api.services.comment_thread.utils import (
+from bit_indie_api.services.comment_thread.utils import (
     decode_npub,
     encode_npub,
     extract_alias_pubkeys,
     normalize_hex_key,
     normalize_pubkey_value,
 )
-from proof_of_play_api.services.comment_thread.verification import load_verified_user_ids
+from bit_indie_api.services.comment_thread.verification import load_verified_user_ids
 
 
 @pytest.fixture(autouse=True)

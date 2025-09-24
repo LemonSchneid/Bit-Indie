@@ -13,8 +13,8 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -22,9 +22,9 @@ from proof_of_play_api.db.models import (
     User,
     Zap,
 )
-from proof_of_play_api.main import create_application
-from proof_of_play_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
-from proof_of_play_api.services.review_ranking import compute_review_helpful_score
+from bit_indie_api.main import create_application
+from bit_indie_api.services.nostr import calculate_event_id, derive_xonly_public_key, schnorr_sign
+from bit_indie_api.services.review_ranking import compute_review_helpful_score
 
 
 NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
@@ -122,7 +122,7 @@ def _sign_zap_event(
     tags = [
         ["amount", str(amount_msats)],
         ["p", recipient_pubkey],
-        ["proof-of-play-review", review_id],
+        ["bit-indie-review", review_id],
     ]
     base_event = {
         "pubkey": pubkey_hex,

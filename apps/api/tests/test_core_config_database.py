@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from proof_of_play_api.core import config
+from bit_indie_api.core import config
 
 
 def test_database_settings_default_values(monkeypatch):

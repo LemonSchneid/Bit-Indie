@@ -16,10 +16,10 @@ import { Relay } from "nostr-tools/relay";
 import type { SignedEvent } from "../api";
 import type { NostrUnsignedEvent } from "./use-nostr-login";
 
-const CONNECT_SECRET_STORAGE_KEY = "proof-of-play:nostr-connect:secret";
-const CONNECT_REMOTE_STORAGE_KEY = "proof-of-play:nostr-connect:remote";
+const CONNECT_SECRET_STORAGE_KEY = "bit-indie:nostr-connect:secret";
+const CONNECT_REMOTE_STORAGE_KEY = "bit-indie:nostr-connect:remote";
 const RELAY_URL = "wss://relay.getalby.com/v1";
-const CLIENT_TAG_VALUE = "proof-of-play-web";
+const CLIENT_TAG_VALUE = "bit-indie-web";
 
 type ConnectMessage =
   | { type: "connect"; id: string; params?: unknown[] }
@@ -107,9 +107,9 @@ export function useNostrConnect() {
   const metadataBase64 = useMemo(
     () =>
       encodeMetadata({
-        name: "Proof of Play",
-        url: "https://proof-of-play.example",
-        description: "Proof of Play marketplace",
+        name: "Bit Indie",
+        url: "https://bit-indie.example",
+        description: "Bit Indie marketplace",
       }),
     [],
   );

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from proof_of_play_api.services import session_tokens
+from bit_indie_api.services import session_tokens
 
 
 def test_create_and_decode_session_token_round_trip() -> None:

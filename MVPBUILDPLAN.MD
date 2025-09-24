@@ -1,4 +1,4 @@
-# Proof of Play — Simple MVP Plan (Nostr-Off)
+# Bit Indie — Simple MVP Plan (Nostr-Off)
 
 Goal: Ship a web-first MVP with Lightning purchases for downloadable games, first-party comments and verified‑purchase reviews, and a small admin to moderate spam. Nostr sign‑in, relay publishing, and zap receipt ingestion are disabled for launch and will return post‑MVP.
 
@@ -34,7 +34,7 @@ Non‑Goals for MVP (explicitly off):
 ## Monorepo Layout
 
 ```
-proof-of-play/
+bit-indie/
   apps/
     web/                      # Next.js app (catalog, game pages, comments, purchase UI)
       app/

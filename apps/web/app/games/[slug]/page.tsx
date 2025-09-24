@@ -405,13 +405,13 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 Community thread
               </h2>
               <p className="mt-2 text-xl font-semibold text-white">
-                {nostrEnabled ? "Comments from Proof of Play and Nostr" : "Comments from Proof of Play"}
+                {nostrEnabled ? "Comments from Bit Indie and Nostr" : "Comments from Bit Indie"}
               </p>
             </div>
             <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
               {nostrEnabled
                 ? "First-party comments appear alongside replies to the release note on public relays. Verified purchase badges highlight players who bought the build."
-                : "First-party comments from Proof of Play are shown here. Verified purchase badges highlight players who bought the build."}
+                : "First-party comments from Bit Indie are shown here. Verified purchase badges highlight players who bought the build."}
             </p>
           </div>
 
@@ -457,7 +457,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             </span>
                           ) : (
                             <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
-                              Proof of Play
+                              Bit Indie
                             </span>
                           )}
                         </div>
@@ -468,7 +468,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             label="Verified Purchase"
                             icon="✓"
                             tone="emerald"
-                            tooltip="This commenter purchased the build through Proof of Play."
+                            tooltip="This commenter purchased the build through Bit Indie."
                           />
                         ) : null}
                         {comment.total_zap_msats > 0 ? (
@@ -566,7 +566,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             label="Verified Purchase"
                             icon="✓"
                             tone="emerald"
-                            tooltip="This review comes from a player who paid for the build through Proof of Play."
+                            tooltip="This review comes from a player who paid for the build through Bit Indie."
                           />
                         ) : null}
                         <ReviewBadge

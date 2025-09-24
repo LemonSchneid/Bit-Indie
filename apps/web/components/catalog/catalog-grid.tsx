@@ -68,7 +68,7 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
           Start the Docker Compose stack and run the seed script to populate the sandbox catalog.
         </p>
         <code className="mt-4 block rounded-xl border border-emerald-400/40 bg-slate-950 px-4 py-3 text-xs text-emerald-200">
-          docker compose -f infra/docker-compose.yml exec api python -m proof_of_play_api.scripts.seed_simple_mvp
+          docker compose -f infra/docker-compose.yml exec api python -m bit_indie_api.scripts.seed_simple_mvp
         </code>
       </section>
     );

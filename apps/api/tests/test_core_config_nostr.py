@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from proof_of_play_api.core.config import (
+from bit_indie_api.core.config import (
     NostrPublisherConfigurationError,
     clear_nostr_ingestor_settings_cache,
     clear_nostr_publisher_settings_cache,
     get_nostr_ingestor_settings,
     get_nostr_publisher_settings,
 )
-from proof_of_play_api.services.nostr import SECP256K1_N
+from bit_indie_api.services.nostr import SECP256K1_N
 
 
 @pytest.fixture(autouse=True)

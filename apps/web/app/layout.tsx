@@ -8,7 +8,7 @@ import { ClientProviders } from "./providers";
 const currentYear = new Date().getFullYear();
 
 export const metadata: Metadata = {
-  title: "Proof of Play",
+  title: "Bit Indie",
   description: "Lightning-first indie game marketplace",
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   href="/"
                   className="text-lg font-semibold tracking-tight text-white transition hover:text-emerald-200"
                 >
-                  Proof of Play
+                  Bit Indie
                 </Link>
                 <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
               </div>
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
           <footer className="border-t border-slate-800 bg-slate-950/70">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-              <p>&copy; {currentYear} Proof of Play.</p>
+              <p>&copy; {currentYear} Bit Indie.</p>
               <p className="text-xs sm:text-sm">Building in public with Lightning and a love for games.</p>
             </div>
           </footer>

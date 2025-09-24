@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from proof_of_play_api.db import Base, get_engine, reset_database_state, session_scope
-from proof_of_play_api.db.models import (
+from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
+from bit_indie_api.db.models import (
     Developer,
     Game,
     GameStatus,
@@ -18,7 +18,7 @@ from proof_of_play_api.db.models import (
     RefundStatus,
     User,
 )
-from proof_of_play_api.main import create_application
+from bit_indie_api.main import create_application
 
 
 @pytest.fixture(autouse=True)
