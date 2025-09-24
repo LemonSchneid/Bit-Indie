@@ -50,7 +50,7 @@ export function InvoicePanel({
   onDownloadReceipt,
 }: InvoicePanelProps) {
   return (
-    <div>
+    <div className="relative z-10">
       <h3 className="text-lg font-semibold text-white">Lightning checkout</h3>
       <p className="mt-2 text-sm text-slate-300">
         Scan the invoice or paste the BOLT11 string to pay {priceLabel} for {gameTitle}.
@@ -75,7 +75,7 @@ export function InvoicePanel({
             type="button"
             onClick={onCreateInvoice}
             disabled={flowState === "creating"}
-            className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {flowState === "creating" ? "Creating invoice…" : "Generate Lightning invoice"}
           </button>
@@ -88,7 +88,7 @@ export function InvoicePanel({
       ) : (
         <div className="mt-6 space-y-5">
           <div className="flex justify-center">
-            <div className="rounded-2xl border border-white/10 bg-white p-4 shadow-xl">
+            <div className="rounded-2xl border border-white/10 bg-white p-4 shadow-xl shadow-emerald-500/20">
               {qrCodeUrl ? (
                 <Image
                   src={qrCodeUrl}
@@ -114,14 +114,14 @@ export function InvoicePanel({
             <textarea
               readOnly
               value={invoice.payment_request}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/60 p-3 font-mono text-xs leading-relaxed text-slate-100"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 p-3 font-mono text-xs leading-relaxed text-slate-100 shadow-inner shadow-emerald-500/10"
               rows={4}
             />
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <button
                 type="button"
                 onClick={onCopyInvoice}
-                className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-emerald-200 transition hover:bg-emerald-400/20"
+                className="inline-flex items-center rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 font-semibold uppercase tracking-[0.2em] text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30"
               >
                 Copy payment request
               </button>
@@ -135,7 +135,7 @@ export function InvoicePanel({
               ) : null}
             </div>
           </div>
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-200">
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-200 shadow-lg shadow-emerald-500/10">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Status</p>
               <p className="mt-2 text-sm text-slate-200">{statusMessage}</p>
@@ -170,13 +170,13 @@ export function InvoicePanel({
             <button
               type="button"
               onClick={onCreateInvoice}
-              className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+              className="w-full rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30"
             >
               Generate a new invoice
             </button>
           ) : null}
           {downloadUnlocked ? (
-            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-sm text-emerald-100 shadow shadow-emerald-500/20">
               <p className="font-semibold text-emerald-50">Payment confirmed.</p>
               {buildAvailable ? (
                 <p className="mt-1 text-sm">
