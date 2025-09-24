@@ -2,58 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import type { GameDraft } from "../../lib/api";
-
-function formatPriceMsats(value: GameDraft["price_msats"]): string {
-  if (value === null) {
-    return "Free download";
-  }
-
-  const sats = value / 1000;
-  if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
-  }
-
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
-}
-
-function formatCategory(category: GameDraft["category"]): string {
-  switch (category) {
-    case "PROTOTYPE":
-      return "Prototype";
-    case "EARLY_ACCESS":
-      return "Early Access";
-    case "FINISHED":
-      return "Finished";
-    default:
-      return category.replaceAll("_", " ").toLowerCase();
-  }
-}
-
-function formatStatus(status: GameDraft["status"]): string {
-  switch (status) {
-    case "UNLISTED":
-      return "Unlisted preview";
-    case "DISCOVER":
-      return "Discover";
-    case "FEATURED":
-      return "Featured";
-    default:
-      return status;
-  }
-}
-
-function formatUpdatedAt(timestamp: GameDraft["updated_at"]): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "recently";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatCategory, formatDateLabel, formatPriceMsats, formatStatus } from "../../lib/format";
 
 type CatalogGridProps = {
   games: GameDraft[];
@@ -103,7 +52,7 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
                 {formatCategory(game.category)}
               </span>
               <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-slate-300">
-                Updated {formatUpdatedAt(game.updated_at)}
+                Updated {formatDateLabel(game.updated_at, { fallback: "recently" })}
               </span>
             </div>
 

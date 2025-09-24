@@ -163,6 +163,10 @@ M6 — Telemetry & Docs
 - Health endpoints, structured logging, minimal tracing.
 - Update READMEs and runbooks (Nostr off; how to re‑enable later).
 
+M7 — Code Health & Refactors
+- Consolidate repeated UI helpers and long-lived hooks into reusable modules.
+- Break large presentation components into focused, testable pieces.
+
 ---
 
 ## Tickets (Active Enforcement)
@@ -206,6 +210,30 @@ M6 — Telemetry & Docs
   1. Create a purchase service encapsulating business logic currently embedded in API routes.
   2. Update routes to call the service while preserving existing behavior and tests.
   3. Extend or add tests to cover the service layer, ensuring all purchase scenarios remain validated.
+
+### Ticket M7-T001 — Consolidate Formatting Utilities ✅ Done
+- **Milestone:** M7 — Code Health & Refactors
+- **Summary:** Extract the shared Lightning price, badge, and date formatting helpers into a single module that the storefront can reuse.
+- **Acceptance Criteria:**
+  1. Move the Lightning price label, status/category badge, and date formatting helpers into a shared utility file.
+  2. Update `GameDetailPage`, the catalog grid, and the featured rotation components to consume the shared helpers without altering existing copy.
+  3. Add targeted unit tests covering the shared formatting helpers.
+
+### Ticket M7-T002 — Modularize Game Detail Page
+- **Milestone:** M7 — Code Health & Refactors
+- **Summary:** Split the monolithic game detail route into composable sections to simplify maintenance and testing.
+- **Acceptance Criteria:**
+  1. Move the hero, sidebar, comments, and reviews into dedicated child components.
+  2. Ensure data-fetching logic is isolated from presentation concerns.
+  3. Add tests or stories that exercise the new components.
+
+### Ticket M7-T003 — Decompose Purchase Flow Hook
+- **Milestone:** M7 — Code Health & Refactors
+- **Summary:** Break `useGamePurchaseFlow` into smaller hooks/services so each behavior can be tested independently.
+- **Acceptance Criteria:**
+  1. Extract LNURL guest invoice creation, invoice polling, and receipt handling into focused helpers.
+  2. Keep the public hook lean, delegating side-effects to the extracted helpers.
+  3. Add unit coverage for the new helpers and update existing tests accordingly.
 
 Post‑MVP (Nostr Re‑enable Roadmap)
 - NIP‑07 login, relay publish of release notes, reply ingestion and caching, zap receipt ingestion and aggregation.
