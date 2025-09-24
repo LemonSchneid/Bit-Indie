@@ -261,57 +261,66 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
+      <div className="absolute inset-y-0 right-0 -z-20 w-full max-w-4xl bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
+      <div className="absolute inset-x-0 bottom-0 -z-20 h-72 bg-[radial-gradient(circle_at_bottom,_rgba(14,165,233,0.18),_transparent_65%)]" />
+      <div className="absolute left-1/2 top-24 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-16">
-        <section className="grid gap-8 lg:grid-cols-[3fr_2fr]">
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
-              <span className="rounded-full border border-white/10 bg-slate-900/50 px-4 py-1">
-                {formatStatus(game.status)}
-              </span>
-              <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-1 text-emerald-200">
-                {formatCategory(game.category)}
-              </span>
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-xl shadow-emerald-500/10">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.22),_transparent_65%)]" />
+          <div className="absolute -right-32 top-1/2 -z-10 h-80 w-80 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.18),_transparent_70%)]" />
+          <div className="relative grid gap-8 lg:grid-cols-[3fr_2fr]">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
+                <span className="rounded-full border border-white/10 bg-slate-900/50 px-4 py-1">
+                  {formatStatus(game.status)}
+                </span>
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-4 py-1 text-emerald-200">
+                  {formatCategory(game.category)}
+                </span>
+              </div>
+              <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                {game.title}
+              </h1>
+              {game.summary ? (
+                <p className="max-w-2xl text-lg text-slate-200">{game.summary}</p>
+              ) : (
+                <p className="max-w-2xl text-lg text-slate-400">
+                  This game is still being prepared for its public launch.
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+                <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 shadow shadow-emerald-500/10">
+                  {priceLabel}
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
+                  Updated {updatedLabel}
+                </div>
+              </div>
             </div>
-            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              {game.title}
-            </h1>
-            {game.summary ? (
-              <p className="max-w-2xl text-lg text-slate-300">{game.summary}</p>
-            ) : (
-              <p className="max-w-2xl text-lg text-slate-400">
-                This game is still being prepared for its public launch.
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-white">
-                {priceLabel}
-              </div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-slate-300">
-                Updated {updatedLabel}
-              </div>
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-lg shadow-emerald-500/10">
+              {game.cover_url ? (
+                <Image
+                  src={game.cover_url}
+                  alt={`${game.title} cover art`}
+                  width={1280}
+                  height={720}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full min-h-[300px] items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-500">
+                  Cover art coming soon
+                </div>
+              )}
             </div>
-          </div>
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-lg shadow-emerald-500/10">
-            {game.cover_url ? (
-              <Image
-                src={game.cover_url}
-                alt={`${game.title} cover art`}
-                width={1280}
-                height={720}
-                className="h-full w-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="flex h-full min-h-[300px] items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-slate-500">
-                Cover art coming soon
-              </div>
-            )}
           </div>
         </section>
 
         <section className="grid gap-8 lg:grid-cols-[3fr_2fr]">
-          <article className="space-y-5 text-base leading-7 text-slate-300">
+          <article className="space-y-5 rounded-3xl border border-white/10 bg-slate-900/60 p-8 text-base leading-7 text-slate-300 shadow-lg shadow-emerald-500/10">
             {descriptionParagraphs.length > 0 ? (
               descriptionParagraphs.map((paragraph) => (
                 <p key={paragraph} className="text-slate-200">
@@ -319,7 +328,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 </p>
               ))
             ) : (
-              <p className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-slate-400">
+              <p className="rounded-2xl border border-dashed border-white/20 bg-slate-950/60 p-6 text-slate-400">
                 The developer hasn&apos;t shared a full description yet. Check back soon for gameplay details and download
                 instructions.
               </p>
@@ -338,7 +347,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                   developerLightningAddress={game.developer_lightning_address}
                 />
               ) : (
-                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
                     Checkout locked
                   </h2>
@@ -349,16 +358,16 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 </div>
               )
             ) : (
-              <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Free download</h2>
                 <p className="mt-3 text-sm text-slate-300">
                   This build will be shared for free once the developer uploads the files. Check back soon for the download
                   link.
                 </p>
               </div>
-              )}
+            )}
 
-            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
                 Tip the developer
               </h2>
@@ -371,7 +380,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Release status</h2>
               <p>
                 Unlisted games are ready for direct sharing. Developers can finalize their launch checklist to move into the
@@ -387,8 +396,10 @@ export default async function GameDetailPage({ params }: GamePageProps) {
           </aside>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)]" />
+          <div className="absolute -right-24 bottom-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.15),_transparent_70%)]" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
                 Community thread
@@ -413,7 +424,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               No comments yet. Share the release note or invite players to leave feedback here.
             </p>
           ) : (
-            <div className="mt-6 space-y-6">
+            <div className="relative z-10 mt-6 space-y-6">
               {(nostrEnabled ? comments : comments.filter((c) => c.source === "FIRST_PARTY")).map((comment) => {
                 const paragraphs = getCommentParagraphs(comment.body_md);
                 const trimmedBody = comment.body_md.trim();
@@ -429,7 +440,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 return (
                   <article
                     key={comment.id}
-                    className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-lg shadow-emerald-500/10"
+                    className="rounded-2xl border border-white/10 bg-slate-950/70 p-6 shadow-lg shadow-emerald-500/10"
                   >
                     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-2">
@@ -441,13 +452,13 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             {formatCommentDate(comment.created_at)}
                           </time>
                           {isNostrReply ? (
-                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-violet-200">
                               Nostr reply
-                              </span>
+                            </span>
                           ) : (
-                              <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                            <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                               Proof of Play
-                              </span>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -468,7 +479,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                             icon="⚡"
                           />
                         ) : null}
-                    <ZapButton recipientLabel={zapRecipient} comment={zapComment} className="mt-2 sm:mt-0" />
+                        <ZapButton recipientLabel={zapRecipient} comment={zapComment} className="mt-2 sm:mt-0" />
                       </div>
                     </header>
                     <div className="mt-4 space-y-3 text-base leading-7 text-slate-200">
@@ -483,8 +494,10 @@ export default async function GameDetailPage({ params }: GamePageProps) {
           )}
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)]" />
+          <div className="absolute -left-24 bottom-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.15),_transparent_70%)]" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">
                 Community reviews

@@ -17,10 +17,10 @@ type ReceiptActionsProps = {
 };
 
 const baseButtonClass =
-  "inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:bg-emerald-400/20";
+  "inline-flex items-center justify-center rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30";
 
 const downloadButtonClass =
-  "inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-emerald-400/40 hover:text-emerald-100";
+  "inline-flex items-center justify-center rounded-full border border-white/20 bg-slate-950/60 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-emerald-300/40 hover:text-emerald-100";
 
 export function ReceiptActions({
   value,
@@ -42,7 +42,7 @@ export function ReceiptActions({
   const download = labels?.download ?? "Download receipt";
 
   const combinedClassName = [
-    "space-y-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-200",
+    "relative overflow-hidden space-y-3 rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-xs text-slate-200 shadow-lg shadow-emerald-500/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_65%)] before:content-['']",
     className,
   ]
     .filter(Boolean)
@@ -50,9 +50,9 @@ export function ReceiptActions({
 
   return (
     <div className={combinedClassName}>
-      <p className={descriptionClassName ?? "text-sm text-slate-200"}>{description}</p>
+      <p className={descriptionClassName ?? "text-sm leading-relaxed text-slate-200"}>{description}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <code className="flex-1 break-all rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-[0.65rem] text-slate-300">
+        <code className="flex-1 break-all rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-[0.65rem] text-slate-300 shadow-inner shadow-emerald-500/10">
           {value}
         </code>
         <div className="flex gap-2">

@@ -81,36 +81,40 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
 
   return (
     <>
-      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-        <PurchaseHeader gameTitle={props.gameTitle} priceLabel={props.priceLabel} />
-        {downloadUnlocked ? (
-          <DownloadUnlockedCard
-            buildAvailable={props.buildAvailable}
-            downloadUrl={downloadUrl}
-            receiptLink={receiptLinkToCopy}
-            receiptCopyState={receiptCopyState}
-            onCopyReceiptLink={handleCopyReceiptLink}
-            onDownloadReceipt={handleDownloadReceipt}
-          />
-        ) : (
-          <CheckoutPrompt
-            showReceiptLookup={showReceiptLookup}
-            manualReceiptId={manualReceiptId}
-            onStartCheckout={handleStartCheckout}
-            onToggleReceiptLookup={toggleReceiptLookup}
-            onCancelReceiptLookup={closeReceiptLookup}
-            onManualReceiptIdChange={handleManualReceiptIdChange}
-            onReceiptLookupSubmit={handleReceiptLookupSubmit}
-          />
-        )}
+      <div
+        className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-lg shadow-emerald-500/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)] before:content-[''] after:pointer-events-none after:absolute after:-right-24 after:top-1/2 after:-z-10 after:h-48 after:w-48 after:-translate-y-1/2 after:rounded-full after:bg-[radial-gradient(circle,_rgba(59,130,246,0.18),_transparent_65%)] after:content-['']"
+      >
+        <div className="relative z-10 space-y-5">
+          <PurchaseHeader gameTitle={props.gameTitle} priceLabel={props.priceLabel} />
+          {downloadUnlocked ? (
+            <DownloadUnlockedCard
+              buildAvailable={props.buildAvailable}
+              downloadUrl={downloadUrl}
+              receiptLink={receiptLinkToCopy}
+              receiptCopyState={receiptCopyState}
+              onCopyReceiptLink={handleCopyReceiptLink}
+              onDownloadReceipt={handleDownloadReceipt}
+            />
+          ) : (
+            <CheckoutPrompt
+              showReceiptLookup={showReceiptLookup}
+              manualReceiptId={manualReceiptId}
+              onStartCheckout={handleStartCheckout}
+              onToggleReceiptLookup={toggleReceiptLookup}
+              onCancelReceiptLookup={closeReceiptLookup}
+              onManualReceiptIdChange={handleManualReceiptIdChange}
+              onReceiptLookupSubmit={handleReceiptLookupSubmit}
+            />
+          )}
+        </div>
       </div>
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         containerClassName="items-center justify-center px-4 py-6"
-        contentClassName="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/95 p-6 shadow-2xl"
-        backdropClassName="bg-slate-950/80"
+        contentClassName="relative w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 p-8 shadow-2xl shadow-emerald-500/10 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)] before:content-[''] after:pointer-events-none after:absolute after:-right-28 after:top-1/3 after:-z-10 after:h-64 after:w-64 after:rounded-full after:bg-[radial-gradient(circle,_rgba(59,130,246,0.2),_transparent_70%)] after:content-['']"
+        backdropClassName="bg-slate-950/80 backdrop-blur-sm"
         backdropAriaLabel="Close checkout"
         ariaLabel="Lightning checkout"
       >
