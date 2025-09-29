@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-from bit_indie_api.api.v1.routes.comments import get_comment_thread_service
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
     Comment,
@@ -19,20 +17,10 @@ from bit_indie_api.db.models import (
     ModerationFlagReason,
     ModerationFlagStatus,
     ModerationTargetType,
-    ReleaseNoteReply,
-    ReleaseNoteReplyHiddenReason,
     Review,
     User,
 )
 from bit_indie_api.main import create_application
-
-
-NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
-
-pytestmark = pytest.mark.skipif(
-    not NOSTR_ENABLED,
-    reason="Nostr features are disabled for the Simple MVP",
-)
 
 
 @pytest.fixture(autouse=True)
@@ -41,10 +29,8 @@ def _reset_state(monkeypatch):
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
-    get_comment_thread_service().clear_cache()
     yield
     reset_database_state()
-    get_comment_thread_service().clear_cache()
 
 
 def _create_schema() -> None:
@@ -118,27 +104,6 @@ def _create_review(game_id: str, user_id: str, *, body: str = "Needs moderation"
         session.add(review)
         session.flush()
         return review.id
-
-
-def _create_release_note_reply(game_id: str, *, content: str = "Great update") -> str:
-    """Persist a release note reply associated with the provided game."""
-
-    release_note_event_id = f"event-{uuid.uuid4().hex}"
-    with session_scope() as session:
-        reply = ReleaseNoteReply(
-            game_id=game_id,
-            release_note_event_id=release_note_event_id,
-            relay_url="https://relay.admin/replies",
-            event_id=f"reply-{uuid.uuid4().hex}",
-            pubkey=f"{uuid.uuid4().hex}{uuid.uuid4().hex}",
-            kind=1,
-            event_created_at=datetime(2024, 1, 2, tzinfo=timezone.utc),
-            content=content,
-            tags_json=json.dumps([["e", release_note_event_id]]),
-        )
-        session.add(reply)
-        session.flush()
-        return reply.id
 
 
 def _create_flag(
@@ -344,85 +309,3 @@ def test_takedown_hides_reviews_and_marks_flags() -> None:
         assert flag.status is ModerationFlagStatus.ACTIONED
 
 
-def test_admin_hide_release_note_reply_updates_comments() -> None:
-    """Hiding a release note reply should remove it from storefront responses."""
-
-    _create_schema()
-    admin_id = _create_user(is_admin=True)
-    game_id = _create_game()
-    reply_id = _create_release_note_reply(game_id)
-
-    client = _build_client()
-
-    response = client.get(f"/v1/games/{game_id}/comments")
-    assert response.status_code == 200
-    assert len(response.json()) == 1
-
-    hide_response = client.post(
-        f"/v1/admin/mod/replies/{reply_id}/hide",
-        json={"user_id": admin_id, "notes": "spam"},
-    )
-
-    assert hide_response.status_code == 200
-    payload = hide_response.json()
-    assert payload["is_hidden"] is True
-    assert payload["hidden_reason"] == ReleaseNoteReplyHiddenReason.ADMIN.value
-    assert payload["moderation_notes"] == "spam"
-
-    response = client.get(f"/v1/games/{game_id}/comments")
-    assert response.status_code == 200
-    assert response.json() == []
-
-    unhide_response = client.post(
-        f"/v1/admin/mod/replies/{reply_id}/unhide",
-        json={"user_id": admin_id},
-    )
-
-    assert unhide_response.status_code == 200
-    restored = unhide_response.json()
-    assert restored["is_hidden"] is False
-    assert restored["hidden_reason"] is None
-
-    response = client.get(f"/v1/games/{game_id}/comments")
-    assert response.status_code == 200
-    assert len(response.json()) == 1
-
-
-def test_admin_can_fetch_hidden_release_note_reply() -> None:
-    """Audit endpoint should return hidden release note replies for admins."""
-
-    _create_schema()
-    admin_id = _create_user(is_admin=True)
-    game_id = _create_game()
-    release_note_event_id = f"event-{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        reply = ReleaseNoteReply(
-            game_id=game_id,
-            release_note_event_id=release_note_event_id,
-            relay_url="https://relay.audit/replies",
-            event_id=f"reply-{uuid.uuid4().hex}",
-            pubkey=f"{uuid.uuid4().hex}{uuid.uuid4().hex}",
-            kind=1,
-            event_created_at=datetime(2024, 1, 3, tzinfo=timezone.utc),
-            content="Auto hidden reply",
-            tags_json=json.dumps([["e", release_note_event_id]]),
-            is_hidden=True,
-            hidden_reason=ReleaseNoteReplyHiddenReason.AUTOMATED_FILTER,
-            moderation_notes="Reply contains profanity.",
-        )
-        session.add(reply)
-        session.flush()
-        reply_id = reply.id
-
-    client = _build_client()
-    response = client.get(
-        f"/v1/admin/mod/replies/{reply_id}", params={"user_id": admin_id}
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["id"] == reply_id
-    assert body["is_hidden"] is True
-    assert body["hidden_reason"] == ReleaseNoteReplyHiddenReason.AUTOMATED_FILTER.value
-    assert body["moderation_notes"] == "Reply contains profanity."

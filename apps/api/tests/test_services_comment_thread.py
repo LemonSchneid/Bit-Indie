@@ -1,34 +1,15 @@
+"""Unit tests for the first-party comment thread service."""
+
 from __future__ import annotations
 
-import json
-import threading
-import uuid
 from datetime import datetime, timedelta, timezone
+import uuid
 
 import pytest
 
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
-from bit_indie_api.db.models import (
-    Comment,
-    Developer,
-    Game,
-    GameStatus,
-    InvoiceStatus,
-    Purchase,
-    ReleaseNoteReply,
-    User,
-)
-from bit_indie_api.services.comment_thread import (
-    CommentDTO,
-    CommentDTOBuilder,
-    CommentSource,
-    CommentThreadService,
-    NormalizedReleaseNoteReply,
-    ReleaseNoteReplyCache,
-    ReleaseNoteReplyLoader,
-    ReleaseNoteReplySnapshot,
-    ReleaseNoteReplyNormalizer,
-)
+from bit_indie_api.db.models import Comment, Developer, Game, GameStatus, InvoiceStatus, Purchase, User
+from bit_indie_api.services.comment_thread import CommentDTO, CommentSource, CommentThreadService
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +23,7 @@ def _reset_state(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _create_schema() -> None:
-    """Create the ORM schema for the temporary SQLite database."""
+    """Create ORM tables for the temporary SQLite database."""
 
     engine = get_engine()
     Base.metadata.create_all(engine)
@@ -62,30 +43,36 @@ def _create_developer(session) -> tuple[User, Developer]:
     return user, developer
 
 
-def _create_game(session, developer: Developer, *, active: bool = True) -> Game:
-    """Persist and return a game owned by the provided developer."""
+def _create_game(session, developer: Developer) -> Game:
+    """Persist a game owned by the provided developer."""
 
     game = Game(
         developer_id=developer.id,
         title="Nebula Drift",
         slug=f"nebula-drift-{uuid.uuid4().hex[:8]}",
         status=GameStatus.UNLISTED,
-        active=active,
+        active=True,
     )
     session.add(game)
     session.flush()
     return game
 
 
-def _create_comment(
-    session,
-    *,
-    game_id: str,
-    user_id: str,
-    body_md: str,
-    created_at: datetime,
-) -> Comment:
-    """Persist a storefront comment and return the ORM entity."""
+def _create_user(session, *, lightning_address: str | None = None) -> User:
+    """Persist a user record and return the ORM instance."""
+
+    user = User(
+        pubkey_hex=f"user-{uuid.uuid4().hex}",
+        lightning_address=lightning_address,
+        display_name="Player",
+    )
+    session.add(user)
+    session.flush()
+    return user
+
+
+def _create_comment(session, *, game_id: str, user_id: str, body_md: str, created_at: datetime) -> Comment:
+    """Persist a first-party comment for the provided game."""
 
     comment = Comment(
         game_id=game_id,
@@ -98,50 +85,13 @@ def _create_comment(
     return comment
 
 
-def _create_release_note_reply(
-    session,
-    *,
-    game_id: str,
-    event_id: str,
-    pubkey_hex: str,
-    created_at: datetime,
-    content: str,
-    tags: list[list[str]],
-    hidden: bool = False,
-) -> ReleaseNoteReply:
-    """Persist a release note reply associated with the provided game."""
-
-    reply = ReleaseNoteReply(
-        game_id=game_id,
-        release_note_event_id=f"release-{uuid.uuid4().hex}",
-        relay_url="wss://relay.example.com",
-        event_id=event_id,
-        pubkey=pubkey_hex,
-        kind=1,
-        event_created_at=created_at,
-        content=content,
-        tags_json=json.dumps(tags),
-        is_hidden=hidden,
-    )
-    session.add(reply)
-    session.flush()
-    return reply
-
-
-def _create_purchase(
-    session,
-    *,
-    game_id: str,
-    user_id: str,
-    invoice_suffix: str,
-    paid_at: datetime,
-) -> None:
-    """Persist a paid purchase for the supplied user and game."""
+def _create_purchase(session, *, game_id: str, user_id: str, paid_at: datetime) -> None:
+    """Persist a paid purchase linking the user to the game."""
 
     purchase = Purchase(
         user_id=user_id,
         game_id=game_id,
-        invoice_id=f"invoice-{invoice_suffix}",
+        invoice_id=f"invoice-{uuid.uuid4().hex[:8]}",
         invoice_status=InvoiceStatus.PAID,
         amount_msats=5_000,
         paid_at=paid_at,
@@ -149,286 +99,134 @@ def _create_purchase(
     session.add(purchase)
 
 
-def test_release_note_reply_loader_caches_snapshots() -> None:
-    """Snapshot loader should reuse cached entries until the cache is cleared."""
+def test_list_for_game_orders_first_party_comments() -> None:
+    """Comments should be returned in chronological order without Nostr data."""
 
     _create_schema()
-    loader = ReleaseNoteReplyLoader(
-        cache=ReleaseNoteReplyCache(ttl_seconds=60.0, max_size=16)
-    )
-    pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    created_at = datetime(2024, 1, 1, 12, 30, tzinfo=timezone.utc)
+    service = CommentThreadService()
 
     with session_scope() as session:
         _, developer = _create_developer(session)
         game = _create_game(session, developer)
-        reply = _create_release_note_reply(
+        first_user = _create_user(session, lightning_address="player@example.com")
+        second_user = _create_user(session)
+
+        older = _create_comment(
             session,
             game_id=game.id,
-            event_id="event-1",
-            pubkey_hex=pubkey.upper(),
-            created_at=created_at,
-            content="Looking forward to this build!",
-            tags=[["alias", pubkey.lower()], ["npub", pubkey.lower()]],
+            user_id=first_user.id,
+            body_md="First!",
+            created_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         )
-        reply_id = reply.id
-        game_id = game.id
-
-    with session_scope() as session:
-        snapshots_first = loader.load_snapshots(session=session, game_id=game_id)
-
-    assert len(snapshots_first) == 1
-    snapshot = snapshots_first[0]
-    assert snapshot.comment_id == "nostr:event-1"
-    assert snapshot.pubkey_hex == pubkey.lower()
-    assert snapshot.alias_pubkeys == (pubkey.lower(),)
-
-    with session_scope() as session:
-        stored = session.get(ReleaseNoteReply, reply_id)
-        assert stored is not None
-        session.delete(stored)
-        session.flush()
-
-    with session_scope() as session:
-        cached = loader.load_snapshots(session=session, game_id=game_id)
-
-    assert len(cached) == 1
-    loader.clear_cache()
-
-    with session_scope() as session:
-        cleared = loader.load_snapshots(session=session, game_id=game_id)
-
-    assert cleared == []
-
-
-def test_release_note_reply_cache_thread_safe_updates() -> None:
-    """Cache should handle concurrent access without data loss or exceptions."""
-
-    cache = ReleaseNoteReplyCache(ttl_seconds=60.0, max_size=32)
-    game_id = "game-threaded"
-    iterations = 25
-    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    exceptions: list[BaseException] = []
-    exception_lock = threading.Lock()
-
-    def record_exception(exc: BaseException) -> None:
-        with exception_lock:
-            exceptions.append(exc)
-
-    def make_snapshot(index: int) -> ReleaseNoteReplySnapshot:
-        return ReleaseNoteReplySnapshot(
-            comment_id=f"nostr:event-{index}",
-            game_id=game_id,
-            pubkey_hex="a" * 64,
-            body_md=f"body-{index}",
-            created_at=base_time + timedelta(minutes=index),
-            alias_pubkeys=("alias",),
-        )
-
-    def writer() -> None:
-        try:
-            for i in range(iterations):
-                cache.set(game_id, [make_snapshot(i)])
-        except BaseException as exc:  # pragma: no cover - defensive capture
-            record_exception(exc)
-
-    def reader() -> None:
-        try:
-            for _ in range(iterations):
-                cache.get(game_id)
-        except BaseException as exc:  # pragma: no cover - defensive capture
-            record_exception(exc)
-
-    threads = [threading.Thread(target=writer) for _ in range(3)] + [
-        threading.Thread(target=reader) for _ in range(3)
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    assert not exceptions
-    latest = cache.get(game_id)
-    assert latest is not None
-    assert len(latest) == 1
-    assert latest[0].comment_id == f"nostr:event-{iterations - 1}"
-    assert latest[0].body_md == f"body-{iterations - 1}"
-
-
-def test_release_note_reply_normalizer_resolves_users_and_verification() -> None:
-    """Normalizer should attach user context and purchase verification."""
-
-    _create_schema()
-    loader = ReleaseNoteReplyLoader(
-        cache=ReleaseNoteReplyCache(ttl_seconds=60.0, max_size=16)
-    )
-    normalizer = ReleaseNoteReplyNormalizer()
-    matching_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    unmatched_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        purchaser_user, developer = _create_developer(session)
-        game = _create_game(session, developer)
-        purchaser_user.pubkey_hex = matching_pubkey
-        session.flush()
-        observer = User(pubkey_hex=unmatched_pubkey)
-        session.add(observer)
-        session.flush()
-        _create_purchase(
+        newer = _create_comment(
             session,
             game_id=game.id,
-            user_id=purchaser_user.id,
-            invoice_suffix="paid",
-            paid_at=datetime.now(timezone.utc),
+            user_id=second_user.id,
+            body_md="Looking forward to the release",
+            created_at=datetime(2024, 1, 1, 12, 5, tzinfo=timezone.utc),
         )
-        _create_release_note_reply(
-            session,
-            game_id=game.id,
-            event_id="event-match",
-            pubkey_hex=matching_pubkey.upper(),
-            created_at=datetime(2024, 2, 1, 9, 0, tzinfo=timezone.utc),
-            content="Purchased and played all night!",
-            tags=[["alias", matching_pubkey]],
-        )
-        _create_release_note_reply(
-            session,
-            game_id=game.id,
-            event_id="event-miss",
-            pubkey_hex=unmatched_pubkey,
-            created_at=datetime(2024, 2, 1, 10, 0, tzinfo=timezone.utc),
-            content="Following the updates closely.",
-            tags=[["alias", unmatched_pubkey]],
-        )
-        game_id = game.id
-        purchaser_id = purchaser_user.id
-        observer_id = observer.id
+        older_id = older.id
+        newer_id = newer.id
 
-    with session_scope() as session:
-        snapshots = loader.load_snapshots(session=session, game_id=game_id)
-        normalized = normalizer.normalize(
-            session=session, game_id=game_id, snapshots=snapshots
-        )
-        assert {item.snapshot.comment_id for item in normalized} == {
-            "nostr:event-match",
-            "nostr:event-miss",
-        }
-        matched = next(
-            item for item in normalized if item.snapshot.comment_id == "nostr:event-match"
-        )
-        assert matched.matched_user is not None
-        assert matched.matched_user.id == purchaser_id
-        assert matched.is_verified_purchase is True
-        unmatched = next(
-            item for item in normalized if item.snapshot.comment_id == "nostr:event-miss"
-        )
-        assert unmatched.matched_user is not None
-        assert unmatched.matched_user.id == observer_id
-        assert unmatched.is_verified_purchase is False
+        comments = service.list_for_game(session=session, game=game)
+
+    assert [comment.id for comment in comments] == [older_id, newer_id]
+    assert all(comment.source is CommentSource.FIRST_PARTY for comment in comments)
+    assert comments[0].author.lightning_address == "player@example.com"
+    assert comments[1].author.lightning_address is None
 
 
-def test_comment_dto_builder_handles_sources() -> None:
-    """DTO builder should normalize timestamps and author details."""
-
-    builder = CommentDTOBuilder()
-    created_at = datetime(2024, 3, 5, 15, 45)
-    user = User(id="user-1", pubkey_hex="a" * 64, display_name="NebulaDev")
-    comment = Comment(
-        id="comment-1",
-        game_id="game-1",
-        user_id="user-1",
-        body_md="Launch build incoming!",
-        created_at=created_at,
-    )
-
-    first_party = builder.build_first_party_comment(
-        comment=comment,
-        user=user,
-        is_verified_purchase=True,
-    )
-    assert first_party.source is CommentSource.FIRST_PARTY
-    assert first_party.created_at.tzinfo is timezone.utc
-    assert first_party.author.user_id == "user-1"
-    assert first_party.is_verified_purchase is True
-
-    snapshot = ReleaseNoteReplyLoader()._snapshot_reply(  # type: ignore[protected-access]
-        reply=ReleaseNoteReply(
-            game_id="game-1",
-            release_note_event_id="release-1",
-            relay_url="wss://relay.example.com",
-            event_id="event-123",
-            pubkey="b" * 64,
-            kind=1,
-            event_created_at=datetime(2024, 3, 6, 12, 0, tzinfo=timezone.utc),
-            content="Loving the update!",
-            tags_json=json.dumps([["alias", "b" * 64]]),
-        )
-    )
-    normalized = NormalizedReleaseNoteReply(
-        snapshot=snapshot,
-        matched_user=None,
-        is_verified_purchase=False,
-    )
-    reply_dto = builder.build_release_note_reply(normalized_reply=normalized)
-    assert reply_dto.source is CommentSource.NOSTR
-    assert reply_dto.author.pubkey_hex == "b" * 64
-    assert reply_dto.author.user_id is None
-    assert reply_dto.is_verified_purchase is False
-def test_comment_thread_service_merges_sources() -> None:
-    """Integration test ensuring the service composes collaborators correctly."""
+def test_list_for_game_marks_verified_purchase_users() -> None:
+    """Users with paid purchases should surface as verified."""
 
     _create_schema()
     service = CommentThreadService()
-    now = datetime(2024, 4, 1, 9, 0, tzinfo=timezone.utc)
-    nostr_time = now + timedelta(minutes=30)
-    pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
 
     with session_scope() as session:
-        developer_user, developer = _create_developer(session)
+        _, developer = _create_developer(session)
         game = _create_game(session, developer)
-        commenter = User(pubkey_hex=f"commenter-{uuid.uuid4().hex}", display_name="Pilot")
-        session.add(commenter)
-        session.flush()
-        comment = _create_comment(
-            session,
-            game_id=game.id,
-            user_id=commenter.id,
-            body_md="Excited for launch",
-            created_at=now,
-        )
-        _create_release_note_reply(
-            session,
-            game_id=game.id,
-            event_id="nostr-1",
-            pubkey_hex=pubkey,
-            created_at=nostr_time,
-            content="Thanks for the update!",
-            tags=[["alias", pubkey]],
-        )
+        purchaser = _create_user(session)
+        spectator = _create_user(session)
+
         _create_purchase(
             session,
             game_id=game.id,
-            user_id=developer_user.id,
-            invoice_suffix="dev",
-            paid_at=now - timedelta(days=1),
+            user_id=purchaser.id,
+            paid_at=datetime(2024, 1, 2, tzinfo=timezone.utc),
         )
-        developer_user.lightning_address = "pilot@ln.example.com"
-        session.flush()
-        game_id = game.id
+
+        purchase_comment = _create_comment(
+            session,
+            game_id=game.id,
+            user_id=purchaser.id,
+            body_md="Downloaded and loved it!",
+            created_at=datetime(2024, 1, 3, tzinfo=timezone.utc),
+        )
+        spectator_comment = _create_comment(
+            session,
+            game_id=game.id,
+            user_id=spectator.id,
+            body_md="Watching the development closely.",
+            created_at=datetime(2024, 1, 4, tzinfo=timezone.utc),
+        )
+        purchase_comment_id = purchase_comment.id
+        spectator_comment_id = spectator_comment.id
+
+        comments = service.list_for_game(session=session, game=game)
+
+    verified_flags = {comment.id: comment.is_verified_purchase for comment in comments}
+    assert verified_flags[purchase_comment_id] is True
+    assert verified_flags[spectator_comment_id] is False
+
+
+def test_serialize_comment_requires_persisted_user() -> None:
+    """Serializing a comment without a resolved user should raise a ValueError."""
+
+    _create_schema()
+    service = CommentThreadService()
+
+    with session_scope() as session:
+        _, developer = _create_developer(session)
+        game = _create_game(session, developer)
+        user = _create_user(session)
+        comment = _create_comment(
+            session,
+            game_id=game.id,
+            user_id=user.id,
+            body_md="Hello",
+            created_at=datetime.now(timezone.utc),
+        )
+        comment.user_id = "missing"
+        comment.user = None
+
+        with pytest.raises(ValueError):
+            service.serialize_comment(session=session, comment=comment)
+
+
+def test_serialize_comment_returns_dto() -> None:
+    """Serializing a new comment should return a populated DTO."""
+
+    _create_schema()
+    service = CommentThreadService()
+
+    with session_scope() as session:
+        _, developer = _create_developer(session)
+        game = _create_game(session, developer)
+        user = _create_user(session)
+        comment = _create_comment(
+            session,
+            game_id=game.id,
+            user_id=user.id,
+            body_md="Excited!",
+            created_at=datetime(2024, 1, 5, tzinfo=timezone.utc),
+        )
+
         comment_id = comment.id
-        commenter_id = commenter.id
+        user_id = user.id
+        dto = service.serialize_comment(session=session, comment=comment)
 
-    with session_scope() as session:
-        game_db = session.get(Game, game_id)
-        assert game_db is not None
-        results = service.list_for_game(session=session, game=game_db)
-
-    assert [dto.source for dto in results] == [CommentSource.FIRST_PARTY, CommentSource.NOSTR]
-    assert results[1].author.npub is not None
-    assert results[1].is_verified_purchase is False
-
-    with session_scope() as session:
-        comment_db = session.get(Comment, comment_id)
-        assert comment_db is not None
-        serialized = service.serialize_comment(session=session, comment=comment_db)
-
-    assert serialized.author.user_id == commenter_id
+    assert isinstance(dto, CommentDTO)
+    assert dto.id == comment_id
+    assert dto.source is CommentSource.FIRST_PARTY
+    assert dto.author.user_id == user_id
+    assert dto.is_verified_purchase is False

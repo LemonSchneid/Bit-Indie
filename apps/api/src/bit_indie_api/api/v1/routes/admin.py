@@ -15,8 +15,6 @@ from bit_indie_api.db.models import (
     ModerationFlag,
     ModerationFlagStatus,
     ModerationTargetType,
-    ReleaseNoteReply,
-    ReleaseNoteReplyHiddenReason,
     Review,
     User,
 )
@@ -29,12 +27,6 @@ from bit_indie_api.schemas.moderation import (
     ModerationReporter,
     ModerationTakedownRequest,
 )
-from bit_indie_api.schemas.release_note_reply import (
-    ReleaseNoteReplyAuditRead,
-    ReleaseNoteReplyModerationRequest,
-)
-from bit_indie_api.api.v1.routes.comments import get_comment_thread_service
-from bit_indie_api.services.comment_thread import CommentThreadService
 from bit_indie_api.services.game_publication import (
     GamePublicationService,
     get_game_publication_service,
@@ -188,91 +180,8 @@ def apply_moderation_takedown(
     )
 
 
-@router.get(
-    "/replies/{reply_id}",
-    response_model=ReleaseNoteReplyAuditRead,
-    summary="Fetch a release note reply for moderation audit",
-)
-def read_release_note_reply(
-    reply_id: str,
-    user_id: str,
-    session: Session = Depends(get_session),
-) -> ReleaseNoteReplyAuditRead:
-    """Return the requested release note reply including hidden entries."""
-
-    require_admin_user(session=session, user_id=user_id)
-
-    reply = session.get(ReleaseNoteReply, reply_id)
-    if reply is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reply not found.")
-
-    return ReleaseNoteReplyAuditRead.from_model(reply)
-
-
-@router.post(
-    "/replies/{reply_id}/hide",
-    response_model=ReleaseNoteReplyAuditRead,
-    summary="Hide a release note reply from public timelines",
-)
-def hide_release_note_reply(
-    reply_id: str,
-    request: ReleaseNoteReplyModerationRequest,
-    session: Session = Depends(get_session),
-    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
-) -> ReleaseNoteReplyAuditRead:
-    """Mark a release note reply as hidden and record the moderation action."""
-
-    require_admin_user(session=session, user_id=request.user_id)
-
-    reply = session.get(ReleaseNoteReply, reply_id)
-    if reply is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reply not found.")
-
-    reply.is_hidden = True
-    reply.hidden_reason = ReleaseNoteReplyHiddenReason.ADMIN
-    reply.moderation_notes = request.notes or "Hidden by administrator."
-    reply.hidden_at = datetime.now(timezone.utc)
-    session.flush()
-
-    comment_thread_service.clear_cache()
-    return ReleaseNoteReplyAuditRead.from_model(reply)
-
-
-@router.post(
-    "/replies/{reply_id}/unhide",
-    response_model=ReleaseNoteReplyAuditRead,
-    summary="Restore a hidden release note reply",
-)
-def unhide_release_note_reply(
-    reply_id: str,
-    request: ReleaseNoteReplyModerationRequest,
-    session: Session = Depends(get_session),
-    comment_thread_service: CommentThreadService = Depends(get_comment_thread_service),
-) -> ReleaseNoteReplyAuditRead:
-    """Remove the hidden flag from a reply so it can reappear on storefront timelines."""
-
-    require_admin_user(session=session, user_id=request.user_id)
-
-    reply = session.get(ReleaseNoteReply, reply_id)
-    if reply is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reply not found.")
-
-    reply.is_hidden = False
-    reply.hidden_reason = None
-    if request.notes is not None:
-        reply.moderation_notes = request.notes
-    reply.hidden_at = None
-    session.flush()
-
-    comment_thread_service.clear_cache()
-    return ReleaseNoteReplyAuditRead.from_model(reply)
-
-
 __all__ = [
     "apply_moderation_takedown",
-    "hide_release_note_reply",
-    "read_release_note_reply",
     "read_moderation_queue",
     "require_admin_user",
-    "unhide_release_note_reply",
 ]

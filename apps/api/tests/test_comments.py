@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,7 +10,6 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from bit_indie_api.api.v1.routes.comments import (
-    get_comment_thread_service,
     get_comment_workflow,
     get_raw_comment_body,
 )
@@ -23,7 +21,6 @@ from bit_indie_api.db.models import (
     GameStatus,
     InvoiceStatus,
     Purchase,
-    ReleaseNoteReply,
     User,
 )
 from bit_indie_api.main import create_application
@@ -31,7 +28,6 @@ from bit_indie_api.services.comment_thread import (
     CommentAuthorDTO,
     CommentDTO,
     CommentSource,
-    encode_npub,
 )
 from bit_indie_api.schemas.comment import CommentCreateRequest
 from sqlalchemy.orm import Session
@@ -43,24 +39,14 @@ from bit_indie_api.services.proof_of_work import (
 from bit_indie_api.services.rate_limiting import COMMENT_RATE_LIMIT_MAX_ITEMS
 
 
-NOSTR_ENABLED = os.getenv("NOSTR_ENABLED", "false").lower() == "true"
-
-pytestmark = pytest.mark.skipif(
-    not NOSTR_ENABLED,
-    reason="Nostr features are disabled for the Simple MVP",
-)
-
-
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch):
     """Ensure each test runs against isolated database state."""
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
-    get_comment_thread_service().clear_cache()
     yield
     reset_database_state()
-    get_comment_thread_service().clear_cache()
 
 
 def _create_schema() -> None:
@@ -426,269 +412,3 @@ def test_list_comments_excludes_hidden_entries() -> None:
     assert [item["body_md"] for item in body] == ["Visible note"]
 
 
-def test_list_comments_merges_release_note_replies() -> None:
-    """Release note replies should appear alongside first-party comments."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    user_id = _create_user()
-    comment_created = datetime(2024, 1, 5, 9, 0, tzinfo=timezone.utc)
-    reply_created = datetime(2024, 1, 5, 10, 30, tzinfo=timezone.utc)
-    release_event_id = f"event-{uuid.uuid4().hex}"
-    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        session.add(
-            Comment(
-                game_id=game_id,
-                user_id=user_id,
-                body_md="Original note",
-                created_at=comment_created,
-            )
-        )
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.one/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=relay_pubkey,
-                kind=1,
-                event_created_at=reply_created,
-                content="Congrats on the launch!",
-                tags_json=json.dumps([["e", release_event_id]]),
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    body = response.json()
-    assert [entry["source"] for entry in body] == ["FIRST_PARTY", "NOSTR"]
-    assert body[1]["body_md"] == "Congrats on the launch!"
-    assert body[1]["author"]["npub"].startswith("npub1")
-
-
-def test_release_note_reply_marks_verified_purchase_when_pubkey_matches() -> None:
-    """Replies authored by a purchaser should be marked as verified."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    user_id = _create_user(pubkey_hex=purchaser_hex)
-    release_event_id = f"event-{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        session.add(
-            Purchase(
-                user_id=user_id,
-                game_id=game_id,
-                invoice_id=f"invoice-{uuid.uuid4().hex}",
-                invoice_status=InvoiceStatus.PAID,
-                amount_msats=1000,
-                paid_at=datetime.now(timezone.utc),
-            )
-        )
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.author/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=purchaser_hex,
-                kind=1,
-                event_created_at=datetime(2024, 1, 6, 14, 0, tzinfo=timezone.utc),
-                content="Purchased and loved it!",
-                tags_json=json.dumps([["e", release_event_id]]),
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    comments = response.json()
-    assert len(comments) == 1
-    entry = comments[0]
-    assert entry["source"] == "NOSTR"
-    assert entry["is_verified_purchase"] is True
-    assert entry["author"]["user_id"] == user_id
-
-
-def test_release_note_reply_participant_tags_do_not_affect_author_resolution() -> None:
-    """Generic participant tags must not attribute replies to other users."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    user_id = _create_user(pubkey_hex=purchaser_hex)
-    release_event_id = f"event-{uuid.uuid4().hex}"
-    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        session.add(
-            Purchase(
-                user_id=user_id,
-                game_id=game_id,
-                invoice_id=f"invoice-{uuid.uuid4().hex}",
-                invoice_status=InvoiceStatus.PAID,
-                amount_msats=1000,
-                paid_at=datetime.now(timezone.utc),
-            )
-        )
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.alias/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=relay_pubkey,
-                kind=1,
-                event_created_at=datetime(2024, 1, 6, 15, 0, tzinfo=timezone.utc),
-                content="Congrats on the launch!",
-                tags_json=json.dumps([["e", release_event_id], ["p", purchaser_hex]]),
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    comments = response.json()
-    assert len(comments) == 1
-    entry = comments[0]
-    assert entry["source"] == "NOSTR"
-    assert entry["author"]["user_id"] is None
-    assert entry["is_verified_purchase"] is False
-    assert entry["author"]["pubkey_hex"] == relay_pubkey.lower()
-
-
-def test_release_note_reply_ignores_alias_pubkeys_that_do_not_match_sender() -> None:
-    """Alias tags referencing other users should not influence verification."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    user_id = _create_user(pubkey_hex=purchaser_hex)
-    alias_npub = encode_npub(purchaser_hex)
-    assert alias_npub is not None
-    release_event_id = f"event-{uuid.uuid4().hex}"
-    relay_pubkey = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        session.add(
-            Purchase(
-                user_id=user_id,
-                game_id=game_id,
-                invoice_id=f"invoice-{uuid.uuid4().hex}",
-                invoice_status=InvoiceStatus.PAID,
-                amount_msats=750,
-                paid_at=datetime.now(timezone.utc),
-            )
-        )
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.alias/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=relay_pubkey,
-                kind=1,
-                event_created_at=datetime(2024, 1, 6, 16, 0, tzinfo=timezone.utc),
-                content="Zap sent!",
-                tags_json=json.dumps([["e", release_event_id], ["alias", alias_npub]]),
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    comments = response.json()
-    assert len(comments) == 1
-    entry = comments[0]
-    assert entry["source"] == "NOSTR"
-    assert entry["author"]["user_id"] is None
-    assert entry["is_verified_purchase"] is False
-
-
-def test_release_note_reply_ignores_aliases_when_sender_pubkey_invalid() -> None:
-    """Alias tags should be ignored when the reply's pubkey cannot be validated."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    purchaser_hex = f"{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    user_id = _create_user(pubkey_hex=purchaser_hex)
-    alias_npub = encode_npub(purchaser_hex)
-    assert alias_npub is not None
-    release_event_id = f"event-{uuid.uuid4().hex}"
-    invalid_pubkey = "not-a-valid-pubkey"
-
-    with session_scope() as session:
-        session.add(
-            Purchase(
-                user_id=user_id,
-                game_id=game_id,
-                invoice_id=f"invoice-{uuid.uuid4().hex}",
-                invoice_status=InvoiceStatus.PAID,
-                amount_msats=1500,
-                paid_at=datetime.now(timezone.utc),
-            )
-        )
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.alias/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=invalid_pubkey,
-                kind=1,
-                event_created_at=datetime(2024, 1, 6, 17, 0, tzinfo=timezone.utc),
-                content="Excited to try this out!",
-                tags_json=json.dumps([["e", release_event_id], ["alias", alias_npub]]),
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    comments = response.json()
-    assert len(comments) == 1
-    entry = comments[0]
-    assert entry["source"] == "NOSTR"
-    assert entry["author"]["user_id"] is None
-    assert entry["author"]["pubkey_hex"] is None
-    assert entry["is_verified_purchase"] is False
-
-
-def test_hidden_release_note_replies_are_not_listed() -> None:
-    """Replies marked as hidden should be excluded from storefront responses."""
-
-    _create_schema()
-    game_id = _seed_game(active=True)
-    release_event_id = f"event-{uuid.uuid4().hex}"
-
-    with session_scope() as session:
-        session.add(
-            ReleaseNoteReply(
-                game_id=game_id,
-                release_note_event_id=release_event_id,
-                relay_url="https://relay.hidden/replies",
-                event_id=f"reply-{uuid.uuid4().hex}",
-                pubkey=f"{uuid.uuid4().hex}{uuid.uuid4().hex}",
-                kind=1,
-                event_created_at=datetime(2024, 1, 7, 12, 0, tzinfo=timezone.utc),
-                content="Hidden reply",
-                tags_json=json.dumps([["e", release_event_id]]),
-                is_hidden=True,
-                moderation_notes="Hidden during audit.",
-            )
-        )
-
-    client = _build_client()
-    response = client.get(f"/v1/games/{game_id}/comments")
-
-    assert response.status_code == 200
-    assert response.json() == []

@@ -260,7 +260,7 @@ M8 — Legacy Social Stack Removal
   3. Update review/comment serializers and ranking logic to exclude zap fields and rely solely on first-party data.
   4. Remove zap metrics/logging and ensure `pytest` passes without zap fixtures.
 
-### Ticket M8-T003 — Remove Release Note Relay Integration
+### Ticket M8-T003 — Remove Release Note Relay Integration ✅ Done
 - **Milestone:** M8 — Legacy Social Stack Removal
 - **Summary:** Eliminate the release note publisher, ingestion worker, and cached relay replies.
 - **Acceptance Criteria:**

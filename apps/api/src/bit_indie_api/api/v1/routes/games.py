@@ -52,11 +52,6 @@ from bit_indie_api.services.payments import (
     PaymentServiceError,
     get_payment_service,
 )
-from bit_indie_api.services.nostr_publisher import (
-    ReleaseNotePublishError,
-    ReleaseNotePublisher,
-    get_release_note_publisher,
-)
 
 
 router = APIRouter(prefix="/v1/games", tags=["games"])
@@ -289,7 +284,6 @@ def publish_game(
     game_id: str,
     request: GamePublishRequest,
     session: Session = Depends(get_session),
-    publisher: ReleaseNotePublisher = Depends(get_release_note_publisher),
     publication: GamePublicationService = Depends(get_game_publication_service),
     drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameRead:
@@ -300,13 +294,10 @@ def publish_game(
             session=session,
             game_id=game_id,
             request=request,
-            publisher=publisher,
             publication=publication,
         )
     except GameDraftingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ReleaseNotePublishError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     return GameRead.model_validate(game)
 
