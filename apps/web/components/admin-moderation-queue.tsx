@@ -42,7 +42,7 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString();
+  return parsed.toLocaleString("en-US");
 }
 
 function formatReporterName(item: ModerationQueueItem): string {

@@ -26,9 +26,10 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
   return (
     <section className="grid gap-6 sm:grid-cols-2">
       {games.map((game) => (
-        <article
+        <Link
           key={game.id}
-          className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-lg shadow-emerald-500/10"
+          href={`/games/${game.slug}`}
+          className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-lg shadow-emerald-500/10 transition hover:border-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           <div className="relative h-48 w-full bg-slate-900/80">
             {game.cover_url ? (
@@ -57,13 +58,8 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
-                <Link
-                  href={`/games/${game.slug}`}
-                  className="transition hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-                >
-                  {game.title}
-                </Link>
+              <h2 className="text-2xl font-semibold tracking-tight text-white transition group-hover:text-emerald-200 group-focus-visible:text-emerald-200">
+                {game.title}
               </h2>
               {game.summary ? (
                 <p className="text-sm text-slate-300">{game.summary}</p>
@@ -82,15 +78,12 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
                 </span>
               </div>
 
-              <Link
-                href={`/games/${game.slug}`}
-                className="inline-flex items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-emerald-100"
-              >
+              <span className="inline-flex items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition group-hover:border-emerald-300 group-hover:text-emerald-100 group-focus-visible:border-emerald-300 group-focus-visible:text-emerald-100">
                 View details & checkout
-              </Link>
+              </span>
             </div>
           </div>
-        </article>
+        </Link>
       ))}
     </section>
   );

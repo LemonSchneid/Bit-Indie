@@ -123,7 +123,7 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/60 text-slate-300 transition hover:text-white"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/60 text-slate-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               aria-label="Close checkout"
             >
               <span aria-hidden>×</span>

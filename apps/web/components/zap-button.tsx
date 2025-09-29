@@ -109,7 +109,7 @@ export function ZapButton({
 
         {minSats !== null && maxSats !== null ? (
           <p className="mt-2 text-[11px] text-slate-400">
-            Available range: {minSats.toLocaleString()} – {maxSats.toLocaleString()} sats
+            Available range: {minSats.toLocaleString("en-US")} – {maxSats.toLocaleString("en-US")} sats
           </p>
         ) : null}
 
@@ -128,7 +128,7 @@ export function ZapButton({
               }}
               disabled={!isAmountAllowed(amount) || isLoading}
             >
-              {amount.toLocaleString()} sats
+              {amount.toLocaleString("en-US")} sats
             </button>
           ))}
         </div>
@@ -164,7 +164,7 @@ export function ZapButton({
 
       {showSuccess && lastZapAmount !== null ? (
         <p className="mt-2 text-[11px] text-emerald-300">
-          Invoice for {lastZapAmount.toLocaleString()} sats sent to your wallet
+          Invoice for {lastZapAmount.toLocaleString("en-US")} sats sent to your wallet
           {amountWasClamped ? " (adjusted to allowed range)." : "."}
         </p>
       ) : null}

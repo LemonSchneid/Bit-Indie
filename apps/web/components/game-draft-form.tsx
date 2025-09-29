@@ -177,7 +177,7 @@ export function GameDraftForm({ user, onUserUpdate }: GameDraftFormProps): JSX.E
       return null;
     }
     const parsed = new Date(draft.build_scanned_at);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString();
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString("en-US");
   }, [draft?.build_scanned_at]);
 
   const handleFieldChange = useCallback((field: keyof GameDraftFormValues, value: string) => {

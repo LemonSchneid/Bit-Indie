@@ -20,7 +20,7 @@ export function formatPriceMsats(value: number | null, options: FormatPriceOptio
   }
 
   const sats = value / 1000;
-  const formatted = Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 });
+  const formatted = Number(sats).toLocaleString("en-US", { maximumFractionDigits: 3 });
   return `${formatted} sats`;
 }
 
@@ -93,7 +93,12 @@ export function formatDateLabel(timestamp: string | null | undefined, options: F
     return fallback;
   }
 
-  return parsed.toLocaleDateString(locale, formatOptions);
+  const resolvedOptions: Intl.DateTimeFormatOptions = {
+    timeZone: "UTC",
+    ...formatOptions,
+  };
+
+  return new Intl.DateTimeFormat(locale, resolvedOptions).format(parsed);
 }
 
 export type FormatZapOptions = {
@@ -115,6 +120,6 @@ export function formatZapAmount(msats: number, options: FormatZapOptions = {}): 
   }
 
   const sats = msats / 1000;
-  const formatted = Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 });
+  const formatted = Number(sats).toLocaleString("en-US", { maximumFractionDigits: 3 });
   return `${formatted} sats`;
 }

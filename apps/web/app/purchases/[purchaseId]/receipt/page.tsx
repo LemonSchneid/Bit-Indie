@@ -18,10 +18,10 @@ function formatSats(amountMsats: number | null): string {
 
   const sats = amountMsats / 1000;
   if (Number.isInteger(sats)) {
-    return `${Number(sats).toLocaleString()} sats`;
+    return `${Number(sats).toLocaleString("en-US")} sats`;
   }
 
-  return `${Number(sats).toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+  return `${Number(sats).toLocaleString("en-US", { maximumFractionDigits: 3 })} sats`;
 }
 
 function formatDateTime(timestamp: string | null): string {
@@ -34,7 +34,7 @@ function formatDateTime(timestamp: string | null): string {
     return "—";
   }
 
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",

@@ -285,18 +285,18 @@ const FALLBACK_CHECKLIST: DeveloperChecklistItem[] = [
   { title: "Enable verified purchase reviews", complete: false },
 ];
 
-const NPUB_BENEFITS = [
+const SIGN_IN_OPTIONS = [
   {
-    title: "Send & receive zaps",
-    description: "Back creators instantly and pull tips into your wallet without leaving the flow.",
+    title: "Keep purchases synced",
+    description: "Sign in to save receipts, downloads, and reviews across every device.",
   },
   {
-    title: "Seamless checkout",
-    description: "Invoices autofill from your Nostr profile so purchases clear in seconds.",
+    title: "Checkout as a guest",
+    description: "Skip the account step—pay with Lightning and grab the build immediately.",
   },
   {
-    title: "Portable progress",
-    description: "Achievements and saves follow your npub across every Lightning-ready world.",
+    title: "Upgrade anytime",
+    description: "Create an account later to restore purchases or leave feedback for developers.",
   },
 ];
 
@@ -306,7 +306,7 @@ function formatSatsFromMsats(msats: number | null): string {
   }
 
   const sats = Math.round(msats / 1000);
-  return `${sats.toLocaleString()} SATS`;
+  return `${sats.toLocaleString("en-US")} SATS`;
 }
 
 function uppercaseLabel(value: string): string {
@@ -509,11 +509,11 @@ function LiveMetricsColumn({ liveMetrics }: { liveMetrics: LiveMetrics }) {
           </div>
           <div className="flex justify-between">
             <span className="uppercase tracking-[0.4em] text-emerald-200/70">INVOICES</span>
-            <span className="font-semibold text-emerald-200">{liveMetrics.invoicesToday.toLocaleString()} today</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.invoicesToday.toLocaleString("en-US")} today</span>
           </div>
           <div className="flex justify-between">
             <span className="uppercase tracking-[0.4em] text-emerald-200/70">ZAPS / HR</span>
-            <span className="font-semibold text-emerald-200">{liveMetrics.zapsLastHour.toLocaleString()} sats</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.zapsLastHour.toLocaleString("en-US")} sats</span>
           </div>
         </div>
       </NeonCard>
@@ -532,16 +532,16 @@ function LiveMetricsColumn({ liveMetrics }: { liveMetrics: LiveMetrics }) {
   );
 }
 
-function NpubIdentityWidget() {
+function AccountAccessWidget() {
   return (
     <NeonCard className="w-full max-w-sm p-6 lg:ml-10">
-      <MicroLabel>Bring your npub</MicroLabel>
-      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Sign in or create one</h3>
+      <MicroLabel>Accounts & guest access</MicroLabel>
+      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Sign in or stay guest</h3>
       <p className="mt-2 text-sm text-emerald-200/80">
-        Use your Nostr public key as a universal login for Lightning-charged adventures.
+        Choose the flow that fits—save your progress with an account or keep it lightweight with guest checkout.
       </p>
       <ul className="mt-5 space-y-4 text-sm text-slate-200">
-        {NPUB_BENEFITS.map((benefit) => (
+        {SIGN_IN_OPTIONS.map((benefit) => (
           <li key={benefit.title} className="flex gap-3">
             <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-emerald-400/60 bg-emerald-500/10 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-emerald-100">
               ✶
@@ -558,13 +558,13 @@ function NpubIdentityWidget() {
           type="button"
           className="w-full rounded-full border border-emerald-400/70 bg-emerald-500/20 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-50"
         >
-          Sign in with npub
+          Sign in to Bit Indie
         </button>
         <button
           type="button"
           className="w-full rounded-full border border-slate-700 bg-slate-900/70 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-400/50 hover:text-emerald-100"
         >
-          Create a new npub
+          Continue as guest
         </button>
       </div>
     </NeonCard>
@@ -687,7 +687,7 @@ function GameDetailScreen({
               </div>
               <div className="flex items-center justify-between">
                 <span className="uppercase tracking-[0.35em] text-emerald-200/70">Verified reviews</span>
-                <span className="font-semibold text-emerald-200">{verifiedReviewsCount.toLocaleString()}</span>
+                <span className="font-semibold text-emerald-200">{verifiedReviewsCount.toLocaleString("en-US")}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="uppercase tracking-[0.35em] text-emerald-200/70">Latest zap</span>
@@ -934,8 +934,8 @@ function buildDiscoverCards(
       statusLabel: uppercaseLabel(game.status ?? "DISCOVER"),
       categoryLabel: uppercaseLabel(formatCategory(game.category ?? "")),
       priceLabel: formatSatsFromMsats(game.price_msats ?? null),
-      reviewCountLabel: `${reviewCount.toLocaleString()} reviews`,
-      purchaseCountLabel: `${purchases.toLocaleString()} paid`,
+      reviewCountLabel: `${reviewCount.toLocaleString("en-US")} reviews`,
+      purchaseCountLabel: `${purchases.toLocaleString("en-US")} paid`,
       statusIntent,
       href: game.slug ? `/games/${game.slug}` : "#",
     };
@@ -1085,7 +1085,7 @@ export default function NeonLanding({ catalogGames, featuredSummaries }: NeonLan
   const versionLabel = `Updated ${formatDateLabel(primaryGame?.updated_at, { fallback: "Recently updated" })}`;
   const priceLabel = formatSatsFromMsats(primaryGame?.price_msats ?? null);
   const tipLabel = primarySummary
-    ? `${Math.max(Math.round((primaryGame?.price_msats ?? 0) / 1000 / 4), 1).toLocaleString()} SATS`
+    ? `${Math.max(Math.round((primaryGame?.price_msats ?? 0) / 1000 / 4), 1).toLocaleString("en-US")} SATS`
     : "5,000 SATS";
 
   return (
@@ -1100,8 +1100,8 @@ export default function NeonLanding({ catalogGames, featuredSummaries }: NeonLan
                 <Image
                   src="/bit-indie-logo.svg"
                   alt="Bit Indie logo"
-                  width={180}
-                  height={180}
+                  width={220}
+                  height={220}
                   priority
                   className="drop-shadow-[0_18px_42px_rgba(139,92,246,0.35)]"
                 />
@@ -1116,7 +1116,7 @@ export default function NeonLanding({ catalogGames, featuredSummaries }: NeonLan
                 </p>
               </div>
             </div>
-            <NpubIdentityWidget />
+            <AccountAccessWidget />
           </div>
           <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
         </header>

@@ -26,7 +26,7 @@ function formatHours(value: number): string {
   if (!Number.isFinite(value)) {
     return "0";
   }
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString("en-US", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
@@ -35,8 +35,8 @@ function formatHours(value: number): string {
 function formatMsats(value: number): string {
   const msats = Math.max(0, value);
   const sats = msats / 1000;
-  const formattedMsats = msats.toLocaleString();
-  const formattedSats = sats.toLocaleString(undefined, {
+  const formattedMsats = msats.toLocaleString("en-US");
+  const formattedSats = sats.toLocaleString("en-US", {
     minimumFractionDigits: sats > 0 && sats < 1 ? 2 : 0,
     maximumFractionDigits: 2,
   });
@@ -44,7 +44,7 @@ function formatMsats(value: number): string {
 }
 
 function formatCount(value: number): string {
-  return Math.max(0, value).toLocaleString();
+  return Math.max(0, value).toLocaleString("en-US");
 }
 
 export function AdminIntegrityDashboard(): JSX.Element {

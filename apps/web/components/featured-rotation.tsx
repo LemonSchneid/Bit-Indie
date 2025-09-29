@@ -17,7 +17,7 @@ function formatRefundRate(rate: number): string {
 
   const percentage = Math.max(0, Math.min(rate, 1)) * 100;
   const fractionDigits = percentage >= 10 ? 0 : 1;
-  return `${percentage.toLocaleString(undefined, { maximumFractionDigits: fractionDigits })}% refund rate`;
+  return `${percentage.toLocaleString("en-US", { maximumFractionDigits: fractionDigits })}% refund rate`;
 }
 
 export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Element | null {
@@ -106,16 +106,16 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
             )}
             <div className="flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
-                {current.verified_review_count.toLocaleString()} verified reviews
+                {current.verified_review_count.toLocaleString("en-US")} verified reviews
               </span>
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
                 {refundLabel}
               </span>
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
-                {current.paid_purchase_count.toLocaleString()} paid purchases
+                {current.paid_purchase_count.toLocaleString("en-US")} paid purchases
               </span>
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
-                {current.refunded_purchase_count.toLocaleString()} refunds processed
+                {current.refunded_purchase_count.toLocaleString("en-US")} refunds processed
               </span>
             </div>
             <Link
@@ -130,11 +130,11 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Eligibility snapshot</p>
               <ul className="mt-4 space-y-3 text-sm leading-relaxed">
                 <li className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <span className="font-semibold text-white">{current.verified_review_count.toLocaleString()}</span>{" "}
+                  <span className="font-semibold text-white">{current.verified_review_count.toLocaleString("en-US")}</span>{" "}
                   verified reviews
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <span className="font-semibold text-white">{current.paid_purchase_count.toLocaleString()}</span>{" "}
+                  <span className="font-semibold text-white">{current.paid_purchase_count.toLocaleString("en-US")}</span>{" "}
                   paid purchases
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
