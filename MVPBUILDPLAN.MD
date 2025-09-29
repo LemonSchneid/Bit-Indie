@@ -232,3 +232,58 @@ M7 — Code Health & Refactors
   3. Add unit coverage for the new helpers and update existing tests accordingly.
 
 Post-MVP follow-up will be captured in future planning documents once the legacy social stack decisions are revisited.
+
+---
+
+M8 — Legacy Social Stack Removal
+- Strip every remaining dependency on the discontinued Nostr/zap/noted relay features.
+- Ensure the product, API, and data models no longer reference the legacy social stack while preserving current Lightning purchase flows.
+
+---
+
+### Ticket M8-T001 — Retire Legacy Social Features on the Web App
+- **Milestone:** M8 — Legacy Social Stack Removal
+- **Summary:** Remove all zap- and Nostr-driven UI flows so the web app no longer depends on the deprecated social stack.
+- **Acceptance Criteria:**
+  1. Delete zap/Nostr-specific components and hooks (e.g., `zap-button`, `use-zap-workflow`, `use-nostr-*`) and replace their call sites with neutral UI copy.
+  2. Remove `nostr-tools` (and related packages) from `package.json`, update lockfiles, and ensure the build passes without those dependencies.
+  3. Drop web API clients for `/v1/zaps` and zap totals, updating types, data fetchers, and tests that referenced zap counts.
+  4. Remove `NEXT_PUBLIC_NOSTR_ENABLED` (and any gating flags) from config, runtime code, and documentation.
+  5. Update all affected CLIs/tests so `pnpm test` / `yarn test` succeed with the new UI.
+
+### Ticket M8-T002 — Delete Zap Ledger and Review Zap Weighting
+- **Milestone:** M8 — Legacy Social Stack Removal
+- **Summary:** Remove the zap ingestion pipeline and zap-weighted review scoring from the API and data model.
+- **Acceptance Criteria:**
+  1. Delete zap-related routes (`/v1/nostr/zap-receipts`, `/v1/zaps`), services (`zaps.py`, `zap_ledger.py`), schemas, and tests.
+  2. Create an Alembic migration that drops the `zaps`, `zap_ledger_events`, and `zap_ledger_totals` tables and removes zap-specific columns (`total_zap_msats`, `suspicious_zap_pattern`, etc.) from remaining tables.
+  3. Update review/comment serializers and ranking logic to exclude zap fields and rely solely on first-party data.
+  4. Remove zap metrics/logging and ensure `pytest` passes without zap fixtures.
+
+### Ticket M8-T003 — Remove Release Note Relay Integration
+- **Milestone:** M8 — Legacy Social Stack Removal
+- **Summary:** Eliminate the release note publisher, ingestion worker, and cached relay replies.
+- **Acceptance Criteria:**
+  1. Delete release note publisher/ingestor services, caches, schemas, workers, and related tests.
+  2. Provide an Alembic migration dropping `release_note_publish_queue`, `release_note_relay_checkpoints`, and `release_note_replies` tables plus any supporting enums.
+  3. Refactor `GamePublicationService`, `GameDraftingService`, and `CommentThreadService` so they no longer accept or depend on release note publishers or Nostr replies.
+  4. Remove release-note/relay metrics and confirm comment endpoints continue to return first-party data with updated tests.
+
+### Ticket M8-T004 — Replace Nostr Auth with Neutral Account Model
+- **Milestone:** M8 — Legacy Social Stack Removal
+- **Summary:** Remove the Nostr authentication flow and adapt the user model to a neutral account representation.
+- **Acceptance Criteria:**
+  1. Remove `/v1/auth` routes, `services.nostr`, `services.auth`, and associated schemas/tests.
+  2. Introduce a migration that drops Nostr-specific columns (`pubkey_hex`, `nip05`, etc.) and adds whatever minimal fields are required for non-Nostr accounts (e.g., `email`, `password_hash` placeholders) while keeping developer profiles functional.
+  3. Update session/token helpers and any remaining services to work with the revised user model (or disable unused flows), ensuring all API tests pass.
+  4. Remove `NOSTR_ENABLED` and related feature-switch logic from services (e.g., comment workflow) so the API no longer branches on legacy flags.
+
+### Ticket M8-T005 — Configuration and Documentation Cleanup
+- **Milestone:** M8 — Legacy Social Stack Removal
+- **Summary:** Finish removing the last traces of the legacy social stack from configuration, tooling, and docs.
+- **Acceptance Criteria:**
+  1. Remove `NOSTR_*`, `PLATFORM_*`, zap-related, and relay-related environment variables from `.env.example`, configuration code, and any docs.
+  2. Strip leftover constants, caches, and metrics from `core/config` or other modules so no code references the old stack.
+  3. Update test/tooling configs (e.g., tsconfig, lint rules) to drop paths that referenced deleted files.
+  4. Run a repo-wide search verifying that `nostr`, `zap`, and relay terminology no longer appear in source, tests, or docs (aside from historical migration filenames), documenting the verification in PR notes.
+  5. Ensure full test suites (backend + frontend) pass after the cleanup.
