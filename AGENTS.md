@@ -48,16 +48,16 @@ These guidelines apply to the entire repository. Read them before writing or mod
   4. Open a pull request with clear title and body referencing the ticket ID, milestone, and implementation details.
   5. Stop after opening the PR and wait for human review/merge.
 * Never skip ahead or alter milestone order when enforcement is on.
-* Treat `MVPBUILDPLAN.md` as the authoritative backlog. During the Simple‑MVP phase (Nostr off), prioritize tasks that keep Nostr integrations disabled behind feature flags; do not delete Nostr code.
+* Treat `MVPBUILDPLAN.md` as the authoritative backlog and follow the current directive to remove legacy social integrations that are no longer required.
 
 ---
 
-## Simple‑MVP Direction (Nostr Off)
+## Legacy Social Sunset Direction
 
-* Default to `NOSTR_ENABLED=false` (API) and `NEXT_PUBLIC_NOSTR_ENABLED=false` (web).
-* Do not introduce new Nostr-facing dependencies in runtime paths.
-* Preserve Nostr modules and tests; gate via flags or no‑op adapters.
-* Focus on Lightning purchases, first‑party comments/reviews, developer settings, and moderation.
+* Remove references to the deprecated social relay features from documentation and user-facing messaging.
+* Delete or refactor code tied to these legacy social features when doing so does not break existing functionality; prefer removal over new feature flags.
+* Avoid introducing new dependencies or APIs tied to the deprecated social stack.
+* Focus engineering time on Lightning purchases, first-party comments/reviews, developer settings, and moderation.
 
 ---
 

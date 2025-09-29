@@ -1,6 +1,6 @@
-# Bit Indie — Simple MVP Plan (Nostr-Off)
+# Bit Indie — Simple MVP Plan
 
-Goal: Ship a web-first MVP with Lightning purchases for downloadable games, first-party comments and verified‑purchase reviews, and a small admin to moderate spam. Nostr sign‑in, relay publishing, and zap receipt ingestion are disabled for launch and will return post‑MVP.
+Goal: Ship a web-first MVP with Lightning purchases for downloadable games, first-party comments and verified-purchase reviews, and a small admin area to moderate spam. Legacy social relay features are removed for launch and will only return if a later milestone explicitly calls for them.
 
 ---
 
@@ -22,12 +22,12 @@ Goal: Ship a web-first MVP with Lightning purchases for downloadable games, firs
 - Cache/Queue (optional): Redis for rate limits and background jobs.
 - Object storage: Cloudflare R2 or AWS S3 (MinIO in dev).
 - Payments: LNbits (initial) or BTCPay Server.
-- Auth: Anonymous guest checkout at launch; optional email/magic‑link later.
+- Auth: Anonymous guest checkout at launch; optional email/magic-link later.
 - Infra: Docker Compose locally; simple Fly.io/Render/Vercel split for prod.
 
-Non‑Goals for MVP (explicitly off):
-- Nostr login (NIP‑07), relay publishing, reply ingestion, and zap‑receipt ingestion.
-- Any background workers that depend on relays.
+Non-Goals for MVP (explicitly off):
+- Legacy social login (e.g., NIP-07 equivalents), relay publishing, reply ingestion, and tip receipt aggregation.
+- Any background workers that depend on social relays.
 
 ---
 
@@ -50,9 +50,9 @@ bit-indie/
             deps.py
         core/                 # settings, logging, security, rate limits
         db/                   # SQLAlchemy models, session
-        services/             # payments, storage, emails (nostr later)
+        services/             # payments, storage, emails (legacy social features removed)
         schemas/              # Pydantic models
-        workers/              # (post‑MVP) background tasks
+        workers/              # (post-MVP) background tasks
         main.py               # FastAPI entry
       alembic/
         versions/
@@ -104,16 +104,12 @@ OPENNODE_API_KEY=...
 OPENNODE_PLATFORM_WALLET=...
 OPENNODE_WEBHOOK_SECRET=
 
-# Feature flags (MVP: Nostr off)
-NOSTR_ENABLED=false
-
 # URLs
 PUBLIC_WEB_URL=http://localhost:3000
 PUBLIC_API_URL=http://localhost:8080
 
 # Web (Next.js)
 NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_NOSTR_ENABLED=false
 ```
 
 ---
@@ -126,7 +122,7 @@ games `(id, slug UNIQUE, title, description_md, price_msats NULLABLE, status enu
 
 purchases `(id, user_id NULLABLE, game_id, invoice_id, invoice_status enum['PENDING','PAID','EXPIRED','REFUNDED'], amount_msats, download_granted bool, created_at, updated_at)`
 
-reviews `(id, game_id, user_id, title NULLABLE, body_md, rating NULLABLE, helpful_score int default 0, total_zap_msats int default 0, is_verified_purchase bool, created_at)`
+reviews `(id, game_id, user_id, title NULLABLE, body_md, rating NULLABLE, helpful_score int default 0, total_tip_msats int default 0, is_verified_purchase bool, created_at)`
 
 comments `(id, game_id, user_id NULLABLE, body_md, created_at, is_verified_purchase bool)`
 
@@ -138,14 +134,14 @@ Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, gam
 
 M1 — Core Purchase Flow
 - Guest checkout with LNURL/Lightning Address to developer.
-- Account‑linked invoice creation (LNbits) for signed‑in users (optional later).
-- Receipt page and restore‑by‑receipt for guest purchases.
+- Account-linked invoice creation (LNbits) for signed-in users (optional later).
+- Receipt page and restore-by-receipt for guest purchases.
 - Unlock download when payment confirmed or allow manual receipt usage.
 
-M2 — First‑Party Comments & Reviews
-- Post/list comments stored in first‑party DB only.
-- Create reviews with optional rating; compute helpful_score without zap receipts.
-- Verified‑purchase badge based on purchases table.
+M2 — First-Party Comments & Reviews
+- Post/list comments stored in first-party DB only.
+- Create reviews with optional rating; compute helpful_score without relay-dependent receipts.
+- Verified-purchase badge based on purchases table.
 
 M3 — Developer Settings
 - Add/manage Lightning Address, game metadata, build upload.
@@ -161,7 +157,7 @@ M5 — Download Delivery
 
 M6 — Telemetry & Docs
 - Health endpoints, structured logging, minimal tracing.
-- Update READMEs and runbooks (Nostr off; how to re‑enable later).
+- Update READMEs and runbooks to reflect removal of legacy social features.
 
 M7 — Code Health & Refactors
 - Consolidate repeated UI helpers and long-lived hooks into reusable modules.
@@ -184,7 +180,7 @@ M7 — Code Health & Refactors
 - **Summary:** Rework the Lightning checkout modal to consume real invoice payloads while ensuring seeded games use the developer wallet `piteousfrench82@walletofsatoshi.com` for end-to-end testing.
 - **Acceptance Criteria:**
   1. Fetch and display live invoice data (amount, payment request, and status timeline) provided by the backend.
-  2. Confirm Docker seeding assigns every game’s Lightning address to `piteousfrench82@walletofsatoshi.com`.
+  2. Confirm Docker seeding assigns every game's Lightning address to `piteousfrench82@walletofsatoshi.com`.
   3. Verify checkout remains functional across all seeded games with the developer wallet receiving payments.
 
 ### Ticket M1-T003 — Consolidate Game Metric Components ✅ Done
@@ -235,5 +231,4 @@ M7 — Code Health & Refactors
   2. Keep the public hook lean, delegating side-effects to the extracted helpers.
   3. Add unit coverage for the new helpers and update existing tests accordingly.
 
-Post‑MVP (Nostr Re‑enable Roadmap)
-- NIP‑07 login, relay publish of release notes, reply ingestion and caching, zap receipt ingestion and aggregation.
+Post-MVP follow-up will be captured in future planning documents once the legacy social stack decisions are revisited.
