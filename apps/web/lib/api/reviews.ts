@@ -15,7 +15,6 @@ export interface GameReview {
   body_md: string;
   rating: number | null;
   helpful_score: number;
-  total_zap_msats: number;
   is_verified_purchase: boolean;
   created_at: string;
   author: GameReviewAuthor;

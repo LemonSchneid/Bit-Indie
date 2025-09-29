@@ -1,6 +1,5 @@
 import { type GameReview } from "../../lib/api";
-import { formatDateLabel, formatZapAmount } from "../../lib/format";
-import { ZapButton } from "../zap-button";
+import { formatDateLabel } from "../../lib/format";
 
 import { ReviewBadge } from "./review-badge";
 import { getReviewParagraphs } from "./utils";
@@ -9,14 +8,12 @@ type GameReviewsSectionProps = {
   gameTitle: string;
   reviews: GameReview[];
   reviewsError: string | null;
-  showZapButtons?: boolean;
 };
 
 export function GameReviewsSection({
   gameTitle,
   reviews,
   reviewsError,
-  showZapButtons = true,
 }: GameReviewsSectionProps): JSX.Element {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
@@ -25,10 +22,10 @@ export function GameReviewsSection({
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Community reviews</h2>
-          <p className="mt-2 text-xl font-semibold text-white">Zap-powered player feedback</p>
+          <p className="mt-2 text-xl font-semibold text-white">Player feedback from verified buyers</p>
         </div>
         <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
-          Verified purchase badges confirm the reviewer bought the game. Zap totals reveal how many sats other players tipped their feedback.
+          Verified purchase badges confirm the reviewer bought the game. Highlight thoughtful notes to help other players decide if the build is right for them.
         </p>
       </div>
 
@@ -36,7 +33,7 @@ export function GameReviewsSection({
         <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">{reviewsError}</p>
       ) : reviews.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
-          No reviews yet. Share the download link to gather the first wave of community impressions.
+          No reviews yet for {gameTitle}. Share the download link to gather the first wave of community impressions.
         </p>
       ) : (
         <div className="mt-6 space-y-6">
@@ -44,9 +41,6 @@ export function GameReviewsSection({
             const paragraphs = getReviewParagraphs(review.body_md);
             const trimmedBody = review.body_md.trim();
             const displayParagraphs = paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
-            const zapLabel = formatZapAmount(review.total_zap_msats);
-            const reviewerName = review.author.display_name || "the reviewer";
-            const zapComment = `Zap for review ${review.id} on ${gameTitle}`;
 
             return (
               <article
@@ -83,15 +77,6 @@ export function GameReviewsSection({
                         tone="emerald"
                         tooltip="This review comes from a player who paid for the build through Bit Indie."
                       />
-                    ) : null}
-                    <ReviewBadge
-                      label={`Received ${zapLabel}`}
-                      icon="⚡"
-                      tone="amber"
-                      tooltip="Lightning zaps tipped to this review. More sats signal that players found it especially helpful."
-                    />
-                    {showZapButtons ? (
-                      <ZapButton recipientLabel={reviewerName} comment={zapComment} className="inline-block" />
                     ) : null}
                   </div>
                 </header>

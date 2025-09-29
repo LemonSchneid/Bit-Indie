@@ -6,5 +6,4 @@ export * from "./health";
 export * from "./moderation";
 export * from "./purchases";
 export * from "./reviews";
-export * from "./zaps";
 export * from "./users";

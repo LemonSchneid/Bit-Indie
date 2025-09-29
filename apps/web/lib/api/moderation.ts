@@ -35,7 +35,6 @@ export interface ModerationFlaggedReview {
   body_md: string;
   rating: number | null;
   helpful_score: number;
-  total_zap_msats: number;
   created_at: string;
   is_hidden: boolean;
 }

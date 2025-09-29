@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  formatCategory,
-  formatDateLabel,
-  formatPriceMsats,
-  formatStatus,
-  formatZapAmount,
-} from "./format";
+import { formatCategory, formatDateLabel, formatPriceMsats, formatStatus } from "./format";
 
 test("formatPriceMsats", async (t) => {
   await t.test("returns a free label when price is null", () => {
@@ -64,18 +58,3 @@ test("formatDateLabel", async (t) => {
   });
 });
 
-test("formatZapAmount", async (t) => {
-  await t.test("returns a zero label for non-positive values", () => {
-    assert.equal(formatZapAmount(0), "0 sats");
-    assert.equal(formatZapAmount(Number.NaN), "0 sats");
-  });
-
-  await t.test("supports custom zero labels", () => {
-    assert.equal(formatZapAmount(0, { zeroLabel: "no zaps yet" }), "no zaps yet");
-  });
-
-  await t.test("formats milli-satoshi totals", () => {
-    assert.equal(formatZapAmount(1250), "1.25 sats");
-    assert.equal(formatZapAmount(3000), "3 sats");
-  });
-});

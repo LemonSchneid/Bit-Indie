@@ -28,17 +28,16 @@ test("getGameComments", async (t) => {
         body_md: "Great game!",
         created_at: "2024-05-01T12:00:00Z",
         source: "FIRST_PARTY",
-        author: {
-          user_id: "user-1",
-          pubkey_hex: "abc123",
-          npub: "npub123",
-          display_name: "Alice",
-          lightning_address: "alice@example.com",
-        },
-        is_verified_purchase: true,
-        total_zap_msats: 2500,
+      author: {
+        user_id: "user-1",
+        pubkey_hex: "abc123",
+        npub: "npub123",
+        display_name: "Alice",
+        lightning_address: "alice@example.com",
       },
-    ];
+      is_verified_purchase: true,
+    },
+  ];
 
     const comments = await withMockedFetch(async (input, init) => {
       assert.equal(input, "http://localhost:8080/v1/games/game-123/comments");

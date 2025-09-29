@@ -14,19 +14,13 @@ function cn(...classes: ClassValue[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
-type MetricStatus = "healthy" | "syncing" | "degraded";
-
-type RelayMetric = {
-  name: string;
-  status: MetricStatus;
-};
-
 type LiveMetrics = {
   apiLatency: string;
   uptime: string;
   invoicesToday: number;
-  zapsLastHour: number;
-  nostrRelays: RelayMetric[];
+  downloadsToday: number;
+  firstPartyComments: number;
+  verifiedReviews: number;
 };
 
 type FeaturedCard = {
@@ -59,10 +53,10 @@ type CommunityComment = {
   verified: boolean;
 };
 
-type ZapReview = {
+type ReviewHighlight = {
   author: string;
   rating: number;
-  zapTotalLabel: string;
+  helpfulLabel: string;
   summary: string;
   body: string;
 };
@@ -115,7 +109,7 @@ const FALLBACK_FEATURED: FeaturedCard[] = [
     categoryLabel: "FINISHED",
     priceLabel: "22,000 SATS",
     updatedLabel: "Updated Feb 27, 2024",
-    summary: "Synthwave street racing where your crew funds upgrades with zaps.",
+    summary: "Synthwave street racing with crew-managed upgrades and weekly tournaments.",
     href: "/games/neon-drift-syndicate",
   },
   {
@@ -124,7 +118,7 @@ const FALLBACK_FEATURED: FeaturedCard[] = [
     categoryLabel: "PROTOTYPE",
     priceLabel: "FREE",
     updatedLabel: "Updated Mar 4, 2024",
-    summary: "Lore-driven exploration puzzler discovering lost Nostr relays.",
+    summary: "Lore-driven exploration puzzler discovering forgotten starports.",
     href: "/games/afterlight-archives",
   },
 ];
@@ -208,49 +202,46 @@ const FALLBACK_LIVE_METRICS: LiveMetrics = {
   apiLatency: "142 ms",
   uptime: "99.98%",
   invoicesToday: 483,
-  zapsLastHour: 178000,
-  nostrRelays: [
-    { name: "relay.damus.io", status: "healthy" },
-    { name: "relay.snort.social", status: "syncing" },
-    { name: "nostr.wine", status: "healthy" },
-  ],
+  downloadsToday: 1620,
+  firstPartyComments: 284,
+  verifiedReviews: 118,
 };
 
 const FALLBACK_COMMENTS: CommunityComment[] = [
   {
-    author: "npub1k6...h2v9",
+    author: "Casey",
     timeAgo: "2h ago",
-    body: "Garage sync works flawlessly with my Nostr profile. Crew invites in seconds!",
+    body: "Garage sync works flawlessly with my saved receipt. Crew invites in seconds!",
     verified: true,
   },
   {
-    author: "npub1qr...8l7x",
+    author: "Riley",
     timeAgo: "6h ago",
     body: "Would love to see more neon night variants of the Harbor Circuit.",
     verified: false,
   },
   {
-    author: "npub1lc...m5dw",
+    author: "Morgan",
     timeAgo: "1d ago",
     body: "Paid with Zeus in under five seconds. Handling model is dialed in now.",
     verified: true,
   },
 ];
 
-const FALLBACK_REVIEWS: ZapReview[] = [
+const FALLBACK_REVIEWS: ReviewHighlight[] = [
   {
-    author: "npub1xf...av3e",
+    author: "Jordan",
     rating: 5,
-    zapTotalLabel: "18,500 SATS",
+    helpfulLabel: "42 finds helpful",
     summary: "Nightfall league finally feels balanced",
-    body: "The new drift assist patch fixed rubber banding. Crew tournaments with zap pools are peak adrenaline.",
+    body: "The new drift assist patch fixed rubber banding. Crew tournaments feel tighter now that payouts are first-party.",
   },
   {
-    author: "npub1ra...s4kj",
+    author: "Avery",
     rating: 4,
-    zapTotalLabel: "9,200 SATS",
+    helpfulLabel: "27 finds helpful",
     summary: "Soundtrack unlocked",
-    body: "Unlocked the hidden synth pack by tipping the devs. Worth every sat for the extra tracks.",
+    body: "Unlocked the hidden synth pack after finishing the weekly challenge. Worth it for the extra tracks.",
   },
 ];
 
@@ -275,7 +266,7 @@ const FALLBACK_RECEIPT: ReceiptSnapshot = {
   amountLabel: "22,000 SATS",
   orderId: "POP-20240314-8842",
   buyerPubkey: "npub1k6q8n6c9r7w5f7h2v9x3k0z4l8p2d4s6m8a7u9c3f1",
-  nextStepLabel: "Download build + leave a zap",
+  nextStepLabel: "Download build + leave a review",
 };
 
 const FALLBACK_CHECKLIST: DeveloperChecklistItem[] = [
@@ -488,12 +479,6 @@ function DiscoverGrid({ discover }: { discover: DiscoverCard[] }) {
 }
 
 function LiveMetricsColumn({ liveMetrics }: { liveMetrics: LiveMetrics }) {
-  const relayStatusClasses: Record<MetricStatus, string> = {
-    healthy: "text-emerald-300",
-    syncing: "text-amber-300",
-    degraded: "text-rose-300",
-  };
-
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
       <NeonCard className="flex-1 p-5">
@@ -512,20 +497,26 @@ function LiveMetricsColumn({ liveMetrics }: { liveMetrics: LiveMetrics }) {
             <span className="font-semibold text-emerald-200">{liveMetrics.invoicesToday.toLocaleString("en-US")} today</span>
           </div>
           <div className="flex justify-between">
-            <span className="uppercase tracking-[0.4em] text-emerald-200/70">ZAPS / HR</span>
-            <span className="font-semibold text-emerald-200">{liveMetrics.zapsLastHour.toLocaleString("en-US")} sats</span>
+            <span className="uppercase tracking-[0.4em] text-emerald-200/70">DOWNLOADS</span>
+            <span className="font-semibold text-emerald-200">{liveMetrics.downloadsToday.toLocaleString("en-US")} today</span>
           </div>
         </div>
       </NeonCard>
       <NeonCard className="flex-1 p-5">
-        <MicroLabel>Nostr relay sync</MicroLabel>
-        <div className="mt-4 space-y-3 text-sm">
-          {liveMetrics.nostrRelays.map((relay) => (
-            <div key={relay.name} className="flex items-center justify-between">
-              <span className="uppercase tracking-[0.35em] text-slate-400">{relay.name}</span>
-              <span className={cn("font-semibold", relayStatusClasses[relay.status])}>{uppercaseLabel(relay.status)}</span>
-            </div>
-          ))}
+        <MicroLabel>Community pulse</MicroLabel>
+        <div className="mt-4 space-y-4 text-sm text-slate-200">
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.35em] text-emerald-200/70">FIRST-PARTY COMMENTS</span>
+            <span className="font-semibold text-emerald-200">
+              {liveMetrics.firstPartyComments.toLocaleString("en-US")} today
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="uppercase tracking-[0.35em] text-emerald-200/70">VERIFIED REVIEWS</span>
+            <span className="font-semibold text-emerald-200">
+              {liveMetrics.verifiedReviews.toLocaleString("en-US")}
+            </span>
+          </div>
         </div>
       </NeonCard>
     </div>
@@ -536,9 +527,10 @@ function AccountAccessWidget() {
   return (
     <NeonCard className="w-full max-w-sm p-6 lg:ml-10">
       <MicroLabel>Accounts & guest access</MicroLabel>
-      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Sign in or stay guest</h3>
+      <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Guest checkout first</h3>
       <p className="mt-2 text-sm text-emerald-200/80">
-        Choose the flow that fits—save your progress with an account or keep it lightweight with guest checkout.
+        Lightning checkout works without an account today. Sign-in will return soon with first-party credentials that don&apos;t
+        rely on legacy relays.
       </p>
       <ul className="mt-5 space-y-4 text-sm text-slate-200">
         {SIGN_IN_OPTIONS.map((benefit) => (
@@ -556,9 +548,10 @@ function AccountAccessWidget() {
       <div className="mt-6 flex flex-col gap-3">
         <button
           type="button"
-          className="w-full rounded-full border border-emerald-400/70 bg-emerald-500/20 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.35)] transition hover:border-emerald-300 hover:text-emerald-50"
+          disabled
+          className="w-full rounded-full border border-slate-700 bg-slate-900/60 px-4 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-400"
         >
-          Sign in to Bit Indie
+          Sign in (coming soon)
         </button>
         <button
           type="button"
@@ -595,12 +588,12 @@ type DetailGameViewProps = {
   categoryLabel: string;
   versionLabel: string;
   developerLabel: string;
-  lightningAddress: string;
+  lightningAddress: string | null;
   priceLabel: string;
   tipLabel: string;
   description: string[];
   comments: CommunityComment[];
-  reviews: ZapReview[];
+  reviews: ReviewHighlight[];
   checklist: DeveloperChecklistItem[];
   verifiedReviewsCount: number;
 };
@@ -664,10 +657,11 @@ function GameDetailScreen({
         </div>
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <NeonCard className="p-6">
-            <MicroLabel>Tip the developer</MicroLabel>
+            <MicroLabel>Support the developer</MicroLabel>
             <p className="mt-3 text-sm text-slate-300">
-              Send instant support via Lightning address
-              <span className="ml-2 font-semibold text-emerald-200">{lightningAddress}</span>
+              Lightning tips will return alongside the refreshed account system. Until then, keep the hype going by sharing
+              feedback with the team at
+              <span className="ml-2 font-semibold text-emerald-200">{lightningAddress ?? "their usual channels"}</span>.
             </p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs uppercase tracking-[0.4em] text-emerald-200/70">Suggested</span>
@@ -690,8 +684,8 @@ function GameDetailScreen({
                 <span className="font-semibold text-emerald-200">{verifiedReviewsCount.toLocaleString("en-US")}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="uppercase tracking-[0.35em] text-emerald-200/70">Latest zap</span>
-                <span className="font-semibold text-emerald-200">2 min ago</span>
+                <span className="uppercase tracking-[0.35em] text-emerald-200/70">Community replies</span>
+                <span className="font-semibold text-emerald-200">Fresh every hour</span>
               </div>
             </div>
           </NeonCard>
@@ -719,13 +713,13 @@ function GameDetailScreen({
           </div>
         </NeonCard>
         <NeonCard className="p-6">
-          <MicroLabel>Zap-backed reviews</MicroLabel>
+          <MicroLabel>Community reviews</MicroLabel>
           <div className="mt-4 space-y-4">
             {reviews.map((review) => (
               <div key={review.summary} className="rounded-2xl border border-emerald-400/10 bg-slate-950/70 p-4">
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-slate-500">
                   <span>{review.author}</span>
-                  <span>{review.zapTotalLabel}</span>
+                  <span>{review.helpfulLabel}</span>
                 </div>
                 <p className="mt-3 text-sm font-semibold text-slate-100">{review.summary}</p>
                 <p className="mt-2 text-sm text-slate-300">{review.body}</p>
@@ -863,7 +857,7 @@ function ReceiptScreen({ receipt }: { receipt: ReceiptSnapshot }) {
             <NeonCard className="p-6">
               <MicroLabel>Next steps</MicroLabel>
               <p className="mt-3 text-sm text-slate-300">
-                Jump back into {receipt.orderId.split("-")[0]} and share a zap-backed review with the crew.
+                Jump back into {receipt.orderId.split("-")[0]} and share a first-party review with the crew.
               </p>
               <button
                 type="button"
@@ -889,7 +883,7 @@ function buildFeaturedCards(
     categoryLabel: uppercaseLabel(summary.game.category ?? ""),
     priceLabel: formatSatsFromMsats(summary.game.price_msats ?? null),
     updatedLabel: `Updated ${formatDateLabel(summary.game.updated_at, { fallback: "Recently updated" })}`,
-    summary: summary.game.summary ?? "Lightning-powered indie world held together by zaps.",
+    summary: summary.game.summary ?? "Lightning-powered indie world built on first-party community feedback.",
     href: summary.game.slug ? `/games/${summary.game.slug}` : FALLBACK_FEATURED[0].href,
   }));
 
@@ -904,7 +898,7 @@ function buildFeaturedCards(
       categoryLabel: uppercaseLabel(game.category ?? ""),
       priceLabel: formatSatsFromMsats(game.price_msats ?? null),
       updatedLabel: `Updated ${formatDateLabel(game.updated_at, { fallback: "Recently updated" })}`,
-      summary: game.summary ?? "Lightning-powered indie world held together by zaps.",
+      summary: game.summary ?? "Lightning-powered indie world built on first-party community feedback.",
       href: game.slug ? `/games/${game.slug}` : FALLBACK_FEATURED[0].href,
     }));
   }
@@ -951,8 +945,9 @@ function buildLiveMetrics(primarySummary: FeaturedGameSummary | undefined): Live
     apiLatency: "132 ms",
     uptime: "99.99%",
     invoicesToday: Math.max(primarySummary.paid_purchase_count, 1),
-    zapsLastHour: Math.max(primarySummary.verified_review_count, 1) * 420,
-    nostrRelays: FALLBACK_LIVE_METRICS.nostrRelays,
+    downloadsToday: Math.max(primarySummary.paid_purchase_count * 3, 3),
+    firstPartyComments: Math.max(primarySummary.verified_review_count, 1) * 3,
+    verifiedReviews: Math.max(primarySummary.verified_review_count, 1),
   };
 }
 
@@ -960,7 +955,7 @@ function buildDescriptionFromMarkdown(markdown?: string | null): string[] {
   if (!markdown) {
     return [
       "Sync loadouts to your identity so achievements follow your pubkey across every build.",
-      "Weekly events rotate tracks, enforce anti-sybil checkpoints, and surface zap-backed highlights.",
+      "Weekly events rotate tracks, enforce anti-sybil checkpoints, and surface first-party highlights.",
     ];
   }
 
@@ -971,7 +966,7 @@ function buildDescriptionFromMarkdown(markdown?: string | null): string[] {
     .slice(0, 3);
 }
 
-function buildZapReviews(gameTitle: string): ZapReview[] {
+function buildReviewHighlights(gameTitle: string): ReviewHighlight[] {
   return FALLBACK_REVIEWS.map((review) => ({
     ...review,
     summary: review.summary.replace("Neon Drift Syndicate", gameTitle),
@@ -1070,7 +1065,7 @@ export default function NeonLanding({ catalogGames, featuredSummaries }: NeonLan
   );
 
   const comments = FALLBACK_COMMENTS;
-  const reviews = useMemo(() => buildZapReviews(primaryGame?.title ?? "Neon Drift Syndicate"), [primaryGame?.title]);
+  const reviews = useMemo(() => buildReviewHighlights(primaryGame?.title ?? "Neon Drift Syndicate"), [primaryGame?.title]);
   const checklist = useMemo(() => buildChecklist(primarySummary), [primarySummary]);
 
   const invoice = useMemo(() => buildInvoice(primaryGame), [primaryGame]);
@@ -1112,7 +1107,7 @@ export default function NeonLanding({ catalogGames, featuredSummaries }: NeonLan
                   Neon storefront for indie worlds powered by Lightning.
                 </h1>
                 <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
-                  Browse featured drops, fund creators with instant zaps, and watch live metrics pulse in real time.
+                  Browse featured drops, support creators directly with Lightning, and watch live metrics pulse in real time.
                 </p>
               </div>
             </div>

@@ -101,25 +101,3 @@ export function formatDateLabel(timestamp: string | null | undefined, options: F
   return new Intl.DateTimeFormat(locale, resolvedOptions).format(parsed);
 }
 
-export type FormatZapOptions = {
-  /**
-   * Label to use when no zaps have been recorded.
-   * @default "0 sats"
-   */
-  zeroLabel?: string;
-};
-
-/**
- * Format a milli-satoshi zap total for display.
- */
-export function formatZapAmount(msats: number, options: FormatZapOptions = {}): string {
-  const { zeroLabel = "0 sats" } = options;
-
-  if (!Number.isFinite(msats) || msats <= 0) {
-    return zeroLabel;
-  }
-
-  const sats = msats / 1000;
-  const formatted = Number(sats).toLocaleString("en-US", { maximumFractionDigits: 3 });
-  return `${formatted} sats`;
-}
