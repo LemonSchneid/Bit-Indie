@@ -6,7 +6,7 @@ export type ModerationFlagStatus = "OPEN" | "DISMISSED" | "ACTIONED";
 
 export interface ModerationReporter {
   id: string;
-  pubkey_hex: string;
+  account_identifier: string;
   display_name: string | null;
 }
 

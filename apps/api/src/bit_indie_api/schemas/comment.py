@@ -33,8 +33,7 @@ class CommentAuthor(BaseModel):
     """Public-facing metadata for a comment author."""
 
     user_id: str | None
-    pubkey_hex: str | None
-    npub: str | None
+    account_identifier: str | None
     display_name: str | None
     lightning_address: str | None
 

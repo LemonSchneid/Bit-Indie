@@ -18,7 +18,7 @@ class ModerationReporter(BaseModel):
     """Minimal profile details for the user who reported content."""
 
     id: str
-    pubkey_hex: str
+    account_identifier: str
     display_name: str | None
 
 

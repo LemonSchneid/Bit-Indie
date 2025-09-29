@@ -100,7 +100,7 @@ class PurchaseReceiptBuyer(BaseModel):
     """Minimal representation of the buyer shown on receipts."""
 
     id: str
-    pubkey_hex: str
+    account_identifier: str
     display_name: str | None
 
     model_config = ConfigDict(from_attributes=True)

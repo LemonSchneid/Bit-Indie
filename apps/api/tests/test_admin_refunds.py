@@ -48,7 +48,7 @@ def _create_admin_user(*, is_admin: bool) -> str:
     """Persist a user and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
+        user = User(account_identifier=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
         session.add(user)
         session.flush()
         return user.id
@@ -58,11 +58,11 @@ def _create_paid_purchase(*, amount_msats: int = 5000) -> tuple[str, str]:
     """Persist a buyer, developer, game, and paid purchase returning their identifiers."""
 
     with session_scope() as session:
-        buyer = User(pubkey_hex=f"buyer-{uuid.uuid4().hex}")
+        buyer = User(account_identifier=f"buyer-{uuid.uuid4().hex}")
         session.add(buyer)
         session.flush()
 
-        developer_user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+        developer_user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
         session.add(developer_user)
         session.flush()
 
@@ -167,11 +167,11 @@ def test_admin_refund_rejects_unpaid_purchase() -> None:
     _create_schema()
     admin_id = _create_admin_user(is_admin=True)
     with session_scope() as session:
-        buyer = User(pubkey_hex=f"buyer2-{uuid.uuid4().hex}")
+        buyer = User(account_identifier=f"buyer2-{uuid.uuid4().hex}")
         session.add(buyer)
         session.flush()
 
-        developer_user = User(pubkey_hex=f"dev2-{uuid.uuid4().hex}")
+        developer_user = User(account_identifier=f"dev2-{uuid.uuid4().hex}")
         session.add(developer_user)
         session.flush()
 

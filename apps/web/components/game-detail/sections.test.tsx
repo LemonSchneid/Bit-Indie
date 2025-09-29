@@ -16,8 +16,7 @@ test("comments section renders verified purchase badges", () => {
       source: "FIRST_PARTY",
       author: {
         user_id: "user-1",
-        pubkey_hex: null,
-        npub: null,
+        account_identifier: null,
         display_name: "Player One",
         lightning_address: null,
       },
@@ -56,7 +55,7 @@ test("reviews section renders rating and verified badge", () => {
       created_at: "2024-02-19T00:00:00.000Z",
       author: {
         id: "user-1",
-        pubkey_hex: "abc123",
+        account_identifier: "abc123",
         display_name: "Reviewer One",
         lightning_address: null,
       },

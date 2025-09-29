@@ -2,7 +2,7 @@ import { buildApiUrl, parseErrorMessage } from "./core";
 
 export interface GameReviewAuthor {
   id: string;
-  pubkey_hex: string;
+  account_identifier: string;
   display_name: string | null;
   lightning_address: string | null;
 }

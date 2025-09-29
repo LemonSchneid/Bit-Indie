@@ -1,4 +1,4 @@
-import type { UserProfile } from "./api/auth";
+import type { UserProfile } from "./api/users";
 
 export const USER_PROFILE_STORAGE_KEY = "bit-indie:user-profile";
 export const USER_PROFILE_STORAGE_EVENT = "bit-indie:user-profile-changed";
@@ -16,7 +16,7 @@ function isUserProfile(value: unknown): value is UserProfile {
   const candidate = value as UserProfile;
   const hasValidStrings =
     typeof candidate.id === "string" &&
-    typeof candidate.pubkey_hex === "string" &&
+    typeof candidate.account_identifier === "string" &&
     typeof candidate.created_at === "string" &&
     typeof candidate.updated_at === "string";
   const hasValidFlags =
@@ -25,7 +25,7 @@ function isUserProfile(value: unknown): value is UserProfile {
     typeof candidate.reputation_score === "number";
   const hasOptionalFields =
     (candidate.display_name === null || typeof candidate.display_name === "string") &&
-    (candidate.nip05 === null || typeof candidate.nip05 === "string") &&
+    (candidate.email === null || typeof candidate.email === "string") &&
     (candidate.lightning_address === null || typeof candidate.lightning_address === "string");
 
   return hasValidStrings && hasValidFlags && hasOptionalFields;

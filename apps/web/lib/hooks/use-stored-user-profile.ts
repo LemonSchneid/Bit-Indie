@@ -10,7 +10,7 @@ import {
 } from "../user-storage";
 
 /**
- * Synchronizes the persisted Nostr user profile across browser tabs and windows.
+ * Synchronizes the persisted user profile across browser tabs and windows.
  */
 export function useStoredUserProfile(): UserProfile | null {
   const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());

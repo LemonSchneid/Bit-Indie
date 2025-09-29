@@ -56,7 +56,7 @@ def test_update_lightning_address() -> None:
 
     try:
         with session_scope() as session:
-            user = User(pubkey_hex="user-update")
+            user = User(account_identifier="user-update")
             session.add(user)
             session.flush()
             user_id = user.id
@@ -88,7 +88,7 @@ def test_update_lightning_address_requires_authentication() -> None:
 
     try:
         with session_scope() as session:
-            user = User(pubkey_hex="user-no-auth")
+            user = User(account_identifier="user-no-auth")
             session.add(user)
             session.flush()
             user_id = user.id
@@ -111,8 +111,8 @@ def test_update_lightning_address_rejects_mismatched_user() -> None:
 
     try:
         with session_scope() as session:
-            owner = User(pubkey_hex="owner-user")
-            attacker = User(pubkey_hex="attacker-user")
+            owner = User(account_identifier="owner-user")
+            attacker = User(account_identifier="attacker-user")
             session.add_all([owner, attacker])
             session.flush()
             owner_id = owner.id

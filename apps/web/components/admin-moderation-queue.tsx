@@ -50,11 +50,14 @@ function formatReporterName(item: ModerationQueueItem): string {
   if (reporter.display_name) {
     return reporter.display_name;
   }
-  if (reporter.pubkey_hex.length <= 14) {
-    return reporter.pubkey_hex;
+  if (!reporter.account_identifier) {
+    return "Unknown reporter";
   }
-  const prefix = reporter.pubkey_hex.slice(0, 8);
-  const suffix = reporter.pubkey_hex.slice(-6);
+  if (reporter.account_identifier.length <= 14) {
+    return reporter.account_identifier;
+  }
+  const prefix = reporter.account_identifier.slice(0, 8);
+  const suffix = reporter.account_identifier.slice(-6);
   return `${prefix}…${suffix}`;
 }
 

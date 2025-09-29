@@ -116,7 +116,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 
 ## Minimal DB Schema (v0)
 
-users `(id, created_at, updated_at, display_name, pubkey_hex UNIQUE NULLABLE, reputation_score int default 0, is_admin bool default false)`
+users `(id, created_at, updated_at, account_identifier UNIQUE, email UNIQUE NULLABLE, display_name, reputation_score int default 0, is_admin bool default false, lightning_address)`
 
 games `(id, slug UNIQUE, title, description_md, price_msats NULLABLE, status enum['DISCOVER','FEATURED','UNLISTED'], category enum['PROTOTYPE','EARLY_ACCESS','FINISHED'], cover_image_url, build_object_key NULLABLE, published_at)`
 
@@ -126,7 +126,7 @@ reviews `(id, game_id, user_id, title NULLABLE, body_md, rating NULLABLE, helpfu
 
 comments `(id, game_id, user_id NULLABLE, body_md, created_at, is_verified_purchase bool)`
 
-Indexes: `users(pubkey_hex)`, `games(status, category)`, `purchases(user_id, game_id)`, `reviews(game_id, helpful_score DESC)`.
+Indexes: `users(account_identifier)`, `games(status, category)`, `purchases(user_id, game_id)`, `reviews(game_id, helpful_score DESC)`.
 
 ---
 
@@ -269,7 +269,7 @@ M8 — Legacy Social Stack Removal
   3. Refactor `GamePublicationService`, `GameDraftingService`, and `CommentThreadService` so they no longer accept or depend on release note publishers or Nostr replies.
   4. Remove release-note/relay metrics and confirm comment endpoints continue to return first-party data with updated tests.
 
-### Ticket M8-T004 — Replace Nostr Auth with Neutral Account Model
+### Ticket M8-T004 — Replace Nostr Auth with Neutral Account Model ✅ Done
 - **Milestone:** M8 — Legacy Social Stack Removal
 - **Summary:** Remove the Nostr authentication flow and adapt the user model to a neutral account representation.
 - **Acceptance Criteria:**

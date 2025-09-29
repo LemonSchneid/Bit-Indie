@@ -79,7 +79,7 @@ type ReceiptSnapshot = {
   status: string;
   amountLabel: string;
   orderId: string;
-  buyerPubkey: string;
+  buyerAccountId: string;
   nextStepLabel: string;
 };
 
@@ -265,7 +265,7 @@ const FALLBACK_RECEIPT: ReceiptSnapshot = {
   status: "Settled",
   amountLabel: "22,000 SATS",
   orderId: "POP-20240314-8842",
-  buyerPubkey: "npub1k6q8n6c9r7w5f7h2v9x3k0z4l8p2d4s6m8a7u9c3f1",
+  buyerAccountId: "account-1k6q8n6c9r7w5f7h2v9",
   nextStepLabel: "Download build + leave a review",
 };
 
@@ -850,8 +850,8 @@ function ReceiptScreen({ receipt }: { receipt: ReceiptSnapshot }) {
                 <p className="mt-2 text-lg font-semibold text-slate-100">{receipt.orderId}</p>
               </div>
               <div className="sm:col-span-2">
-                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-200/70">Buyer pubkey</span>
-                <p className="mt-2 break-all text-lg font-semibold text-slate-100">{receipt.buyerPubkey}</p>
+                <span className="text-[0.65rem] uppercase tracking-[0.4em] text-emerald-200/70">Buyer ID</span>
+                <p className="mt-2 break-all text-lg font-semibold text-slate-100">{receipt.buyerAccountId}</p>
               </div>
             </div>
             <NeonCard className="p-6">
@@ -954,7 +954,7 @@ function buildLiveMetrics(primarySummary: FeaturedGameSummary | undefined): Live
 function buildDescriptionFromMarkdown(markdown?: string | null): string[] {
   if (!markdown) {
     return [
-      "Sync loadouts to your identity so achievements follow your pubkey across every build.",
+      "Sync loadouts to your identity so achievements follow your account across every build.",
       "Weekly events rotate tracks, enforce anti-sybil checkpoints, and surface first-party highlights.",
     ];
   }
@@ -1018,7 +1018,7 @@ function buildReceipt(game: GameDraft | undefined, invoice: InvoiceSnapshot): Re
     status: "Settled",
     amountLabel: invoice.amountLabel,
     orderId: `${game.slug?.toUpperCase() || "POP"}-20240314-8842`,
-    buyerPubkey: FALLBACK_RECEIPT.buyerPubkey,
+    buyerAccountId: FALLBACK_RECEIPT.buyerAccountId,
     nextStepLabel: FALLBACK_RECEIPT.nextStepLabel,
   };
 }

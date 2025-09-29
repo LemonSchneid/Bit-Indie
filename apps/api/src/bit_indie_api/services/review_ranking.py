@@ -9,7 +9,7 @@ from bit_indie_api.db.models import Review, User
 
 # Trust weighting constants derived from the MVP build plan specifications.
 _BASE_TRUST = 1.0
-_NIP05_BONUS = 0.2
+_EMAIL_VERIFIED_BONUS = 0.2
 _VERIFIED_PURCHASE_BONUS = 0.3
 _MIN_TRUST = 0.1
 
@@ -19,12 +19,12 @@ _MIN_DECAY = 0.5
 _SECONDS_PER_DAY = 86_400.0
 
 
-def _compute_trust_multiplier(*, has_nip05: bool, is_verified_purchase: bool) -> float:
+def _compute_trust_multiplier(*, has_verified_email: bool, is_verified_purchase: bool) -> float:
     """Return the trust multiplier for a review author."""
 
     trust = _BASE_TRUST
-    if has_nip05:
-        trust += _NIP05_BONUS
+    if has_verified_email:
+        trust += _EMAIL_VERIFIED_BONUS
     if is_verified_purchase:
         trust += _VERIFIED_PURCHASE_BONUS
     return max(trust, _MIN_TRUST)
@@ -54,7 +54,7 @@ def compute_review_helpful_score(
     """Return the helpfulness score for a review using the MVP formula."""
 
     trust_multiplier = _compute_trust_multiplier(
-        has_nip05=bool(user.nip05),
+        has_verified_email=bool(user.email),
         is_verified_purchase=review.is_verified_purchase,
     )
     freshness_decay = _compute_freshness_decay(review.created_at, reference)

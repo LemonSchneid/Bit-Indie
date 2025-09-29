@@ -11,9 +11,9 @@ class UserRead(BaseModel):
     """Serialized view of a marketplace user."""
 
     id: str
-    pubkey_hex: str
+    account_identifier: str
+    email: str | None
     display_name: str | None
-    nip05: str | None
     lightning_address: str | None
     reputation_score: int
     is_admin: bool

@@ -12,10 +12,6 @@ docker compose -f infra/docker-compose.yml up --build
 
 The API listens on [http://localhost:8080](http://localhost:8080) and exposes a simple health endpoint at `/health`.
 
-Feature flags:
-
-- `NOSTR_ENABLED=false` (default) disables Nostr auth/ingestion routes.
-
 ### Seed demo data
 
 - When running via Docker (`./scripts/dev_bootstrap.sh`), migrations and the `seed_simple_mvp` script run automatically. Disable by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml`.
