@@ -21,21 +21,6 @@ from bit_indie_api.db.models import (
 from bit_indie_api.services.game_publication import GamePublicationService
 
 
-class _StubReleaseNotePublisher:
-    """Minimal stub mimicking the release note publisher interface."""
-
-    def __init__(self) -> None:
-        self.calls = 0
-
-    def publish_release_note(self, *, session, game, reference=None):  # type: ignore[override]
-        self.calls += 1
-        published_at = reference or datetime.now(timezone.utc)
-        if published_at.tzinfo is None:
-            published_at = published_at.replace(tzinfo=timezone.utc)
-        game.release_note_event_id = f"event-{self.calls}"
-        game.release_note_published_at = published_at
-        session.flush()
-
 
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,7 +99,6 @@ def test_publish_game_promotes_to_featured_when_thresholds_met() -> None:
     _create_schema()
     reference = datetime(2024, 7, 1, 12, 0, tzinfo=timezone.utc)
     service = GamePublicationService()
-    publisher = _StubReleaseNotePublisher()
 
     with session_scope() as session:
         _, developer = _create_developer(session)
@@ -133,7 +117,6 @@ def test_publish_game_promotes_to_featured_when_thresholds_met() -> None:
         result = service.publish(
             session=session,
             game=game,
-            publisher=publisher,
             reference=reference,
         )
 
@@ -141,7 +124,6 @@ def test_publish_game_promotes_to_featured_when_thresholds_met() -> None:
         assert result.featured_eligibility.meets_thresholds is True
         assert game.status is GameStatus.FEATURED
         assert game.active is True
-        assert publisher.calls == 1
 
 
 def test_unpublish_game_demotes_featured_listing() -> None:

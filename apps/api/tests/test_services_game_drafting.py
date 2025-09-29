@@ -77,17 +77,6 @@ class _StubScanner:
         return self._result
 
 
-class _StubPublisher:
-    """Test double that tracks release note publication attempts."""
-
-    def __init__(self) -> None:
-        self.published = 0
-
-    def publish_release_note(self, *, session, game, reference=None) -> None:  # noqa: D401
-        """Record that the publish hook would have been called."""
-
-        self.published += 1
-
 
 def test_create_draft_rejects_duplicate_slug() -> None:
     """Creating two drafts with the same slug should raise a conflict error."""
@@ -286,7 +275,6 @@ def test_publish_game_requires_clean_malware_scan() -> None:
     )
     service = GameDraftingService(build_scanner=scanner)
     publication = GamePublicationService()
-    publisher = _StubPublisher()
 
     with session_scope() as session:
         user, _ = _create_developer(session)
@@ -323,7 +311,6 @@ def test_publish_game_requires_clean_malware_scan() -> None:
                 session=session,
                 game_id=game.id,
                 request=publish_request,
-                publisher=publisher,
                 publication=publication,
             )
 
@@ -331,4 +318,3 @@ def test_publish_game_requires_clean_malware_scan() -> None:
             requirement.code for requirement in exc_info.value.missing_requirements
         }
         assert PublishRequirementCode.MALWARE_SCAN in requirement_codes
-        assert publisher.published == 0

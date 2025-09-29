@@ -12,7 +12,6 @@ from bit_indie_api.services.game_promotion import (
     FeaturedEligibility,
     update_game_featured_status,
 )
-from bit_indie_api.services.nostr_publisher import ReleaseNotePublisher
 
 
 @dataclass(slots=True)
@@ -32,23 +31,18 @@ class GamePublicationService:
         *,
         session: Session,
         game: Game,
-        publisher: ReleaseNotePublisher,
         reference: datetime | None = None,
     ) -> PublicationResult:
-        """Activate a game listing and dispatch release notes."""
+        """Activate a game listing and reconcile featured status."""
 
         game.active = True
         game.status = GameStatus.UNLISTED
-        game.release_note_event_id = None
-        game.release_note_published_at = None
 
         status_changed, eligibility = update_game_featured_status(
             session=session,
             game=game,
             reference=reference,
         )
-
-        publisher.publish_release_note(session=session, game=game, reference=reference)
 
         return PublicationResult(
             game=game,
@@ -100,4 +94,3 @@ __all__ = [
     "PublicationResult",
     "get_game_publication_service",
 ]
-

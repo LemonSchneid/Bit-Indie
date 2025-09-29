@@ -28,7 +28,6 @@ from bit_indie_api.services.malware_scanner import (
     MalwareScannerService,
     get_malware_scanner,
 )
-from bit_indie_api.services.nostr_publisher import ReleaseNotePublisher
 
 
 class GameDraftingError(RuntimeError):
@@ -269,10 +268,9 @@ class GameDraftingService:
         session: Session,
         game_id: str,
         request: GamePublishRequest,
-        publisher: ReleaseNotePublisher,
         publication: GamePublicationService,
     ) -> Game:
-        """Promote a draft to the unlisted catalog and dispatch release notes."""
+        """Promote a draft to the unlisted catalog once requirements are met."""
 
         game = self.authorize_game_access(
             session=session, user_id=request.user_id, game_id=game_id
@@ -285,7 +283,6 @@ class GameDraftingService:
         result = publication.publish(
             session=session,
             game=game,
-            publisher=publisher,
         )
         return result.game
 

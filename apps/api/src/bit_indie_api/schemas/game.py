@@ -113,8 +113,6 @@ class GameRead(BaseModel):
     build_scanned_at: datetime | None
     active: bool
     developer_lightning_address: str | None = None
-    release_note_event_id: str | None = None
-    release_note_published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
