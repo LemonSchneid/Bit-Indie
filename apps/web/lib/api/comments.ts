@@ -1,11 +1,10 @@
 import { requestJson } from "./core";
 
-export type CommentSource = "FIRST_PARTY" | "NOSTR";
+export type CommentSource = "FIRST_PARTY";
 
 export interface GameCommentAuthor {
   user_id: string | null;
-  pubkey_hex: string | null;
-  npub: string | null;
+  account_identifier: string | null;
   display_name: string | null;
   lightning_address: string | null;
 }

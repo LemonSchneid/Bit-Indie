@@ -14,12 +14,7 @@ from .verification import load_verified_user_ids
 class CommentThreadService:
     """Provide helpers for listing and serializing first-party comments."""
 
-    def __init__(
-        self,
-        *,
-        dto_builder: CommentDTOBuilder | None = None,
-        nostr_enabled: bool | None = None,
-    ) -> None:
+    def __init__(self, *, dto_builder: CommentDTOBuilder | None = None) -> None:
         self._dto_builder = dto_builder or CommentDTOBuilder()
 
     def list_for_game(self, *, session: Session, game: Game) -> list[CommentDTO]:

@@ -34,7 +34,7 @@ class ReviewAuthor(BaseModel):
     """Summary information about a review author."""
 
     id: str
-    pubkey_hex: str
+    account_identifier: str
     display_name: str | None
     lightning_address: str | None
 

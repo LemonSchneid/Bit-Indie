@@ -39,7 +39,7 @@ def seed() -> None:
         if developer_user is None:
             developer_user = User(
                 id="user-seed-developer",
-                pubkey_hex="seeddeveloperpubkey000000000000000000000000000000000000000000000000000000000000",
+                account_identifier="seeddeveloper-account",
                 display_name="Orbit Foundry",
                 lightning_address="piteousfrench82@walletofsatoshi.com",
                 is_admin=True,
@@ -54,7 +54,7 @@ def seed() -> None:
         if player_user is None:
             player_user = User(
                 id="user-seed-player",
-                pubkey_hex="seedplayerpubkey0000000000000000000000000000000000000000000000000000000000000",
+                account_identifier="seedplayer-account",
                 display_name="Nova Runner",
                 lightning_address="novarunner@example.com",
             )

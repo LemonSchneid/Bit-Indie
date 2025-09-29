@@ -1,6 +1,18 @@
 import { loadStoredSessionToken } from "../user-storage";
 import { requestJson } from "./core";
-import type { UserProfile } from "./auth";
+
+export interface UserProfile {
+  id: string;
+  account_identifier: string;
+  email: string | null;
+  display_name: string | null;
+  lightning_address: string | null;
+  reputation_score: number;
+  is_admin: boolean;
+  is_developer: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface UpdateLightningAddressRequest {
   lightning_address: string;

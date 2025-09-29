@@ -110,7 +110,7 @@ def _seed_game_with_price(
     """Persist a user, developer, and game returning their identifiers."""
 
     with session_scope() as session:
-        user = User(pubkey_hex="buyer-pubkey")
+        user = User(account_identifier="buyer-pubkey")
         user.lightning_address = "dev@ln.example.com"
         session.add(user)
         session.flush()
@@ -203,7 +203,7 @@ def test_create_game_invoice_creates_guest_user_for_anon_id() -> None:
 
         user = session.get(User, body["user_id"])
         assert user is not None
-        assert user.pubkey_hex == "anon:guest-123"
+        assert user.account_identifier == "anon:guest-123"
         assert user.display_name == "Guest Player"
 
 
@@ -213,7 +213,7 @@ def test_create_game_invoice_reuses_existing_guest_user() -> None:
     _create_schema()
     _, game_id = _seed_game_with_price(price_msats=5000)
     with session_scope() as session:
-        guest = User(pubkey_hex="anon:guest-456", display_name="Guest Player")
+        guest = User(account_identifier="anon:guest-456", display_name="Guest Player")
         session.add(guest)
         session.flush()
         guest_id = guest.id
@@ -336,7 +336,7 @@ def test_lookup_purchase_accepts_anon_identifier() -> None:
     _create_schema()
     _, game_id = _seed_game_with_price(price_msats=5000)
     with session_scope() as session:
-        guest = User(pubkey_hex="anon:guest-lookup", display_name="Guest Player")
+        guest = User(account_identifier="anon:guest-lookup", display_name="Guest Player")
         session.add(guest)
         session.flush()
         guest_id = guest.id
@@ -447,7 +447,7 @@ def test_read_purchase_receipt_includes_related_details() -> None:
     }
     assert body["buyer"] == {
         "id": user_id,
-        "pubkey_hex": "buyer-pubkey",
+        "account_identifier": "buyer-pubkey",
         "display_name": None,
     }
 
@@ -509,7 +509,7 @@ def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
         session.add(purchase)
         session.flush()
 
-        reviewer = User(pubkey_hex="reviewer-pubkey")
+        reviewer = User(account_identifier="reviewer-pubkey")
         session.add(reviewer)
         session.flush()
 

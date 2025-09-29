@@ -11,7 +11,6 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from bit_indie_api.core.config import get_settings
 from bit_indie_api.db import get_session
 from bit_indie_api.db.models import Game
 from bit_indie_api.schemas.comment import CommentCreateRequest, CommentRead
@@ -33,8 +32,7 @@ logger = logging.getLogger(__name__)
 def _build_comment_thread_service() -> CommentThreadService:
     """Instantiate the comment thread service used across requests."""
 
-    settings = get_settings()
-    return CommentThreadService(nostr_enabled=settings.nostr_enabled)
+    return CommentThreadService()
 
 
 def get_comment_thread_service() -> CommentThreadService:

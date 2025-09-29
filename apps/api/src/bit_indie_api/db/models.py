@@ -121,14 +121,15 @@ class ModerationFlagStatus(str, enum.Enum):
 
 
 class User(TimestampMixin, Base):
-    """A registered Nostr user in the marketplace."""
+    """A registered account within the marketplace."""
 
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
-    pubkey_hex: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    account_identifier: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     display_name: Mapped[str | None] = mapped_column(String(120))
-    nip05: Mapped[str | None] = mapped_column(String(255))
     lightning_address: Mapped[str | None] = mapped_column(String(255))
     reputation_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

@@ -98,7 +98,7 @@ def _create_schema() -> None:
 def _create_developer(session) -> tuple[User, Developer]:
     """Persist and return a developer with their user account."""
 
-    user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+    user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
     user.lightning_address = "dev@ln.example.com"
     session.add(user)
     session.flush()
@@ -156,7 +156,7 @@ def test_lookup_purchase_returns_latest_completed_purchase() -> None:
 
     _create_schema()
     with session_scope() as session:
-        buyer = User(pubkey_hex="buyer-lookup")
+        buyer = User(account_identifier="buyer-lookup")
         session.add(buyer)
         session.flush()
 
@@ -213,7 +213,7 @@ def test_lookup_purchase_supports_guest_identifier() -> None:
 
     _create_schema()
     with session_scope() as session:
-        guest = User(pubkey_hex="anon:guest-lookup", display_name="Guest Player")
+        guest = User(account_identifier="anon:guest-lookup", display_name="Guest Player")
         session.add(guest)
         session.flush()
 
@@ -254,7 +254,7 @@ def test_reconcile_opennode_webhook_marks_purchase_paid() -> None:
     )
 
     with session_scope() as session:
-        buyer = User(pubkey_hex="buyer-webhook")
+        buyer = User(account_identifier="buyer-webhook")
         session.add(buyer)
         session.flush()
 
@@ -304,7 +304,7 @@ def test_create_download_link_records_audit_log() -> None:
     storage = _StubStorageService()
 
     with session_scope() as session:
-        buyer = User(pubkey_hex="buyer-download")
+        buyer = User(account_identifier="buyer-download")
         session.add(buyer)
         session.flush()
 
@@ -343,7 +343,7 @@ def test_create_download_link_rejects_invalid_purchase_state() -> None:
 
     _create_schema()
     with session_scope() as session:
-        buyer = User(pubkey_hex="buyer-download-invalid")
+        buyer = User(account_identifier="buyer-download-invalid")
         session.add(buyer)
         session.flush()
 
@@ -379,7 +379,7 @@ def test_request_refund_marks_purchase_requested() -> None:
 
     _create_schema()
     with session_scope() as session:
-        buyer = User(pubkey_hex="buyer-refund")
+        buyer = User(account_identifier="buyer-refund")
         session.add(buyer)
         session.flush()
 
@@ -409,11 +409,11 @@ def test_request_refund_enforces_ownership_and_status() -> None:
 
     _create_schema()
     with session_scope() as session:
-        owner = User(pubkey_hex="buyer-owner")
+        owner = User(account_identifier="buyer-owner")
         session.add(owner)
         session.flush()
 
-        stranger = User(pubkey_hex="buyer-stranger")
+        stranger = User(account_identifier="buyer-stranger")
         session.add(stranger)
         session.flush()
 

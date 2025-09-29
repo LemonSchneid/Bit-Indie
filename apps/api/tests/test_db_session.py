@@ -32,7 +32,7 @@ def test_session_scope_commits_successful_transactions():
     _create_schema()
 
     with session_scope() as session:
-        session.add(User(pubkey_hex="abc123"))
+        session.add(User(account_identifier="abc123"))
 
     with session_scope() as session:
         count = session.scalar(sa.select(sa.func.count()).select_from(User))
@@ -46,7 +46,7 @@ def test_session_scope_rolls_back_on_error():
 
     with pytest.raises(RuntimeError):
         with session_scope() as session:
-            session.add(User(pubkey_hex="abc123"))
+            session.add(User(account_identifier="abc123"))
             raise RuntimeError("boom")
 
     with session_scope() as session:

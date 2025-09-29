@@ -18,7 +18,7 @@ export function GameCommentsSection({
   comments,
   commentsError,
 }: GameCommentsSectionProps): JSX.Element {
-  const displayComments = comments.filter((comment) => comment.source !== "NOSTR");
+  const displayComments = comments;
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
@@ -48,7 +48,7 @@ export function GameCommentsSection({
             const trimmedBody = comment.body_md.trim();
             const displayParagraphs = paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
             const authorLabel = getCommentAuthorLabel(comment);
-            const authorTitle = comment.author.npub ?? comment.author.pubkey_hex ?? undefined;
+            const authorTitle = comment.author.account_identifier ?? undefined;
 
             return (
               <article

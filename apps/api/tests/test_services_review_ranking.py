@@ -16,7 +16,7 @@ def test_compute_review_helpful_score_applies_trust_and_decay() -> None:
     """The helpful score should incorporate trust multipliers and freshness decay."""
 
     reference = datetime(2024, 5, 1, 12, 0, tzinfo=timezone.utc)
-    user = User(pubkey_hex="alice", nip05="alice@example.com")
+    user = User(account_identifier="alice", email="alice@example.com")
     review = Review(
         game_id="game-1",
         user_id="user-1",
@@ -40,7 +40,7 @@ def test_compute_review_helpful_score_respects_clamps() -> None:
     """Suspicious reviews should apply penalties and honour minimum decay values."""
 
     reference = datetime(2024, 5, 1, 12, 0, tzinfo=timezone.utc)
-    user = User(pubkey_hex="bob")
+    user = User(account_identifier="bob")
     review = Review(
         game_id="game-2",
         user_id="user-2",
@@ -63,7 +63,7 @@ def test_compute_review_helpful_score_respects_clamps() -> None:
 def test_update_review_helpful_score_persists_value() -> None:
     """Updating helpfulness should persist the computed score on the review."""
 
-    user = User(pubkey_hex="carol")
+    user = User(account_identifier="carol")
     review = Review(
         game_id="game-3",
         user_id="user-3",
@@ -90,7 +90,7 @@ def test_update_review_helpful_score_persists_value() -> None:
 def test_update_review_helpful_score_uses_rating_default() -> None:
     """Missing ratings should fall back to the neutral rating multiplier."""
 
-    user = User(pubkey_hex="dan")
+    user = User(account_identifier="dan")
     review = Review(
         game_id="game-4",
         user_id="user-4",

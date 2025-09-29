@@ -46,7 +46,7 @@ def _create_schema() -> None:
 def _create_developer(session) -> tuple[User, Developer]:
     """Return a persisted developer and their user account."""
 
-    user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+    user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
     session.add(user)
     session.flush()
 
@@ -60,7 +60,7 @@ def _create_developer(session) -> tuple[User, Developer]:
 def _add_buyer(session, index: int) -> User:
     """Persist and return a buyer user for test fixtures."""
 
-    buyer = User(pubkey_hex=f"buyer-{index}-{uuid.uuid4().hex}")
+    buyer = User(account_identifier=f"buyer-{index}-{uuid.uuid4().hex}")
     session.add(buyer)
     session.flush()
     return buyer

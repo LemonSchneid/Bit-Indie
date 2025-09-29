@@ -35,7 +35,6 @@ services:
       S3_ENDPOINT: http://minio:9000
       PUBLIC_API_URL: http://api:8080
       S3_REGION: auto
-      NOSTR_ENABLED: "false"
       RUN_DB_MIGRATIONS: "1"
       RUN_SIMPLE_MVP_SEED: "1"
     ports:

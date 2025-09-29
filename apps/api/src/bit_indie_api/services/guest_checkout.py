@@ -30,7 +30,10 @@ class GuestCheckoutService:
         if existing is not None:
             return existing
 
-        user = User(pubkey_hex=self._build_pubkey(normalized), display_name="Guest Player")
+        user = User(
+            account_identifier=self._build_account_identifier(normalized),
+            display_name="Guest Player",
+        )
         self.session.add(user)
         self.session.flush()
         self.session.refresh(user)
@@ -45,7 +48,9 @@ class GuestCheckoutService:
     def _lookup_user(self, anon_id: str) -> User | None:
         """Fetch the stored guest user associated with ``anon_id``."""
 
-        stmt = select(User).where(User.pubkey_hex == self._build_pubkey(anon_id))
+        stmt = select(User).where(
+            User.account_identifier == self._build_account_identifier(anon_id)
+        )
         return self.session.scalars(stmt).first()
 
     @staticmethod
@@ -62,8 +67,8 @@ class GuestCheckoutService:
         return normalized
 
     @staticmethod
-    def _build_pubkey(anon_id: str) -> str:
-        """Return the synthetic pubkey used to persist guest accounts."""
+    def _build_account_identifier(anon_id: str) -> str:
+        """Return the synthetic account identifier used to persist guest accounts."""
 
         return f"anon:{anon_id}"
 

@@ -1,19 +1,6 @@
 import { type GameComment } from "../../lib/api";
 
-export function formatNpub(value: string | null): string {
-  if (!value) {
-    return "npub unknown";
-  }
-
-  const trimmed = value.trim();
-  if (trimmed.length <= 16) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, 10)}…${trimmed.slice(-6)}`;
-}
-
-export function formatPubkeyHex(value: string | null): string {
+export function formatAccountIdentifier(value: string | null): string {
   if (!value) {
     return "unknown";
   }
@@ -48,12 +35,7 @@ export function getCommentAuthorLabel(comment: GameComment): string {
     return displayName;
   }
 
-  const npubLabel = comment.author.npub;
-  if (npubLabel) {
-    return formatNpub(npubLabel);
-  }
-
-  return formatPubkeyHex(comment.author.pubkey_hex);
+  return formatAccountIdentifier(comment.author.account_identifier);
 }
 
 function splitIntoParagraphs(body: string): string[] {

@@ -52,7 +52,7 @@ export interface PurchaseReceiptGame {
 
 export interface PurchaseReceiptBuyer {
   id: string;
-  pubkey_hex: string;
+  account_identifier: string;
   display_name: string | null;
 }
 

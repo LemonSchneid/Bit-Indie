@@ -83,12 +83,12 @@ function formatBuyerName(receipt: PurchaseReceipt["buyer"]): string {
     return receipt.display_name;
   }
 
-  const pubkey = receipt.pubkey_hex;
-  if (pubkey.length <= 12) {
-    return pubkey;
+  const identifier = receipt.account_identifier;
+  if (identifier.length <= 12) {
+    return identifier;
   }
 
-  return `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
+  return `${identifier.slice(0, 8)}…${identifier.slice(-4)}`;
 }
 
 export default async function PurchaseReceiptPage({
@@ -173,7 +173,7 @@ export default async function PurchaseReceiptPage({
               <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
                 <h2 className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Buyer</h2>
                 <p className="mt-3 text-base text-white">{buyerName}</p>
-                <p className="mt-1 font-mono text-xs text-slate-400">{buyer.pubkey_hex}</p>
+                <p className="mt-1 font-mono text-xs text-slate-400">{buyer.account_identifier}</p>
                 <p className="mt-4 text-sm text-slate-300">
                   Anyone with this receipt link can re-open the download. Keep it handy in your password manager or browser
                   bookmarks.

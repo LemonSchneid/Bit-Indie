@@ -1,4 +1,3 @@
-export * from "./auth";
 export * from "./comments";
 export * from "./developers";
 export * from "./games";

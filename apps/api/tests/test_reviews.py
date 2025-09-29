@@ -58,7 +58,7 @@ def _seed_game(*, active: bool = True) -> str:
 
     with session_scope() as session:
         developer_user = User(
-            pubkey_hex=f"dev-{uuid.uuid4().hex}",
+            account_identifier=f"dev-{uuid.uuid4().hex}",
             lightning_address=f"dev{uuid.uuid4().hex[:8]}@zaps.test",
         )
         session.add(developer_user)
@@ -87,7 +87,7 @@ def _create_user(*, reputation_score: int = 0) -> str:
 
     with session_scope() as session:
         user = User(
-            pubkey_hex=f"user-{uuid.uuid4().hex}",
+            account_identifier=f"user-{uuid.uuid4().hex}",
             lightning_address=f"player{uuid.uuid4().hex[:8]}@zaps.test",
             reputation_score=reputation_score,
         )
@@ -250,7 +250,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["is_verified_purchase"] is True
     assert body["helpful_score"] > 0
     assert body["author"]["id"] == user_id
-    assert body["author"]["pubkey_hex"].startswith("user-")
+    assert body["author"]["account_identifier"].startswith("user-")
     assert body["author"]["lightning_address"].endswith("@zaps.test")
     assert body["author"]["display_name"] is None
 
@@ -367,7 +367,7 @@ def test_list_reviews_orders_by_helpful_score() -> None:
     with session_scope() as session:
         user = session.get(User, user_id)
         assert user is not None
-        user.nip05 = f"{user.pubkey_hex}@example.com"
+        user.email = f"{user.account_identifier}@example.com"
 
         first = Review(
             game_id=game_id,

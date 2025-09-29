@@ -32,7 +32,7 @@ def _create_schema() -> None:
 def _create_developer(session) -> tuple[User, Developer]:
     """Persist and return a developer and their linked user."""
 
-    user = User(pubkey_hex=f"developer-{uuid.uuid4().hex}")
+    user = User(account_identifier=f"developer-{uuid.uuid4().hex}")
     session.add(user)
     session.flush()
 
@@ -62,7 +62,7 @@ def _create_user(session, *, lightning_address: str | None = None) -> User:
     """Persist a user record and return the ORM instance."""
 
     user = User(
-        pubkey_hex=f"user-{uuid.uuid4().hex}",
+        account_identifier=f"user-{uuid.uuid4().hex}",
         lightning_address=lightning_address,
         display_name="Player",
     )
@@ -100,7 +100,7 @@ def _create_purchase(session, *, game_id: str, user_id: str, paid_at: datetime) 
 
 
 def test_list_for_game_orders_first_party_comments() -> None:
-    """Comments should be returned in chronological order without Nostr data."""
+    """Comments should be returned in chronological order without external data."""
 
     _create_schema()
     service = CommentThreadService()

@@ -89,7 +89,7 @@ def _seed_game(*, active: bool = True) -> str:
     """Persist a developer-owned game and return its identifier."""
 
     with session_scope() as session:
-        developer_user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+        developer_user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
         session.add(developer_user)
         session.flush()
 
@@ -111,11 +111,11 @@ def _seed_game(*, active: bool = True) -> str:
     return game_id
 
 
-def _create_user(*, reputation_score: int = 0, pubkey_hex: str | None = None) -> str:
+def _create_user(*, reputation_score: int = 0, account_identifier: str | None = None) -> str:
     """Persist a standalone user and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=pubkey_hex or f"user-{uuid.uuid4().hex}", reputation_score=reputation_score)
+        user = User(account_identifier=account_identifier or f"user-{uuid.uuid4().hex}", reputation_score=reputation_score)
         session.add(user)
         session.flush()
         user_id = user.id
@@ -123,13 +123,13 @@ def _create_user(*, reputation_score: int = 0, pubkey_hex: str | None = None) ->
     return user_id
 
 
-def _get_user_pubkey(user_id: str) -> str:
-    """Return the hex-encoded pubkey for the referenced user."""
+def _get_user_account_identifier(user_id: str) -> str:
+    """Return the stored account identifier for the referenced user."""
 
     with session_scope() as session:
         user = session.get(User, user_id)
         assert user is not None
-        return user.pubkey_hex
+        return user.account_identifier
 
 
 def _mine_proof_of_work(*, user_id: str, resource_id: str, body_md: str) -> dict[str, int]:
@@ -280,8 +280,7 @@ def test_create_comment_respects_workflow_dependency_override() -> None:
             captured["normalized_body_md"] = request.body_md
             author = CommentAuthorDTO(
                 user_id=request.user_id,
-                pubkey_hex=None,
-                npub=None,
+                account_identifier=None,
                 display_name=None,
                 lightning_address=None,
             )

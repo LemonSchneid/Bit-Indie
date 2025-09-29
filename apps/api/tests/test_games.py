@@ -27,7 +27,6 @@ from bit_indie_api.db.models import (
 )
 from bit_indie_api.main import create_application
 from bit_indie_api.schemas.game import PublishRequirementCode
-from bit_indie_api.services.auth import reset_login_challenge_store
 from bit_indie_api.services.storage import (
     GameAssetKind,
     PresignedUpload,
@@ -37,15 +36,13 @@ from bit_indie_api.services.storage import (
 
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch):
-    """Run each test against isolated database and login challenge store instances."""
+    """Run each test against isolated database and storage instances."""
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
-    reset_login_challenge_store()
     reset_storage_service()
     yield
     reset_database_state()
-    reset_login_challenge_store()
     reset_storage_service()
 
 
@@ -70,7 +67,7 @@ def test_list_catalog_games_returns_publicly_visible_entries() -> None:
 
     with session_scope() as session:
         developer_user = User(
-            pubkey_hex="catalog-dev-pubkey",
+            account_identifier="catalog-dev-pubkey",
             lightning_address="orbit@example.com",
         )
         session.add(developer_user)
@@ -150,7 +147,7 @@ def _create_user_and_developer(*, with_developer: bool) -> str:
     """Persist a user (and optionally developer profile) returning the user identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-pubkey-{next(_user_pubkey_sequence)}")
+        user = User(account_identifier=f"user-pubkey-{next(_user_pubkey_sequence)}")
         user.lightning_address = "dev@ln.example.com"
         session.add(user)
         session.flush()
@@ -611,7 +608,7 @@ def test_list_featured_games_returns_eligible_entries() -> None:
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:
-        developer_user = User(pubkey_hex="dev-featured")
+        developer_user = User(account_identifier="dev-featured")
         session.add(developer_user)
         session.flush()
 
@@ -632,7 +629,7 @@ def test_list_featured_games_returns_eligible_entries() -> None:
         session.flush()
 
         for index in range(10):
-            buyer = User(pubkey_hex=f"buyer-{index}")
+            buyer = User(account_identifier=f"buyer-{index}")
             session.add(buyer)
             session.flush()
 
@@ -687,7 +684,7 @@ def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:
-        developer_user = User(pubkey_hex="dev-demote")
+        developer_user = User(account_identifier="dev-demote")
         session.add(developer_user)
         session.flush()
 
@@ -707,7 +704,7 @@ def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
         session.flush()
 
         for index in range(12):
-            buyer = User(pubkey_hex=f"refund-buyer-{index}")
+            buyer = User(account_identifier=f"refund-buyer-{index}")
             session.add(buyer)
             session.flush()
 
@@ -764,7 +761,7 @@ def test_list_featured_games_updates_status_for_results_beyond_limit() -> None:
     reference = datetime.now(timezone.utc)
 
     with session_scope() as session:
-        developer_user = User(pubkey_hex="dev-rotation")
+        developer_user = User(account_identifier="dev-rotation")
         session.add(developer_user)
         session.flush()
 
@@ -793,7 +790,7 @@ def test_list_featured_games_updates_status_for_results_beyond_limit() -> None:
 
         for game_index, game in enumerate((fresh_game, stale_game)):
             for entry_index in range(10):
-                buyer = User(pubkey_hex=f"limit-buyer-{game_index}-{entry_index}")
+                buyer = User(account_identifier=f"limit-buyer-{game_index}-{entry_index}")
                 session.add(buyer)
                 session.flush()
 

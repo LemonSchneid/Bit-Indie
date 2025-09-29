@@ -126,7 +126,7 @@ and MinIO on `localhost:9000` (console at `:9001`).
 
 MVP feature flags:
 
-- API: set `NOSTR_ENABLED=false` (default) to disable Nostr routes/services.
+- API: Nostr routes have been removed for the MVP; no additional flags are required.
 - The catalog pulls real data from the FastAPI backend; run the Docker seed script to explore the full storefront.
 
 ### Full-stack dev loop

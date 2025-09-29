@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from bit_indie_api.core.config import get_settings
 from bit_indie_api.db.models import Comment, Game, User
 from bit_indie_api.schemas.comment import CommentCreateRequest
 from bit_indie_api.services.comment_thread import CommentDTO, CommentThreadService
@@ -47,10 +46,7 @@ class CommentWorkflow:
     """Coordinate validation, rate limiting, and persistence for comments."""
 
     def __init__(self, *, comment_thread_service: CommentThreadService | None = None) -> None:
-        if comment_thread_service is None:
-            settings = get_settings()
-            comment_thread_service = CommentThreadService(nostr_enabled=settings.nostr_enabled)
-        self._comment_thread_service = comment_thread_service
+        self._comment_thread_service = comment_thread_service or CommentThreadService()
 
     def create_comment(
         self,

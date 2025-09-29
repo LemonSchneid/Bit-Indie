@@ -51,7 +51,7 @@ def _create_schema() -> None:
 def _create_developer(session) -> tuple[User, Developer]:
     """Persist and return a developer and their linked user."""
 
-    user = User(pubkey_hex=f"developer-{uuid.uuid4().hex}")
+    user = User(account_identifier=f"developer-{uuid.uuid4().hex}")
     user.lightning_address = "dev@ln.example.com"
     session.add(user)
     session.flush()
@@ -155,7 +155,7 @@ def test_update_draft_refreshes_featured_status() -> None:
         session.flush()
 
         for index in range(10):
-            buyer = User(pubkey_hex=f"buyer-{index}-{uuid.uuid4().hex}")
+            buyer = User(account_identifier=f"buyer-{index}-{uuid.uuid4().hex}")
             session.add(buyer)
             session.flush()
 

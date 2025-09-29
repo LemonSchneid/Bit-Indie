@@ -50,7 +50,7 @@ def _create_user(*, is_admin: bool = False) -> str:
     """Persist a user with optional admin privileges and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
+        user = User(account_identifier=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
         session.add(user)
         session.flush()
         return user.id
@@ -60,7 +60,7 @@ def _create_game(*, price_msats: int = 5_000) -> str:
     """Persist a developer-owned game and return its identifier."""
 
     with session_scope() as session:
-        dev_user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+        dev_user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
         session.add(dev_user)
         session.flush()
 
@@ -103,9 +103,9 @@ def test_integrity_stats_return_aggregated_metrics() -> None:
     paid_at = datetime(2024, 3, 1, tzinfo=timezone.utc)
 
     with session_scope() as session:
-        buyer_one = User(pubkey_hex=f"buyer-one-{uuid.uuid4().hex}")
-        buyer_two = User(pubkey_hex=f"buyer-two-{uuid.uuid4().hex}")
-        buyer_three = User(pubkey_hex=f"buyer-three-{uuid.uuid4().hex}")
+        buyer_one = User(account_identifier=f"buyer-one-{uuid.uuid4().hex}")
+        buyer_two = User(account_identifier=f"buyer-two-{uuid.uuid4().hex}")
+        buyer_three = User(account_identifier=f"buyer-three-{uuid.uuid4().hex}")
         session.add_all([buyer_one, buyer_two, buyer_three])
         session.flush()
 
@@ -175,7 +175,7 @@ def test_integrity_stats_return_aggregated_metrics() -> None:
         ]
         session.add_all(payouts)
 
-        reporter = User(pubkey_hex=f"reporter-{uuid.uuid4().hex}")
+        reporter = User(account_identifier=f"reporter-{uuid.uuid4().hex}")
         session.add(reporter)
         session.flush()
 

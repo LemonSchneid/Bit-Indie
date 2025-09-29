@@ -58,7 +58,7 @@ def _serialize_flag(flag: ModerationFlag, *, session: Session) -> ModerationQueu
     reporter = flag.reporter
     reporter_view = ModerationReporter(
         id=reporter.id,
-        pubkey_hex=reporter.pubkey_hex,
+        account_identifier=reporter.account_identifier,
         display_name=reporter.display_name,
     )
 

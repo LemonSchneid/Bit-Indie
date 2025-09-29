@@ -50,7 +50,7 @@ def _create_user(*, is_admin: bool = False) -> str:
     """Persist a user with optional admin privileges and return its identifier."""
 
     with session_scope() as session:
-        user = User(pubkey_hex=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
+        user = User(account_identifier=f"user-{uuid.uuid4().hex}", is_admin=is_admin)
         session.add(user)
         session.flush()
         return user.id
@@ -60,7 +60,7 @@ def _create_game(*, status: GameStatus = GameStatus.UNLISTED, active: bool = Tru
     """Persist a developer-owned game and return its identifier."""
 
     with session_scope() as session:
-        dev_user = User(pubkey_hex=f"dev-{uuid.uuid4().hex}")
+        dev_user = User(account_identifier=f"dev-{uuid.uuid4().hex}")
         session.add(dev_user)
         session.flush()
 

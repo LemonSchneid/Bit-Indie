@@ -8,9 +8,6 @@ from datetime import datetime, timezone
 
 from bit_indie_api.db.models import Comment, User
 
-from .utils import encode_npub
-
-
 class CommentSource(str, enum.Enum):
     """Enumerates the possible origins for a surfaced comment."""
 
@@ -22,8 +19,7 @@ class CommentAuthorDTO:
     """Represents public-facing metadata about the author of a comment."""
 
     user_id: str | None
-    pubkey_hex: str | None
-    npub: str | None
+    account_identifier: str | None
     display_name: str | None
     lightning_address: str | None
 
@@ -53,8 +49,7 @@ class CommentDTOBuilder:
     ) -> CommentDTO:
         author = CommentAuthorDTO(
             user_id=user.id,
-            pubkey_hex=user.pubkey_hex,
-            npub=encode_npub(user.pubkey_hex),
+            account_identifier=user.account_identifier,
             display_name=user.display_name,
             lightning_address=user.lightning_address,
         )
