@@ -15,7 +15,6 @@ from bit_indie_api.api.v1.routes.nostr import router as nostr_router
 from bit_indie_api.api.v1.routes.purchases import router as purchases_router
 from bit_indie_api.api.v1.routes.users import router as users_router
 from bit_indie_api.api.v1.routes.reviews import router as reviews_router
-from bit_indie_api.api.v1.routes.zaps import router as zaps_router
 from bit_indie_api.core.config import get_settings
 from bit_indie_api.core.telemetry import (
     configure_telemetry,
@@ -52,7 +51,6 @@ def create_application() -> FastAPI:
     application.include_router(purchases_router)
     if settings.nostr_enabled:
         application.include_router(nostr_router)
-    application.include_router(zaps_router)
     return application
 
 

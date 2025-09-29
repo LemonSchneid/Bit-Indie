@@ -16,7 +16,6 @@ from .dto import CommentAuthorDTO, CommentDTO, CommentDTOBuilder, CommentSource
 from .normalizer import NormalizedReleaseNoteReply, ReleaseNoteReplyNormalizer
 from .utils import decode_npub, encode_npub
 from .verification import load_verified_user_ids
-from .zap import CommentZapAggregator
 
 
 class CommentThreadService:
@@ -27,13 +26,11 @@ class CommentThreadService:
         *,
         reply_loader: ReleaseNoteReplyLoader | None = None,
         reply_normalizer: ReleaseNoteReplyNormalizer | None = None,
-        zap_aggregator: CommentZapAggregator | None = None,
         dto_builder: CommentDTOBuilder | None = None,
         nostr_enabled: bool = True,
     ) -> None:
         self._reply_loader = reply_loader or ReleaseNoteReplyLoader()
         self._reply_normalizer = reply_normalizer or ReleaseNoteReplyNormalizer()
-        self._zap_aggregator = zap_aggregator or CommentZapAggregator()
         self._dto_builder = dto_builder or CommentDTOBuilder()
         self._nostr_enabled = nostr_enabled
 
@@ -57,12 +54,7 @@ class CommentThreadService:
             ]
         merged = [*first_party, *nostr]
         merged.sort(key=lambda item: (item.created_at, item.id))
-        if not merged:
-            return merged
-        return self._zap_aggregator.attach_totals(
-            session=session,
-            comments=merged,
-        )
+        return merged
 
     def serialize_comment(self, *, session: Session, comment: Comment) -> CommentDTO:
         """Return a DTO representation for a freshly created comment."""
@@ -135,7 +127,6 @@ __all__ = [
     "CommentDTOBuilder",
     "CommentSource",
     "CommentThreadService",
-    "CommentZapAggregator",
     "NormalizedReleaseNoteReply",
     "ReleaseNoteReplyCache",
     "ReleaseNoteReplyLoader",

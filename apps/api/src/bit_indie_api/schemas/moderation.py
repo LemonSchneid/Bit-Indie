@@ -57,7 +57,6 @@ class FlaggedReviewSummary(BaseModel):
     body_md: str
     rating: int | None
     helpful_score: float
-    total_zap_msats: int
     created_at: datetime
     is_hidden: bool
 

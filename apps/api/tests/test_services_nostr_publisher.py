@@ -176,7 +176,8 @@ def test_publish_release_note_successful_to_all_relays() -> None:
             assert relay in settings.relays
             assert payload["id"] == event["id"]
             assert payload["kind"] == 30023
-            assert any(tag[0] == "zap" for tag in payload["tags"])
+            assert any(tag[0] == "lnurl" for tag in payload["tags"])
+            assert all(tag[0] != "zap" for tag in payload["tags"])
 
         queue_entries = session.scalars(select(ReleaseNotePublishQueue)).all()
         assert queue_entries == []

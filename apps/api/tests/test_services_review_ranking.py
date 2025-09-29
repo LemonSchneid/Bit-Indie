@@ -29,11 +29,10 @@ def test_compute_review_helpful_score_applies_trust_and_decay() -> None:
     score = compute_review_helpful_score(
         review=review,
         user=user,
-        total_zap_msats=10_000,
         reference=reference,
     )
 
-    expected = math.log1p(10_000) * (1.0 + 0.2 + 0.3) * math.exp(-15 / 30)
+    expected = 5 * (1.0 + 0.2 + 0.3) * math.exp(-15 / 30)
     assert score == pytest.approx(expected)
 
 
@@ -54,17 +53,15 @@ def test_compute_review_helpful_score_respects_clamps() -> None:
     score = compute_review_helpful_score(
         review=review,
         user=user,
-        total_zap_msats=2_000,
-        flagged_suspicious=True,
         reference=reference,
     )
 
-    expected = math.log1p(2_000) * 0.5 * 0.5
+    expected = 3 * 1.0 * 0.5
     assert score == pytest.approx(expected)
 
 
-def test_update_review_helpful_score_records_zap_totals() -> None:
-    """Updating helpfulness should persist normalised zap totals on the review."""
+def test_update_review_helpful_score_persists_value() -> None:
+    """Updating helpfulness should persist the computed score on the review."""
 
     user = User(pubkey_hex="carol")
     review = Review(
@@ -72,39 +69,42 @@ def test_update_review_helpful_score_records_zap_totals() -> None:
         user_id="user-3",
         body_md="Thanks for the patch",
         rating=5,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime(2024, 6, 1, tzinfo=timezone.utc),
     )
 
     score = update_review_helpful_score(
         review=review,
         user=user,
-        total_zap_msats=-5_000,
+        reference=datetime(2024, 6, 15, tzinfo=timezone.utc),
     )
 
-    assert score == pytest.approx(math.log1p(0) * 1.0)
-    assert review.total_zap_msats == 0
-    assert review.suspicious_zap_pattern is False
+    expected = compute_review_helpful_score(
+        review=review,
+        user=user,
+        reference=datetime(2024, 6, 15, tzinfo=timezone.utc),
+    )
+    assert score == pytest.approx(expected)
+    assert review.helpful_score == pytest.approx(expected)
 
 
-def test_update_review_helpful_score_marks_suspicious() -> None:
-    """Flagged updates should persist the suspicious zap indicator."""
+def test_update_review_helpful_score_uses_rating_default() -> None:
+    """Missing ratings should fall back to the neutral rating multiplier."""
 
     user = User(pubkey_hex="dan")
     review = Review(
         game_id="game-4",
         user_id="user-4",
         body_md="Appreciate the hotfix",
-        rating=4,
-        created_at=datetime.now(timezone.utc),
+        rating=None,
+        created_at=datetime(2024, 6, 1, tzinfo=timezone.utc),
     )
 
     score = update_review_helpful_score(
         review=review,
         user=user,
-        total_zap_msats=10_000,
-        flagged_suspicious=True,
+        reference=datetime(2024, 6, 1, tzinfo=timezone.utc),
     )
 
-    assert score > 0
-    assert review.total_zap_msats == 10_000
-    assert review.suspicious_zap_pattern is True
+    expected = 3 * 1.0 * 1.0
+    assert score == pytest.approx(expected)
+    assert review.helpful_score == pytest.approx(expected)

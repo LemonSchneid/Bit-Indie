@@ -24,7 +24,10 @@ from bit_indie_api.services.proof_of_work import (
     count_leading_zero_bits,
 )
 from bit_indie_api.services.rate_limiting import REVIEW_RATE_LIMIT_MAX_ITEMS
-from bit_indie_api.services.review_ranking import update_review_helpful_score
+from bit_indie_api.services.review_ranking import (
+    compute_review_helpful_score,
+    update_review_helpful_score,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -245,9 +248,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["body_md"] == "Combat feels tight now."
     assert body["rating"] == 4
     assert body["is_verified_purchase"] is True
-    assert body["helpful_score"] == pytest.approx(0.0)
-    assert body["total_zap_msats"] == 0
-    assert body["suspicious_zap_pattern"] is False
+    assert body["helpful_score"] > 0
     assert body["author"]["id"] == user_id
     assert body["author"]["pubkey_hex"].startswith("user-")
     assert body["author"]["lightning_address"].endswith("@zaps.test")
@@ -258,8 +259,15 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
         assert stored is not None
         assert stored.rating == 4
         assert stored.is_verified_purchase is True
-        assert stored.helpful_score == pytest.approx(0.0)
-        assert stored.total_zap_msats == 0
+        user = session.get(User, stored.user_id)
+        assert user is not None
+        expected_score = compute_review_helpful_score(
+            review=stored,
+            user=user,
+            reference=stored.created_at,
+        )
+        assert stored.helpful_score == pytest.approx(expected_score)
+        assert body["helpful_score"] == pytest.approx(expected_score)
 
 
 def test_create_review_promotes_game_after_paid_purchase() -> None:
@@ -341,9 +349,7 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     body = response.json()
     assert body["rating"] is None
     assert body["is_verified_purchase"] is False
-    assert body["helpful_score"] == pytest.approx(0.0)
-    assert body["total_zap_msats"] == 0
-    assert body["suspicious_zap_pattern"] is False
+    assert body["helpful_score"] > 0
     assert body["author"]["id"] == user_id
     assert body["author"]["lightning_address"].endswith("@zaps.test")
 
@@ -367,7 +373,7 @@ def test_list_reviews_orders_by_helpful_score() -> None:
             game_id=game_id,
             user_id=user_id,
             body_md="Solid patch",
-            rating=4,
+            rating=5,
             is_verified_purchase=True,
             created_at=older_created,
         )
@@ -382,13 +388,11 @@ def test_list_reviews_orders_by_helpful_score() -> None:
         session.add_all([first, second])
         session.flush()
 
-        update_review_helpful_score(first, user=user, total_zap_msats=50_000)
-        update_review_helpful_score(second, user=user, total_zap_msats=1_000)
+        update_review_helpful_score(first, user=user, reference=newer_created)
+        update_review_helpful_score(second, user=user, reference=newer_created)
         session.flush()
         session.refresh(first)
         session.refresh(second)
-        assert first.total_zap_msats == 50_000
-        assert second.total_zap_msats == 1_000
 
     client = _build_client()
     response = client.get(f"/v1/games/{game_id}/reviews")
@@ -398,8 +402,6 @@ def test_list_reviews_orders_by_helpful_score() -> None:
     assert [item["body_md"] for item in body] == ["Solid patch", "Needs work"]
     assert body[0]["helpful_score"] > body[1]["helpful_score"]
     assert body[0]["created_at"] < body[1]["created_at"]
-    assert body[0]["total_zap_msats"] == 50_000
-    assert body[1]["total_zap_msats"] == 1_000
     assert body[0]["author"]["lightning_address"].endswith("@zaps.test")
 
 

@@ -251,7 +251,7 @@ M8 — Legacy Social Stack Removal
   4. Remove `NEXT_PUBLIC_NOSTR_ENABLED` (and any gating flags) from config, runtime code, and documentation.
   5. Update all affected CLIs/tests so `pnpm test` / `yarn test` succeed with the new UI.
 
-### Ticket M8-T002 — Delete Zap Ledger and Review Zap Weighting
+### Ticket M8-T002 — Delete Zap Ledger and Review Zap Weighting ✅ Done
 - **Milestone:** M8 — Legacy Social Stack Removal
 - **Summary:** Remove the zap ingestion pipeline and zap-weighted review scoring from the API and data model.
 - **Acceptance Criteria:**

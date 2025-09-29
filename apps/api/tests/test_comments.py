@@ -183,7 +183,6 @@ def test_create_comment_persists_and_returns_payload() -> None:
     assert body["author"]["user_id"] == user_id
     assert body["author"]["lightning_address"] is None
     assert body["is_verified_purchase"] is False
-    assert body["total_zap_msats"] == 0
 
     with session_scope() as session:
         stored = session.get(Comment, body["id"])
@@ -308,7 +307,6 @@ def test_create_comment_respects_workflow_dependency_override() -> None:
                 source=CommentSource.FIRST_PARTY,
                 author=author,
                 is_verified_purchase=False,
-                total_zap_msats=0,
             )
 
     overrides = client.app.dependency_overrides

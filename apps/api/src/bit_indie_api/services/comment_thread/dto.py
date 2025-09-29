@@ -41,7 +41,6 @@ class CommentDTO:
     source: CommentSource
     author: CommentAuthorDTO
     is_verified_purchase: bool
-    total_zap_msats: int
 
 
 class CommentDTOBuilder:
@@ -72,7 +71,6 @@ class CommentDTOBuilder:
             source=CommentSource.FIRST_PARTY,
             author=author,
             is_verified_purchase=is_verified_purchase,
-            total_zap_msats=0,
         )
 
     def build_release_note_reply(
@@ -97,7 +95,6 @@ class CommentDTOBuilder:
             source=CommentSource.NOSTR,
             author=author,
             is_verified_purchase=normalized_reply.is_verified_purchase,
-            total_zap_msats=0,
         )
 
 
