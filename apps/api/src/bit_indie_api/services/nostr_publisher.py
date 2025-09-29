@@ -404,7 +404,6 @@ class ReleaseNotePublisher:
         lnurl = self._settings.platform_lnurl
         if lnurl:
             tags.append(["lnurl", lnurl])
-            tags.append(["zap", lnurl])
         return tags
 
     def _compose_game_url(self, game: Game) -> str:

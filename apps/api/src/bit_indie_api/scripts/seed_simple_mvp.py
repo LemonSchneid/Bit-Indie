@@ -250,7 +250,6 @@ def seed() -> None:
                 body_md="The aerial arena design keeps every run tense. Each update has improved performance on my Steam Deck.",
                 rating=5,
                 helpful_score=4.6,
-                total_zap_msats=0,
                 is_verified_purchase=True,
                 created_at=now,
             )
@@ -264,7 +263,6 @@ def seed() -> None:
             )
             review.rating = 5
             review.helpful_score = 4.6
-            review.total_zap_msats = 0
             review.is_verified_purchase = True
             review.is_hidden = False
 
@@ -284,7 +282,6 @@ def seed() -> None:
                 ),
                 rating=4,
                 helpful_score=3.8,
-                total_zap_msats=0,
                 is_verified_purchase=True,
                 created_at=now,
             )
@@ -299,7 +296,6 @@ def seed() -> None:
             )
             lumen_review.rating = 4
             lumen_review.helpful_score = 3.8
-            lumen_review.total_zap_msats = 0
             lumen_review.is_verified_purchase = True
             lumen_review.is_hidden = False
 

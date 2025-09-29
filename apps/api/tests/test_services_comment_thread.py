@@ -17,15 +17,12 @@ from bit_indie_api.db.models import (
     Purchase,
     ReleaseNoteReply,
     User,
-    Zap,
-    ZapTargetType,
 )
 from bit_indie_api.services.comment_thread import (
     CommentDTO,
     CommentDTOBuilder,
     CommentSource,
     CommentThreadService,
-    CommentZapAggregator,
     NormalizedReleaseNoteReply,
     ReleaseNoteReplyCache,
     ReleaseNoteReplyLoader,
@@ -376,59 +373,6 @@ def test_comment_dto_builder_handles_sources() -> None:
     assert reply_dto.author.pubkey_hex == "b" * 64
     assert reply_dto.author.user_id is None
     assert reply_dto.is_verified_purchase is False
-
-
-def test_comment_zap_aggregator_applies_totals() -> None:
-    """Zap aggregator should attach Lightning totals to comment DTOs."""
-
-    _create_schema()
-    aggregator = CommentZapAggregator()
-    now = datetime.now(timezone.utc)
-
-    with session_scope() as session:
-        _, developer = _create_developer(session)
-        game = _create_game(session, developer)
-        commenter = User(pubkey_hex=f"commenter-{uuid.uuid4().hex}")
-        session.add(commenter)
-        session.flush()
-        comment = _create_comment(
-            session,
-            game_id=game.id,
-            user_id=commenter.id,
-            body_md="Zap me!",
-            created_at=now,
-        )
-        zap = Zap(
-            target_type=ZapTargetType.COMMENT,
-            target_id=comment.id,
-            from_pubkey="c" * 64,
-            to_pubkey="d" * 64,
-            amount_msats=1234,
-            event_id="zap-event",
-            received_at=now,
-        )
-        session.add(zap)
-        session.flush()
-
-        dto = CommentDTO(
-            id=comment.id,
-            game_id=game.id,
-            body_md=comment.body_md,
-            created_at=comment.created_at,
-            source=CommentSource.FIRST_PARTY,
-            author=CommentDTOBuilder().build_first_party_comment(
-                comment=comment,
-                user=commenter,
-                is_verified_purchase=False,
-            ).author,
-            is_verified_purchase=False,
-            total_zap_msats=0,
-        )
-        enriched = aggregator.attach_totals(session=session, comments=[dto])
-
-    assert enriched[0].total_zap_msats == 1234
-
-
 def test_comment_thread_service_merges_sources() -> None:
     """Integration test ensuring the service composes collaborators correctly."""
 
@@ -469,17 +413,6 @@ def test_comment_thread_service_merges_sources() -> None:
         )
         developer_user.lightning_address = "pilot@ln.example.com"
         session.flush()
-        zap = Zap(
-            target_type=ZapTargetType.COMMENT,
-            target_id=comment.id,
-            from_pubkey="f" * 64,
-            to_pubkey="g" * 64,
-            amount_msats=2000,
-            event_id="zap-1",
-            received_at=nostr_time,
-        )
-        session.add(zap)
-        session.flush()
         game_id = game.id
         comment_id = comment.id
         commenter_id = commenter.id
@@ -490,7 +423,6 @@ def test_comment_thread_service_merges_sources() -> None:
         results = service.list_for_game(session=session, game=game_db)
 
     assert [dto.source for dto in results] == [CommentSource.FIRST_PARTY, CommentSource.NOSTR]
-    assert results[0].total_zap_msats == 2000
     assert results[1].author.npub is not None
     assert results[1].is_verified_purchase is False
 
@@ -500,4 +432,3 @@ def test_comment_thread_service_merges_sources() -> None:
         serialized = service.serialize_comment(session=session, comment=comment_db)
 
     assert serialized.author.user_id == commenter_id
-    assert serialized.total_zap_msats == 0

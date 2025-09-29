@@ -51,8 +51,6 @@ class CommentRead(BaseModel):
     source: CommentSource
     author: CommentAuthor
     is_verified_purchase: bool
-    total_zap_msats: int
-
     model_config = ConfigDict(from_attributes=True)
 
 
