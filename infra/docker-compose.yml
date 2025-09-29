@@ -59,7 +59,6 @@ services:
     environment:
       API_URL: http://api:8080
       NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_NOSTR_ENABLED: "false"
       NEXT_TELEMETRY_DISABLED: "1"
     command: sh -c "corepack enable && pnpm --dir /app install && pnpm --dir /app dev"
     volumes:
@@ -77,11 +76,9 @@ services:
       context: ../apps/web
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8080
-        NEXT_PUBLIC_NOSTR_ENABLED: "false"
     environment:
       API_URL: http://api:8080
       NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_NOSTR_ENABLED: "false"
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
       - "3000:3000"

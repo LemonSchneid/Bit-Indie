@@ -182,7 +182,7 @@ export function resolveLightningPayEndpoint(config: LightningDestinationConfig):
     return buildLightningAddressUrl(config.lightningAddress);
   }
 
-  throw new Error("A lightning address or LNURL is required to send a zap.");
+  throw new Error("A lightning address or LNURL is required to send a payment.");
 }
 
 export async function fetchLnurlPayParams(payEndpoint: string): Promise<LnurlPayParams> {
@@ -226,13 +226,6 @@ export async function fetchLnurlPayParams(payEndpoint: string): Promise<LnurlPay
   };
 }
 
-export function clampZapAmount(sats: number, params: LnurlPayParams): number {
-  const minSats = Math.ceil(params.minSendable / 1000);
-  const maxSats = Math.floor(params.maxSendable / 1000);
-  const bounded = Math.min(Math.max(sats, minSats), maxSats);
-  return Number.isFinite(bounded) ? bounded : sats;
-}
-
 export async function requestLnurlInvoice(
   params: LnurlPayParams,
   amountSats: number,
@@ -240,7 +233,7 @@ export async function requestLnurlInvoice(
 ): Promise<LnurlInvoiceResponse> {
   const msats = Math.floor(amountSats * 1000);
   if (!Number.isFinite(msats) || msats <= 0) {
-    throw new Error("Zap amount must be a positive number of sats.");
+    throw new Error("Payment amount must be a positive number of sats.");
   }
 
   const url = new URL(params.callback);

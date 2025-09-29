@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  clampZapAmount,
-  fetchLnurlPayParams,
-  requestLnurlInvoice,
-  resolveLightningPayEndpoint,
-} from "./lightning";
+import { fetchLnurlPayParams, requestLnurlInvoice, resolveLightningPayEndpoint } from "./lightning";
 
 const BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const BECH32_GENERATOR = [
@@ -131,27 +126,6 @@ test("resolveLightningPayEndpoint", async (t) => {
   });
 });
 
-test("clampZapAmount", async (t) => {
-  const params = {
-    callback: "https://example.com/callback",
-    minSendable: 1_000,
-    maxSendable: 200_000,
-    metadata: "[]",
-  };
-
-  await t.test("returns the requested amount when within bounds", () => {
-    assert.equal(clampZapAmount(150, params), 150);
-  });
-
-  await t.test("raises the amount to the minimum when below bounds", () => {
-    assert.equal(clampZapAmount(0, params), 1);
-  });
-
-  await t.test("caps the amount at the maximum when above bounds", () => {
-    assert.equal(clampZapAmount(5000, params), 200);
-  });
-});
-
 async function withMockedFetch<T>(implementation: typeof fetch, action: () => Promise<T>): Promise<T> {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = implementation as typeof fetch;
@@ -201,7 +175,7 @@ test("LNURL requests", async (t) => {
       JSON.stringify({
         tag: "payRequest",
         status: "ERROR",
-        reason: "No zaps allowed",
+        reason: "Payments disabled",
         callback: "https://example.com/callback",
         minSendable: 1_000,
         maxSendable: 200_000,
@@ -212,7 +186,7 @@ test("LNURL requests", async (t) => {
 
     await assert.rejects(
       withMockedFetch(async () => response, () => fetchLnurlPayParams("https://example.com/lnurl")),
-      /No zaps allowed/,
+      /Payments disabled/,
     );
   });
 
@@ -273,7 +247,7 @@ test("LNURL requests", async (t) => {
     assert.equal(parsedUrl.searchParams.get("comment"), "Thank you!");
   });
 
-  await t.test("rejects invalid zap amounts before calling the callback", async () => {
+  await t.test("rejects invalid payment amounts before calling the callback", async () => {
     const params = {
       callback: "https://example.com/callback",
       minSendable: 1_000,

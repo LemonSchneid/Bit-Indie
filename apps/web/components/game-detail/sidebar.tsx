@@ -1,5 +1,4 @@
 import { GamePurchaseFlow } from "../game-purchase-flow";
-import { ZapButton } from "../zap-button";
 
 type GameDetailSidebarProps = {
   hasPaidPrice: boolean;
@@ -52,13 +51,10 @@ export function GameDetailSidebar({
       )}
 
       <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Tip the developer</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Support the developer</h2>
         <p className="mt-3 text-sm text-slate-300">
-          Lightning zaps go straight to the creator&apos;s wallet. Say thanks for the latest build or boost morale for the next update.
+          Share playtest notes or spread the word about {gameTitle} to help the team finish their next milestone. Lightning tips will return once direct creator tipping launches.
         </p>
-        <div className="mt-4">
-          <ZapButton recipientLabel={`${gameTitle} developer`} comment={`Zap for ${gameTitle}`} />
-        </div>
       </div>
 
       <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300 shadow-lg shadow-emerald-500/10">

@@ -241,7 +241,7 @@ M8 — Legacy Social Stack Removal
 
 ---
 
-### Ticket M8-T001 — Retire Legacy Social Features on the Web App
+### Ticket M8-T001 — Retire Legacy Social Features on the Web App ✅ Done
 - **Milestone:** M8 — Legacy Social Stack Removal
 - **Summary:** Remove all zap- and Nostr-driven UI flows so the web app no longer depends on the deprecated social stack.
 - **Acceptance Criteria:**

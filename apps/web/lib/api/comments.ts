@@ -18,7 +18,6 @@ export interface GameComment {
   source: CommentSource;
   author: GameCommentAuthor;
   is_verified_purchase: boolean;
-  total_zap_msats: number;
 }
 
 export async function getGameComments(gameId: string): Promise<GameComment[]> {
