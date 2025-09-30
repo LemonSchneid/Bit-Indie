@@ -2,26 +2,47 @@ import NeonLanding from "../components/landing/neon-landing";
 import { getFeaturedGames, listCatalogGames } from "../lib/api";
 import type { FeaturedGameSummary, GameDraft } from "../lib/api/games";
 
-async function safeLoadCatalog(): Promise<GameDraft[]> {
+type CatalogLoadResult = {
+  games: GameDraft[];
+  failed: boolean;
+};
+
+type FeaturedLoadResult = {
+  summaries: FeaturedGameSummary[];
+  failed: boolean;
+};
+
+async function loadCatalog(): Promise<CatalogLoadResult> {
   try {
-    return await listCatalogGames();
+    const games = await listCatalogGames();
+    return { games, failed: false };
   } catch (error) {
     console.error("Failed to load catalog games", error);
-    return [];
+    return { games: [], failed: true };
   }
 }
 
-async function safeLoadFeatured(): Promise<FeaturedGameSummary[]> {
+async function loadFeatured(): Promise<FeaturedLoadResult> {
   try {
-    return await getFeaturedGames(6);
+    const summaries = await getFeaturedGames(6);
+    return { summaries, failed: false };
   } catch (error) {
     console.error("Failed to load featured games", error);
-    return [];
+    return { summaries: [], failed: true };
   }
 }
 
 export default async function HomePage(): Promise<JSX.Element> {
-  const [catalogGames, featuredSummaries] = await Promise.all([safeLoadCatalog(), safeLoadFeatured()]);
+  const [{ games: catalogGames, failed: catalogFailed }, { summaries: featuredSummaries, failed: featuredFailed }] =
+    await Promise.all([loadCatalog(), loadFeatured()]);
 
-  return <NeonLanding catalogGames={catalogGames} featuredSummaries={featuredSummaries} />;
+  const hadLoadFailure = catalogFailed || featuredFailed;
+
+  return (
+    <NeonLanding
+      catalogGames={catalogGames}
+      featuredSummaries={featuredSummaries}
+      hadLoadFailure={hadLoadFailure}
+    />
+  );
 }
