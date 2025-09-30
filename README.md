@@ -10,15 +10,15 @@ Bit Indie is a **Bitcoin‑native indie game store**. For the MVP we focus on:
 - First‑party comments and verified‑purchase reviews.
 - A small admin to keep spam down.
 
-Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off for launch and will return post‑MVP.
+Legacy social integrations have been removed so the MVP ships with a purely first‑party experience.
 
 ---
 
 ## 2. Developers
 
 - Create listings, upload builds, and set a Lightning Address to receive payments.
-- No relay publishing at launch; all data is first‑party in our DB.
-- Revenue: game sales (minus platform cut). Nostr zaps are planned post‑MVP.
+- All data is first‑party in our database with no external service dependencies.
+- Revenue: game sales (minus platform cut).
 
 ---
 
@@ -26,13 +26,13 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 - Guest checkout without creating an account; pay with any Lightning wallet.
 - First‑party comments and reviews; verified badge if you purchased the game.
-- Zaps and Nostr identity are planned features after MVP.
+- Lightning identity and optional accounts will arrive after the MVP.
 
 ---
 
 ## 4. Bit Indie (the Platform)
 
-- First‑party API and DB at launch; no public relay dependency.
+- First‑party API and database power the entire experience.
 - Revenue: sales cut; platform tips via LNURL (optional UI).
 
 ---
@@ -40,7 +40,7 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 ## 5. Content Flow (MVP)
 
 - Game Listings → stored in first‑party DB only.
-- Reviews/Comments → first‑party only; no relay sync.
+- Reviews/Comments → first‑party only with built-in anti-spam checks.
 - Payments → Lightning invoices to developer Lightning Addresses.
 - Optional future: refundable deposits for anti‑spam.
 
@@ -59,9 +59,9 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
   * Comment → free, stored first‑party.
   * Tip/Purchase → LNURL/Lightning Address.
 
-- Reviews → sorted by helpful_score (no zap weighting in MVP).
+- Reviews → sorted by helpful_score computed from first-party interactions.
 
-- Dev Profiles → show games, sales/tips summary; Nostr badges later.
+- Dev Profiles → show games plus Lightning payout details.
 
 ---
 
@@ -75,8 +75,8 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 ## 8. Why It’s Unique
 
-* **Bitcoin-native economy** → sats for sales + zaps.
-* **Nostr‑ready** → architecture keeps Nostr integrations behind flags, ready to switch on after MVP.
+* **Bitcoin-native economy** → sats for sales and in-house rewards.
+* **Focused surface area** → reduced scope keeps the MVP fast and maintainable.
 
 ---
 
@@ -93,8 +93,8 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 ## 10. Future Upgrades
 
-- Re‑enable Nostr: sign‑in (NIP‑07), relay publishing, reply ingestion, zap receipts.
-- Zap‑weighted reputation for reviews.
+- Lightning-native accounts and richer social features.
+- Expanded reputation systems for reviews.
 - Refundable deposit system for spam filtering.
 - Native mobile client.
 
@@ -102,7 +102,7 @@ Nostr integrations (sign‑in, relay publishing, zap receipts) are turned off fo
 
 ## ✅ Summary
 
-Bit Indie = a Lightning‑first indie game marketplace. Nostr integrations are preserved in code behind feature flags and will be re‑enabled after MVP.
+Bit Indie = a Lightning‑first indie game marketplace. Legacy social integrations have been removed so the MVP stays lean and reliable.
 
 ---
 
@@ -126,7 +126,6 @@ and MinIO on `localhost:9000` (console at `:9001`).
 
 MVP feature flags:
 
-- API: Nostr routes have been removed for the MVP; no additional flags are required.
 - The catalog pulls real data from the FastAPI backend; run the Docker seed script to explore the full storefront.
 
 ### Full-stack dev loop

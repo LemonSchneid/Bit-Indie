@@ -529,8 +529,8 @@ function AccountAccessWidget() {
       <MicroLabel>Accounts & guest access</MicroLabel>
       <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">Guest checkout first</h3>
       <p className="mt-2 text-sm text-emerald-200/80">
-        Lightning checkout works without an account today. Sign-in will return soon with first-party credentials that don&apos;t
-        rely on legacy relays.
+        Lightning checkout works without an account today. Sign-in will return soon with first-party credentials that stay on
+        our own infrastructure.
       </p>
       <ul className="mt-5 space-y-4 text-sm text-slate-200">
         {SIGN_IN_OPTIONS.map((benefit) => (

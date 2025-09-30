@@ -1,6 +1,6 @@
 # Bit Indie API
 
-This directory houses the FastAPI service for the Bit Indie marketplace. For the Simple‑MVP, Nostr features are disabled and the API focuses on purchases, comments, reviews, and admin.
+This directory houses the FastAPI service for the Bit Indie marketplace. For the Simple‑MVP, the API focuses on purchases, comments, reviews, and admin.
 
 ## Local development
 
@@ -32,4 +32,4 @@ Alternatively, set the `PG_*` environment variables shown in `.env.example` befo
 
 ## Scaling considerations
 
-In MVP, comments and reviews are first‑party only (no relay ingestion). When adding Nostr back post‑MVP, replace any in‑memory caches with a shared cache (Redis) so moderation and publish actions invalidate all workers consistently.
+In MVP, comments and reviews are first‑party only. When expanding social features post‑MVP, plan for a shared cache (Redis) so moderation and publish actions invalidate all workers consistently.

@@ -59,7 +59,7 @@ def _seed_game(*, active: bool = True) -> str:
     with session_scope() as session:
         developer_user = User(
             account_identifier=f"dev-{uuid.uuid4().hex}",
-            lightning_address=f"dev{uuid.uuid4().hex[:8]}@zaps.test",
+            lightning_address=f"dev{uuid.uuid4().hex[:8]}@lightning.test",
         )
         session.add(developer_user)
         session.flush()
@@ -88,7 +88,7 @@ def _create_user(*, reputation_score: int = 0) -> str:
     with session_scope() as session:
         user = User(
             account_identifier=f"user-{uuid.uuid4().hex}",
-            lightning_address=f"player{uuid.uuid4().hex[:8]}@zaps.test",
+            lightning_address=f"player{uuid.uuid4().hex[:8]}@lightning.test",
             reputation_score=reputation_score,
         )
         session.add(user)
@@ -251,7 +251,7 @@ def test_create_review_allows_rating_with_verified_purchase() -> None:
     assert body["helpful_score"] > 0
     assert body["author"]["id"] == user_id
     assert body["author"]["account_identifier"].startswith("user-")
-    assert body["author"]["lightning_address"].endswith("@zaps.test")
+    assert body["author"]["lightning_address"].endswith("@lightning.test")
     assert body["author"]["display_name"] is None
 
     with session_scope() as session:
@@ -351,7 +351,7 @@ def test_create_review_without_purchase_sets_flag_false() -> None:
     assert body["is_verified_purchase"] is False
     assert body["helpful_score"] > 0
     assert body["author"]["id"] == user_id
-    assert body["author"]["lightning_address"].endswith("@zaps.test")
+    assert body["author"]["lightning_address"].endswith("@lightning.test")
 
 
 def test_list_reviews_orders_by_helpful_score() -> None:
@@ -402,7 +402,7 @@ def test_list_reviews_orders_by_helpful_score() -> None:
     assert [item["body_md"] for item in body] == ["Solid patch", "Needs work"]
     assert body[0]["helpful_score"] > body[1]["helpful_score"]
     assert body[0]["created_at"] < body[1]["created_at"]
-    assert body[0]["author"]["lightning_address"].endswith("@zaps.test")
+    assert body[0]["author"]["lightning_address"].endswith("@lightning.test")
 
 
 def test_list_reviews_excludes_hidden_entries() -> None:

@@ -190,10 +190,10 @@ class PaymentService:
         return PayoutResult(payout_id=payout_id, status=status_value, amount_msats=amount_msats)
 
     @property
-    def platform_wallet_address(self) -> str:
-        """Return the configured platform Lightning address."""
+    def treasury_wallet_address(self) -> str:
+        """Return the configured treasury Lightning address."""
 
-        return self._settings.platform_wallet_address
+        return self._settings.treasury_wallet_address
 
     def _build_headers(self) -> dict[str, str]:
         """Return headers required for authenticated OpenNode requests."""
