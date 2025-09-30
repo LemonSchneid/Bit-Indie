@@ -101,7 +101,7 @@ S3_SECRET_KEY=...
 LN_PROVIDER=opennode
 OPENNODE_API_BASE_URL=https://api.opennode.com
 OPENNODE_API_KEY=...
-OPENNODE_PLATFORM_WALLET=...
+OPENNODE_TREASURY_WALLET=...
 OPENNODE_WEBHOOK_SECRET=
 
 # URLs
@@ -278,7 +278,7 @@ M8 — Legacy Social Stack Removal
   3. Update session/token helpers and any remaining services to work with the revised user model (or disable unused flows), ensuring all API tests pass.
   4. Remove `NOSTR_ENABLED` and related feature-switch logic from services (e.g., comment workflow) so the API no longer branches on legacy flags.
 
-### Ticket M8-T005 — Configuration and Documentation Cleanup
+### Ticket M8-T005 — Configuration and Documentation Cleanup ✅ Done
 - **Milestone:** M8 — Legacy Social Stack Removal
 - **Summary:** Finish removing the last traces of the legacy social stack from configuration, tooling, and docs.
 - **Acceptance Criteria:**

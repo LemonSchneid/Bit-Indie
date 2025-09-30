@@ -288,7 +288,7 @@ class PurchaseWorkflowService:
             developer_share = amount_msats - platform_share
 
         developer_address = game.developer_lightning_address
-        platform_address = self.payments.platform_wallet_address
+        treasury_address = self.payments.treasury_wallet_address
 
         if purchase.developer_payout_status is not PayoutStatus.COMPLETED:
             self._execute_payout(
@@ -305,7 +305,7 @@ class PurchaseWorkflowService:
             self._execute_payout(
                 purchase=purchase,
                 recipient="platform",
-                address=platform_address,
+                address=treasury_address,
                 amount_msats=platform_share,
                 status_attr="platform_payout_status",
                 reference_attr="platform_payout_reference",

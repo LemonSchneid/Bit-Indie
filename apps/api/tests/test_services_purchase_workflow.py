@@ -40,7 +40,7 @@ class _StubPaymentService:
     def __init__(self) -> None:
         self.status_responses: dict[str, ProviderInvoiceStatus] = {}
         self.payout_requests: list[tuple[str, int]] = []
-        self.platform_wallet_address = "platform@ln.example.com"
+        self.treasury_wallet_address = "platform@ln.example.com"
 
     def get_invoice_status(self, *, invoice_id: str) -> ProviderInvoiceStatus:
         try:

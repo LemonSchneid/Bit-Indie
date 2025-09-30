@@ -267,7 +267,7 @@ class OpenNodeSettings:
 
     api_base_url: str
     api_key: str
-    platform_wallet_address: str
+    treasury_wallet_address: str
     callback_secret: str | None
 
 
@@ -296,14 +296,14 @@ def get_payment_settings() -> PaymentSettings:
 
     api_url = os.getenv("OPENNODE_API_BASE_URL", "https://api.opennode.com")
     api_key = os.getenv("OPENNODE_API_KEY")
-    platform_wallet = os.getenv("OPENNODE_PLATFORM_WALLET")
+    treasury_wallet = os.getenv("OPENNODE_TREASURY_WALLET")
     callback_secret = os.getenv("OPENNODE_WEBHOOK_SECRET")
 
     missing = [
         name
         for name, value in (
             ("OPENNODE_API_KEY", api_key),
-            ("OPENNODE_PLATFORM_WALLET", platform_wallet),
+            ("OPENNODE_TREASURY_WALLET", treasury_wallet),
         )
         if not (value and value.strip())
     ]
@@ -315,7 +315,7 @@ def get_payment_settings() -> PaymentSettings:
     settings = OpenNodeSettings(
         api_base_url=_normalize_base_url(api_url.strip()),
         api_key=api_key.strip(),
-        platform_wallet_address=platform_wallet.strip(),
+        treasury_wallet_address=treasury_wallet.strip(),
         callback_secret=callback_secret.strip() if callback_secret and callback_secret.strip() else None,
     )
     return PaymentSettings(provider=provider, opennode=settings)
