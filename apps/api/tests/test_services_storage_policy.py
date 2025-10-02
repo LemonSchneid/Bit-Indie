@@ -1,5 +1,6 @@
 import pytest
 
+from bit_indie_api.services.constants import ALLOWED_BUILD_ARCHIVE_EXTENSIONS
 from bit_indie_api.services.storage import GameAssetKind
 from bit_indie_api.services.storage_policy import (
     AssetUploadValidationError,
@@ -51,6 +52,16 @@ def test_validator_enforces_file_size_limit() -> None:
             content_type="application/zip",
             file_size=4096,
         )
+
+
+def test_build_policy_uses_shared_extensions() -> None:
+    """Build validation should rely on the shared build archive extensions constant."""
+
+    validator = GameAssetUploadValidator(build_size_limit=10 * 1024 * 1024)
+
+    policy = validator._policy_for(GameAssetKind.BUILD)
+
+    assert policy.allowed_extensions == ALLOWED_BUILD_ARCHIVE_EXTENSIONS
 
 
 def test_validator_normalizes_content_type() -> None:

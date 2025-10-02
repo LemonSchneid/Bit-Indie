@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Iterable
 
 from bit_indie_api.core.config import get_settings
+from bit_indie_api.services.constants import ALLOWED_BUILD_ARCHIVE_EXTENSIONS
 from bit_indie_api.services.storage import GameAssetKind
 
 
@@ -41,12 +42,7 @@ class GameAssetUploadValidator:
         "image/webp",
         "image/svg+xml",
     )
-    _BUILD_EXTENSIONS: tuple[str, ...] = (
-        ".zip",
-        ".tar.gz",
-        ".tar.xz",
-        ".tar.bz2",
-    )
+    _BUILD_EXTENSIONS: tuple[str, ...] = ALLOWED_BUILD_ARCHIVE_EXTENSIONS
     _BUILD_CONTENT_TYPES: tuple[str, ...] = (
         "application/zip",
         "application/x-zip-compressed",
