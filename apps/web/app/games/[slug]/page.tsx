@@ -5,6 +5,7 @@ import { GameDetailHero } from "../../../components/game-detail/hero";
 import { GameCommentsSection } from "../../../components/game-detail/comments-section";
 import { GameDetailSidebar } from "../../../components/game-detail/sidebar";
 import { GameReviewsSection } from "../../../components/game-detail/reviews-section";
+import { MatteShell } from "../../../components/layout/matte-shell";
 import {
   getGameBySlug,
   getGameComments,
@@ -77,49 +78,34 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
-      <div className="absolute inset-y-0 right-0 -z-20 w-full max-w-4xl bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
-      <div className="absolute inset-x-0 bottom-0 -z-20 h-72 bg-[radial-gradient(circle_at_bottom,_rgba(14,165,233,0.18),_transparent_65%)]" />
-      <div className="absolute left-1/2 top-24 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+    <MatteShell>
+      <GameDetailHero
+        title={game.title}
+        summary={game.summary}
+        statusLabel={statusLabel}
+        categoryLabel={categoryLabel}
+        coverUrl={game.cover_url}
+        priceLabel={priceLabel}
+        updatedLabel={updatedLabel}
+      />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-16">
-        <GameDetailHero
-          title={game.title}
-          summary={game.summary}
-          statusLabel={statusLabel}
-          categoryLabel={categoryLabel}
-          coverUrl={game.cover_url}
+      <section className="grid gap-8 lg:grid-cols-[3fr_2fr]">
+        <GameDetailDescription description={game.description_md} />
+        <GameDetailSidebar
+          hasPaidPrice={hasPaidPrice}
+          checkoutAvailable={checkoutAvailable}
           priceLabel={priceLabel}
-          updatedLabel={updatedLabel}
-        />
-
-        <section className="grid gap-8 lg:grid-cols-[3fr_2fr]">
-          <GameDetailDescription description={game.description_md} />
-          <GameDetailSidebar
-            hasPaidPrice={hasPaidPrice}
-            checkoutAvailable={checkoutAvailable}
-            priceLabel={priceLabel}
-            buildAvailable={buildAvailable}
-            gameId={game.id}
-            gameTitle={game.title}
-            priceMsats={game.price_msats}
-            developerLightningAddress={game.developer_lightning_address}
-          />
-        </section>
-
-        <GameCommentsSection
+          buildAvailable={buildAvailable}
+          gameId={game.id}
           gameTitle={game.title}
-          comments={comments}
-          commentsError={commentsError}
+          priceMsats={game.price_msats}
+          developerLightningAddress={game.developer_lightning_address}
         />
+      </section>
 
-        <GameReviewsSection
-          gameTitle={game.title}
-          reviews={reviews}
-          reviewsError={reviewsError}
-        />
-      </div>
-    </main>
+      <GameCommentsSection gameTitle={game.title} comments={comments} commentsError={commentsError} />
+
+      <GameReviewsSection gameTitle={game.title} reviews={reviews} reviewsError={reviewsError} />
+    </MatteShell>
   );
 }

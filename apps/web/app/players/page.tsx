@@ -1,11 +1,9 @@
 import Link from "next/link";
 
-const gradientBackdrop =
-  "absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_55%)]";
-const gradientAccent =
-  "absolute inset-y-0 left-0 -z-10 w-full max-w-3xl bg-[radial-gradient(circle_at_left,_rgba(59,130,246,0.12),_transparent_60%)]";
+import { MatteShell } from "../../components/layout/matte-shell";
+
 const cardClasses =
-  "relative overflow-hidden rounded-3xl border border-emerald-500/15 bg-slate-950/60 p-6 shadow-[0_0_35px_rgba(16,185,129,0.18)] backdrop-blur-xl before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-emerald-500/15 before:opacity-60";
+  "relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-white/5 p-6 text-[#e8f9f1] shadow-[0_0_35px_rgba(123,255,200,0.08)] backdrop-blur-xl before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-emerald-500/20 before:opacity-60";
 
 const highlights = [
   {
@@ -42,79 +40,75 @@ const faqs = [
 
 export default function PlayersPage(): JSX.Element {
   return (
-    <main className="relative overflow-hidden bg-slate-950 text-slate-100">
-      <div className={gradientBackdrop} />
-      <div className={gradientAccent} />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-16">
-        <header className="max-w-4xl space-y-4">
-          <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Info for Players</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-            Discover, purchase, and download Lightning-powered indie worlds.
-          </h1>
-          <p className="text-base text-slate-300">
-            Bit Indie keeps the player journey fast and transparent. Learn how purchases work, what verified reviews mean, and where to go for help.
-          </p>
-        </header>
+    <MatteShell>
+      <header className="max-w-4xl space-y-4">
+        <p className="text-sm uppercase tracking-[0.35em] text-[#7bffc8]/80">Info for Players</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          Discover, purchase, and download Lightning-powered indie worlds.
+        </h1>
+        <p className="text-base text-[#b8ffe5]/70">
+          Bit Indie keeps the player journey fast and transparent. Learn how purchases work, what verified reviews mean, and where to go for help.
+        </p>
+      </header>
 
-        <section className="grid gap-6 md:grid-cols-3">
-          {highlights.map((highlight) => (
-            <div className={cardClasses} key={highlight.title}>
-              <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">{highlight.title}</p>
-                <p className="text-sm text-slate-200">{highlight.body}</p>
+      <section className="grid gap-6 md:grid-cols-3">
+        {highlights.map((highlight) => (
+          <div className={cardClasses} key={highlight.title}>
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-[#7bffc8]/70">{highlight.title}</p>
+              <p className="text-sm text-[#dcfff2]/80">{highlight.body}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className={cardClasses}>
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-white">Frequently asked questions</h2>
+          <dl className="space-y-5 text-sm text-[#dcfff2]/80">
+            {faqs.map((faq) => (
+              <div key={faq.question}>
+                <dt className="text-xs font-semibold uppercase tracking-[0.35em] text-[#7bffc8]/70">{faq.question}</dt>
+                <dd className="mt-2 text-sm text-[#f3fff9]/80">{faq.answer}</dd>
               </div>
-            </div>
-          ))}
-        </section>
+            ))}
+          </dl>
+        </div>
+      </section>
 
-        <section className={cardClasses}>
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-white">Frequently asked questions</h2>
-            <dl className="space-y-5 text-sm text-slate-300">
-              {faqs.map((faq) => (
-                <div key={faq.question}>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-200/70">{faq.question}</dt>
-                  <dd className="mt-2 text-sm text-slate-200">{faq.answer}</dd>
-                </div>
-              ))}
-            </dl>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className={cardClasses}>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-white">Dive into the catalog</h2>
+            <p className="text-sm text-[#dcfff2]/80">
+              Ready to find your next favorite? Explore featured builds, read verified reviews, and support developers directly with Lightning.
+            </p>
+            <Link
+              href="/games"
+              className="inline-flex items-center justify-center rounded-full border border-[#7bffc8]/70 bg-[#7bffc8]/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#f3fff9] shadow-[0_0_24px_rgba(123,255,200,0.25)] transition hover:border-[#7bffc8] hover:text-white"
+            >
+              Browse the catalog
+            </Link>
           </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className={cardClasses}>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">Dive into the catalog</h2>
-              <p className="text-sm text-slate-300">
-                Ready to find your next favorite? Explore featured builds, read verified reviews, and support developers directly with Lightning.
-              </p>
-              <Link
-                href="/games"
-                className="inline-flex items-center justify-center rounded-full border border-emerald-400/70 bg-emerald-500/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)] transition hover:border-emerald-300 hover:text-emerald-50"
-              >
-                Browse the catalog
-              </Link>
-            </div>
+        </div>
+        <div className={cardClasses}>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-white">Need live help?</h2>
+            <p className="text-sm text-[#dcfff2]/80">
+              The Bit Indie crew is available during demo hours. Hop into chat for invoice troubleshooting, download resets, or feedback suggestions.
+            </p>
+            <Link
+              href="/chat"
+              className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-white transition hover:border-[#7bffc8]/70 hover:text-[#e8f9f1]"
+            >
+              Open chat support
+            </Link>
+            <p className="text-xs text-[#b8ffe5]/60">
+              Prefer async? Email <a href="mailto:support@bitindie.dev" className="text-[#7bffc8] hover:text-white">support@bitindie.dev</a> and we will follow up within a day.
+            </p>
           </div>
-          <div className={cardClasses}>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">Need live help?</h2>
-              <p className="text-sm text-slate-300">
-                The Bit Indie crew is available during demo hours. Hop into chat for invoice troubleshooting, download resets, or feedback suggestions.
-              </p>
-              <Link
-                href="/chat"
-                className="inline-flex items-center justify-center rounded-full border border-slate-600/70 bg-slate-900/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200 transition hover:border-emerald-300 hover:text-emerald-50"
-              >
-                Open chat support
-              </Link>
-              <p className="text-xs text-slate-400">
-                Prefer async? Email <a href="mailto:support@bitindie.dev" className="text-emerald-200 hover:text-emerald-100">support@bitindie.dev</a> and we will follow up within a day.
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
+      </section>
+    </MatteShell>
   );
 }

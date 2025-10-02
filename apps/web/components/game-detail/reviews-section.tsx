@@ -16,15 +16,15 @@ export function GameReviewsSection({
   reviewsError,
 }: GameReviewsSectionProps): JSX.Element {
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-lg shadow-emerald-500/10">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_60%)]" />
-      <div className="absolute -left-24 bottom-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(59,130,246,0.15),_transparent_70%)]" />
+    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_0_55px_rgba(123,255,200,0.08)]">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(123,255,200,0.16),_transparent_60%)]" />
+      <div className="absolute -left-24 bottom-0 -z-10 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(255,107,138,0.18),_transparent_70%)]" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Community reviews</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#7bffc8]/70">Community reviews</h2>
           <p className="mt-2 text-xl font-semibold text-white">Player feedback from verified buyers</p>
         </div>
-        <p className="text-sm text-slate-400 sm:max-w-sm sm:text-right">
+        <p className="text-sm text-[#dcfff2]/75 sm:max-w-sm sm:text-right">
           Verified purchase badges confirm the reviewer bought the game. Highlight thoughtful notes to help other players decide if the build is right for them.
         </p>
       </div>
@@ -32,7 +32,7 @@ export function GameReviewsSection({
       {reviewsError ? (
         <p className="mt-6 rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-100">{reviewsError}</p>
       ) : reviews.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-sm text-slate-300">
+        <p className="mt-6 rounded-2xl border border-white/10 bg-[#080808]/80 p-6 text-sm text-[#dcfff2]/75">
           No reviews yet for {gameTitle}. Share the download link to gather the first wave of community impressions.
         </p>
       ) : (
@@ -43,16 +43,13 @@ export function GameReviewsSection({
             const displayParagraphs = paragraphs.length > 0 ? paragraphs : trimmedBody ? [trimmedBody] : [];
 
             return (
-              <article
-                key={review.id}
-                className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-lg shadow-emerald-500/10"
-              >
+              <article key={review.id} className="rounded-2xl border border-white/10 bg-[#060606]/90 p-6 shadow-[0_0_35px_rgba(123,255,200,0.07)]">
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-3">
                     {review.title ? (
                       <h3 className="text-lg font-semibold text-white">{review.title}</h3>
                     ) : null}
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-[#b8ffe5]/80">
                       {review.rating != null ? (
                         <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-amber-100">
                           <span aria-hidden className="text-base leading-none text-amber-300">★</span>
@@ -60,11 +57,11 @@ export function GameReviewsSection({
                           <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/80">Rating</span>
                         </span>
                       ) : (
-                        <span className="rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#7bffc8]/70">
                           Comment only
                         </span>
                       )}
-                      <time dateTime={review.created_at} className="text-slate-400">
+                      <time dateTime={review.created_at} className="text-[#b8ffe5]/70">
                         {formatDateLabel(review.created_at, { fallback: "Recently posted" })}
                       </time>
                     </div>
@@ -80,7 +77,7 @@ export function GameReviewsSection({
                     ) : null}
                   </div>
                 </header>
-                <div className="mt-4 space-y-3 text-base leading-7 text-slate-200">
+                <div className="mt-4 space-y-3 text-base leading-7 text-[#f3fff9]/85">
                   {displayParagraphs.map((paragraph, index) => (
                     <p key={`${review.id}-paragraph-${index}`}>{paragraph}</p>
                   ))}
