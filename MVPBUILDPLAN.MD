@@ -132,8 +132,24 @@ Indexes: `users(account_identifier)`, `games(status, category)`, `purchases(user
 
 **********Tickets******
 
-M6 — Telemetry & Docs
-- Ship health endpoints alongside structured logging/tracing, and refresh README/runbooks to reflect the Lightning-first architecture and removal of the legacy social stack.
+M1 — Core Lightning Purchase Flow
+- Implement guest checkout flow that issues Lightning invoices for purchases.
+- Allow players to restore receipts post-payment so they can re-download purchases.
+
+M2 — First-Party Social Surface
+- Build comments and reviews with verified-purchase indicators for buyer feedback.
+
+M3 — Developer Controls
+- Provide creator settings to manage Lightning payout addresses, upload builds, and edit listings.
+
+M4 — Moderation Tools
+- Deliver a lightweight admin experience with basic rate limiting to mitigate spam.
+
+M5 — Download Fulfillment
+- Wire up secure distribution of purchased builds via presigned storage URLs.
+
+M6 — Operational Readiness
+- Round out telemetry with health endpoints, structured logging/tracing, and refreshed README/runbooks documenting the Lightning-first architecture and the removal of legacy social features.
 
 ---
 
