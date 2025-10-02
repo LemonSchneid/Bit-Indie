@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import type { FeaturedGameSummary, GameDraft } from "../../lib/api/games";
@@ -130,16 +129,6 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
         <header className="space-y-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4">
-              <div className="flex justify-center lg:justify-start">
-                <Image
-                  src="/bit-indie-logo.svg"
-                  alt="Bit Indie logo"
-                  width={220}
-                  height={220}
-                  priority
-                  className="drop-shadow-[0_18px_42px_rgba(139,92,246,0.35)]"
-                />
-              </div>
               <MicroLabel>Bit Indie marketplace</MicroLabel>
               <div className="max-w-3xl space-y-4">
                 <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
