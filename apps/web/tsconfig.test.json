@@ -16,12 +16,16 @@
     "lib/lightning.test.ts",
     "lib/api/comments.ts",
     "lib/api/comments.test.ts",
+    "lib/api/users.ts",
+    "lib/api/users.test.ts",
     "components/game-purchase-flow/**/*.ts",
     "components/game-purchase-flow/**/*.tsx",
     "components/ui/**/*.ts",
     "components/ui/**/*.tsx",
     "components/game-draft-form/**/*.ts",
-    "components/game-draft-form/**/*.tsx"
+    "components/game-draft-form/**/*.tsx",
+    "components/developer-console/**/*.ts",
+    "components/developer-console/**/*.tsx"
   ],
   "exclude": [
     "node_modules"
