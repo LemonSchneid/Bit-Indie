@@ -122,20 +122,21 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
   const heroMetrics = useMemo(() => computeHeroMetrics(primaryGame, primarySummary), [primaryGame, primarySummary]);
 
   return (
-    <div className="relative overflow-hidden bg-slate-950 text-slate-100">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)]" />
-      <div className="absolute inset-y-0 right-0 -z-10 w-full max-w-3xl bg-[radial-gradient(circle_at_right,_rgba(59,130,246,0.12),_transparent_60%)]" />
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12">
+    <div className="relative overflow-hidden bg-[#050505] text-[#e8f9f1]">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(89,255,163,0.12),_transparent_60%)]" />
+      <div className="absolute inset-0 -z-20 bg-[conic-gradient(from_140deg_at_10%_20%,_rgba(10,10,10,0.9),_rgba(57,255,20,0.04),_rgba(10,10,10,0.9))]" />
+      <div className="absolute inset-y-0 right-0 -z-10 w-full max-w-3xl bg-[radial-gradient(circle_at_right,_rgba(57,255,20,0.08),_transparent_65%)]" />
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-12 lg:px-10">
         <header className="space-y-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4">
               <MicroLabel>Bit Indie marketplace</MicroLabel>
               <div className="max-w-3xl space-y-4">
                 <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                  Neon storefront for indie worlds powered by Lightning.
+                  Matte-black command center for indie worlds on Lightning.
                 </h1>
-                <p className="max-w-2xl text-sm uppercase tracking-[0.3em] text-emerald-200/80">
-                  Browse featured drops, support creators directly with Lightning, and watch live metrics pulse in real time.
+                <p className="max-w-2xl text-sm uppercase tracking-[0.35em] text-[#7bffc8]/80">
+                  Browse featured drops, fuel creators with sats, and track every signal from a matte-black control deck.
                 </p>
               </div>
               {hadLoadFailure ? <LoadFailureBanner /> : null}
