@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   type InvoiceCreateRequest,
@@ -16,12 +15,12 @@ import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
 import { createGuestInvoice } from "./guest-invoice";
 import { lookupLatestPurchaseForUser } from "./purchase-lookup";
 import { createPurchasePollingHandlers } from "./purchase-polling";
-import { extractReceiptIdFromInput } from "./receipt-handling";
 import { useClipboardCopy } from "./use-clipboard-copy";
 import { useLightningQrCode } from "./use-qr-code";
 import { useReceiptLinks } from "./use-receipt-links";
 import { useReceiptDownload } from "./use-receipt-download";
 import { useRestoredPurchase } from "./use-restored-purchase";
+import { useReceiptLookupForm } from "./use-receipt-lookup";
 export { type CopyState, type InvoiceFlowState } from "./types";
 
 import type { InvoiceFlowState } from "./types";
@@ -83,7 +82,6 @@ export function useGamePurchaseFlow({
   buildAvailable,
   developerLightningAddress,
 }: UseGamePurchaseFlowOptions) {
-  const router = useRouter();
   const user = useStoredUserProfile();
   const isGuestCheckout = !user;
   const isPurchasable = Number.isFinite(priceMsats) && priceMsats > 0;
@@ -91,8 +89,14 @@ export function useGamePurchaseFlow({
   const [flowState, setFlowState] = useState<InvoiceFlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showReceiptLookup, setShowReceiptLookup] = useState(false);
-  const [manualReceiptId, setManualReceiptId] = useState("");
+  const {
+    showReceiptLookup,
+    manualReceiptId,
+    setManualReceiptId,
+    handleReceiptLookupSubmit,
+    toggleReceiptLookup,
+    closeReceiptLookup,
+  } = useReceiptLookupForm();
   const { purchase, setPurchase } = useRestoredPurchase({
     gameId,
     invoice,
@@ -253,39 +257,8 @@ export function useGamePurchaseFlow({
 
   const statusMessage = describeInvoiceStatus(invoiceStatus, flowState, downloadUnlocked, isGuestCheckout);
 
-  const handleReceiptLookupSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const trimmed = manualReceiptId.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      setShowReceiptLookup(false);
-      setManualReceiptId("");
-      const receiptId = extractReceiptIdFromInput(trimmed);
-      router.push(`/purchases/${encodeURIComponent(receiptId)}/receipt`);
-    },
-    [manualReceiptId, router],
-  );
-
   const prepareCheckout = useCallback(() => {
     setErrorMessage(null);
-  }, []);
-
-  const toggleReceiptLookup = useCallback(() => {
-    setShowReceiptLookup((current) => {
-      const next = !current;
-      if (!next) {
-        setManualReceiptId("");
-      }
-      return next;
-    });
-  }, []);
-
-  const closeReceiptLookup = useCallback(() => {
-    setShowReceiptLookup(false);
-    setManualReceiptId("");
   }, []);
 
   return {
