@@ -1,5 +1,5 @@
-import { loadStoredSessionToken } from "../user-storage";
 import { requestJson } from "./core";
+import { resolveSessionToken } from "./session";
 
 export interface UserProfile {
   id: string;
@@ -22,12 +22,11 @@ export async function updateUserLightningAddress(
   userId: string,
   lightningAddress: string,
 ): Promise<UserProfile> {
-  const sessionToken = loadStoredSessionToken();
-  if (!sessionToken) {
-    throw new Error("Sign in before updating your Lightning address.");
-  }
-
   const payload: UpdateLightningAddressRequest = { lightning_address: lightningAddress };
+  const sessionToken = resolveSessionToken(
+    null,
+    "Sign in before updating your Lightning address.",
+  );
   return requestJson<UserProfile>(`/v1/users/${encodeURIComponent(userId)}/lightning-address`, {
     method: "PATCH",
     body: JSON.stringify(payload),

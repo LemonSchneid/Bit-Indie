@@ -16,6 +16,8 @@
     "lib/lightning.test.ts",
     "lib/api/comments.ts",
     "lib/api/comments.test.ts",
+    "lib/api/session.ts",
+    "lib/api/session.test.ts",
     "lib/api/users.ts",
     "lib/api/users.test.ts",
     "components/game-purchase-flow/**/*.ts",

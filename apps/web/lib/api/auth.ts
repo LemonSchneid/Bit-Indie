@@ -1,6 +1,6 @@
 import { requestJson } from "./core";
 import type { UserProfile } from "./users";
-import { loadStoredSessionToken } from "../user-storage";
+import { optionalSessionToken, resolveSessionToken } from "./session";
 
 export interface AccountSessionResponse {
   user: UserProfile;
@@ -35,12 +35,12 @@ export async function loginAccount(request: AccountLoginRequest): Promise<Accoun
 }
 
 export async function refreshAccountSession(
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<AccountSessionResponse> {
-  const token = sessionToken ?? loadStoredSessionToken();
-  if (!token) {
-    throw new Error("Sign in to refresh your session.");
-  }
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to refresh your session.",
+  );
 
   return requestJson<AccountSessionResponse>("/v1/auth/refresh", {
     method: "POST",
@@ -50,8 +50,8 @@ export async function refreshAccountSession(
   });
 }
 
-export async function logoutAccount(sessionToken: string | null = loadStoredSessionToken()): Promise<void> {
-  const token = sessionToken ?? loadStoredSessionToken();
+export async function logoutAccount(sessionToken?: string | null): Promise<void> {
+  const token = optionalSessionToken(sessionToken);
   if (!token) {
     return;
   }

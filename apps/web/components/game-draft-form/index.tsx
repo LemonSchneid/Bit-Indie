@@ -21,11 +21,11 @@ interface GameDraftFormProps {
   onFormApi?: (api: GameDraftFormApi) => void;
 }
 
-export interface GameDraftFormApi {
+export type GameDraftFormApi = {
   getDraft: () => GameDraft | null;
   applyFormValues: (fields: Partial<GameDraftFormValues>) => void;
   replaceDraft: (draft: GameDraft | null) => void;
-}
+};
 
 const categoryOptions: { value: GameCategory; label: string }[] = [
   { value: "PROTOTYPE", label: "Prototype" },
