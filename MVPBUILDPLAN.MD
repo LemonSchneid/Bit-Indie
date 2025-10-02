@@ -181,6 +181,15 @@ M3 — Developer Settings
   2. Developer console renders a profile settings form gated behind the developer flag, allowing admins to save contact email and optional studio URL.
   3. Automated tests cover the new API authentication paths and the updated web API client helpers.
 
+### Ticket M3-T002 — Lightning payout settings card ✅ Done
+- **Milestone:** M3 — Developer Settings
+- **Summary:** Add a developer console card so admins can manage Lightning payout addresses required for game sales.
+- **Acceptance Criteria:**
+  1. Developer console displays a Lightning payouts form for admin developer accounts with clear messaging and disabled states while saving.
+  2. Submitting the form persists the trimmed Lightning address via the `/v1/users/{id}/lightning-address` endpoint and refreshes the stored user profile.
+  3. Blank submissions and API failures surface actionable error messages without clearing the current address.
+  4. Automated tests cover the Lightning status helper utilities and the web API client responsible for updating Lightning addresses.
+
 M4 — Admin & Moderation
 - Provide admin-only tools to hide or restore abusive comments and reviews, enforce simple rate limits, and surface an abuse-triage dashboard for day-to-day moderation.
 
