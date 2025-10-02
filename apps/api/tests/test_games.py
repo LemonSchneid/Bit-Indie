@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from sqlalchemy import select
 
+from bit_indie_api.core.config import clear_settings_cache
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
     BuildScanStatus,
@@ -33,6 +34,7 @@ from bit_indie_api.services.storage import (
     get_storage_service,
     reset_storage_service,
 )
+from bit_indie_api.services.storage_policy import reset_game_asset_upload_validator
 
 @pytest.fixture(autouse=True)
 def _reset_state(monkeypatch):
@@ -41,9 +43,13 @@ def _reset_state(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     reset_database_state()
     reset_storage_service()
+    clear_settings_cache()
+    reset_game_asset_upload_validator()
     yield
     reset_database_state()
     reset_storage_service()
+    clear_settings_cache()
+    reset_game_asset_upload_validator()
 
 
 def _create_schema() -> None:
@@ -442,6 +448,59 @@ def test_create_game_asset_upload_returns_presigned_payload() -> None:
     assert recorded["filename"] == "build.zip"
     assert recorded["content_type"] == "application/zip"
     assert recorded["max_bytes"] == 1024
+
+
+def test_create_game_asset_upload_validates_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uploads with unsafe metadata should be rejected before reaching storage."""
+
+    _create_schema()
+    user_id = _create_user_and_developer(with_developer=True)
+    client = _build_client()
+
+    created = client.post(
+        "/v1/games",
+        json={
+            "user_id": user_id,
+            "title": "Aurora Bloom",
+            "slug": "aurora-bloom",
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    dummy = _DummyStorageService()
+    client.app.dependency_overrides[get_storage_service] = lambda: dummy
+
+    invalid_extension = client.post(
+        f"/v1/games/{game_id}/uploads/{GameAssetKind.COVER.value}",
+        json={
+            "user_id": user_id,
+            "filename": "cover.gif",
+            "content_type": "image/gif",
+            "max_bytes": 1024,
+        },
+    )
+    assert invalid_extension.status_code == 422
+    assert not dummy.calls
+
+    monkeypatch.setenv("MAX_BUILD_SIZE_BYTES", "2048")
+    clear_settings_cache()
+    reset_game_asset_upload_validator()
+
+    oversize = client.post(
+        f"/v1/games/{game_id}/uploads/{GameAssetKind.BUILD.value}",
+        json={
+            "user_id": user_id,
+            "filename": "build.zip",
+            "content_type": "application/zip",
+            "max_bytes": 4096,
+        },
+    )
+
+    client.app.dependency_overrides.clear()
+
+    assert oversize.status_code == 422
+    assert not dummy.calls
 
 
 def test_create_game_asset_upload_rejects_other_developers() -> None:
