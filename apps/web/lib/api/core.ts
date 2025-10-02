@@ -29,6 +29,14 @@ function resolveApiBaseUrl(): string {
 
 export const apiBaseUrl = resolveApiBaseUrl();
 
+export function requireTrimmedValue(value: string, errorMessage: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(errorMessage);
+  }
+  return trimmed;
+}
+
 export function buildApiUrl(path: string): string {
   if (!path.startsWith("/")) {
     throw new Error(`API paths must start with a forward slash. Received: ${path}`);

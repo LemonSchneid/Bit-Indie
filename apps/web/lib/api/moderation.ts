@@ -1,4 +1,4 @@
-import { buildApiUrl, parseErrorMessage } from "./core";
+import { buildApiUrl, parseErrorMessage, requireTrimmedValue } from "./core";
 
 export type ModerationTargetType = "GAME" | "COMMENT" | "REVIEW";
 export type ModerationFlagReason = "SPAM" | "TOS" | "DMCA" | "MALWARE";
@@ -80,10 +80,10 @@ export interface AdminIntegrityStats {
 }
 
 export async function getModerationQueue(userId: string): Promise<ModerationQueueItem[]> {
-  const normalizedId = userId.trim();
-  if (!normalizedId) {
-    throw new Error("Admin user ID is required to load the moderation queue.");
-  }
+  const normalizedId = requireTrimmedValue(
+    userId,
+    "Admin user ID is required to load the moderation queue.",
+  );
 
   const query = new URLSearchParams({ user_id: normalizedId });
   const response = await fetch(buildApiUrl(`/v1/admin/mod/queue?${query.toString()}`), {
@@ -139,10 +139,10 @@ export async function executeModerationTakedown(
 }
 
 export async function getAdminIntegrityStats(userId: string): Promise<AdminIntegrityStats> {
-  const normalizedId = userId.trim();
-  if (!normalizedId) {
-    throw new Error("Admin user ID is required to load integrity metrics.");
-  }
+  const normalizedId = requireTrimmedValue(
+    userId,
+    "Admin user ID is required to load integrity metrics.",
+  );
 
   const query = new URLSearchParams({ user_id: normalizedId });
   const response = await fetch(buildApiUrl(`/v1/admin/stats?${query.toString()}`), {

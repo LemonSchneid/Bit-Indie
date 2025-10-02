@@ -1,4 +1,4 @@
-import { buildApiUrl, requestJson } from "./core";
+import { buildApiUrl, requestJson, requireTrimmedValue } from "./core";
 
 export type InvoiceStatus = "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
 export type RefundStatus = "NONE" | "REQUESTED" | "APPROVED" | "DENIED" | "PAID";
@@ -67,10 +67,10 @@ export async function createGameInvoice(
   gameId: string,
   payload: InvoiceCreateRequest,
 ): Promise<InvoiceCreateResponse> {
-  const normalizedId = gameId.trim();
-  if (!normalizedId) {
-    throw new Error("Game ID is required to create an invoice.");
-  }
+  const normalizedId = requireTrimmedValue(
+    gameId,
+    "Game ID is required to create an invoice.",
+  );
 
   return requestJson<InvoiceCreateResponse>(
     `/v1/games/${encodeURIComponent(normalizedId)}/invoice`,
@@ -86,15 +86,14 @@ export async function getLatestPurchaseForGame(
   gameId: string,
   userId: string,
 ): Promise<PurchaseRecord | null> {
-  const normalizedGameId = gameId.trim();
-  if (!normalizedGameId) {
-    throw new Error("Game ID is required to look up purchases.");
-  }
-
-  const normalizedUserId = userId.trim();
-  if (!normalizedUserId) {
-    throw new Error("User ID is required to look up purchases.");
-  }
+  const normalizedGameId = requireTrimmedValue(
+    gameId,
+    "Game ID is required to look up purchases.",
+  );
+  const normalizedUserId = requireTrimmedValue(
+    userId,
+    "User ID is required to look up purchases.",
+  );
 
   const url = new URL(buildApiUrl("/v1/purchases/lookup"));
   url.searchParams.set("game_id", normalizedGameId);
@@ -108,10 +107,7 @@ export async function getLatestPurchaseForGame(
 }
 
 export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
-  const normalizedId = purchaseId.trim();
-  if (!normalizedId) {
-    throw new Error("Purchase ID is required.");
-  }
+  const normalizedId = requireTrimmedValue(purchaseId, "Purchase ID is required.");
 
   return requestJson<PurchaseRecord>(`/v1/purchases/${encodeURIComponent(normalizedId)}`, {
     cache: "no-store",
@@ -121,10 +117,7 @@ export async function getPurchase(purchaseId: string): Promise<PurchaseRecord> {
 }
 
 export async function getPurchaseReceipt(purchaseId: string): Promise<PurchaseReceipt> {
-  const normalizedId = purchaseId.trim();
-  if (!normalizedId) {
-    throw new Error("Purchase ID is required.");
-  }
+  const normalizedId = requireTrimmedValue(purchaseId, "Purchase ID is required.");
 
   return requestJson<PurchaseReceipt>(
     `/v1/purchases/${encodeURIComponent(normalizedId)}/receipt`,
@@ -137,10 +130,7 @@ export async function getPurchaseReceipt(purchaseId: string): Promise<PurchaseRe
 }
 
 export function getGameDownloadUrl(gameId: string): string {
-  const normalizedId = gameId.trim();
-  if (!normalizedId) {
-    throw new Error("Game ID is required.");
-  }
+  const normalizedId = requireTrimmedValue(gameId, "Game ID is required.");
 
   return buildApiUrl(`/v1/games/${encodeURIComponent(normalizedId)}/download`);
 }

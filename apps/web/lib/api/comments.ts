@@ -1,4 +1,4 @@
-import { requestJson } from "./core";
+import { requestJson, requireTrimmedValue } from "./core";
 
 export type CommentSource = "FIRST_PARTY";
 
@@ -20,10 +20,10 @@ export interface GameComment {
 }
 
 export async function getGameComments(gameId: string): Promise<GameComment[]> {
-  const normalizedId = gameId.trim();
-  if (!normalizedId) {
-    throw new Error("Game ID is required to load comments.");
-  }
+  const normalizedId = requireTrimmedValue(
+    gameId,
+    "Game ID is required to load comments.",
+  );
 
   return requestJson<GameComment[]>(`/v1/games/${encodeURIComponent(normalizedId)}/comments`, {
     cache: "no-store",
