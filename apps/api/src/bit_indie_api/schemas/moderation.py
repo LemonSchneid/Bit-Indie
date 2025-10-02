@@ -95,11 +95,32 @@ class ModerationActionResponse(BaseModel):
     affected_flag_ids: list[str] = Field(default_factory=list)
 
 
+class ModerationRestoreRequest(BaseModel):
+    """Administrative request to restore hidden moderated content."""
+
+    user_id: str = Field(..., description="Identifier of the acting admin user.")
+    target_type: ModerationTargetType
+    target_id: str
+
+
+class HiddenModerationItem(BaseModel):
+    """Details about hidden comments and reviews awaiting potential restoration."""
+
+    target_type: ModerationTargetType
+    target_id: str
+    created_at: datetime
+    game: FlaggedGameSummary
+    comment: FlaggedCommentSummary | None = None
+    review: FlaggedReviewSummary | None = None
+
+
 __all__ = [
     "FlaggedCommentSummary",
     "FlaggedGameSummary",
     "FlaggedReviewSummary",
     "ModerationActionResponse",
+    "ModerationRestoreRequest",
+    "HiddenModerationItem",
     "ModerationQueueItem",
     "ModerationReporter",
     "ModerationTakedownRequest",

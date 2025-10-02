@@ -1,3 +1,4 @@
+import { AdminHiddenContent } from "../../../components/admin-hidden-content";
 import { AdminModerationQueue } from "../../../components/admin-moderation-queue";
 import { MatteShell } from "../../../components/layout/matte-shell";
 
@@ -12,7 +13,10 @@ export default function ModerationPage(): JSX.Element {
         </p>
       </header>
 
-      <AdminModerationQueue />
+      <div className="space-y-12">
+        <AdminModerationQueue />
+        <AdminHiddenContent />
+      </div>
     </MatteShell>
   );
 }

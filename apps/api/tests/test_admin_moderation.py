@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
@@ -308,4 +309,147 @@ def test_takedown_hides_reviews_and_marks_flags() -> None:
         assert flag is not None
         assert flag.status is ModerationFlagStatus.ACTIONED
 
+
+def test_hidden_content_listing_requires_admin_privileges() -> None:
+    """The hidden content endpoint should reject non-admin users."""
+
+    _create_schema()
+    non_admin = _create_user(is_admin=False)
+    client = _build_client()
+
+    response = client.get("/v1/admin/mod/hidden", params={"user_id": non_admin})
+
+    assert response.status_code == 403
+
+
+def test_hidden_content_listing_returns_comments_and_reviews() -> None:
+    """Admins should be able to view hidden comments and reviews for restoration."""
+
+    _create_schema()
+    admin_id = _create_user(is_admin=True)
+    commenter = _create_user()
+    reviewer = _create_user()
+    game_id = _create_game(status=GameStatus.DISCOVER, active=True)
+
+    with session_scope() as session:
+        comment = Comment(
+            game_id=game_id,
+            user_id=commenter,
+            body_md="Hidden comment",
+            is_hidden=True,
+            created_at=datetime(2024, 3, 1, tzinfo=timezone.utc),
+        )
+        review = Review(
+            game_id=game_id,
+            user_id=reviewer,
+            body_md="Hidden review",
+            rating=2,
+            is_hidden=True,
+            created_at=datetime(2024, 4, 1, tzinfo=timezone.utc),
+        )
+        session.add_all([comment, review])
+
+    client = _build_client()
+    response = client.get("/v1/admin/mod/hidden", params={"user_id": admin_id})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    assert len(body) == 2
+    assert body[0]["target_type"] == ModerationTargetType.REVIEW.value
+    assert body[0]["review"]["body_md"] == "Hidden review"
+    assert body[1]["target_type"] == ModerationTargetType.COMMENT.value
+    assert body[1]["comment"]["body_md"] == "Hidden comment"
+
+
+def test_restore_comment_unhides_content_and_dismisses_flags() -> None:
+    """Restoring a comment should unhide it and dismiss associated flags."""
+
+    _create_schema()
+    admin_id = _create_user(is_admin=True)
+    commenter = _create_user()
+    reporter = _create_user()
+    game_id = _create_game()
+    comment_id = _create_comment(game_id, commenter)
+
+    with session_scope() as session:
+        comment = session.get(Comment, comment_id)
+        assert comment is not None
+        comment.is_hidden = True
+        flag = ModerationFlag(
+            target_type=ModerationTargetType.COMMENT,
+            target_id=comment_id,
+            user_id=reporter,
+            reason=ModerationFlagReason.SPAM,
+            status=ModerationFlagStatus.ACTIONED,
+        )
+        session.add(flag)
+
+    client = _build_client()
+    response = client.post(
+        "/v1/admin/mod/restore",
+        json={
+            "user_id": admin_id,
+            "target_type": ModerationTargetType.COMMENT.value,
+            "target_id": comment_id,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["applied_status"] == ModerationFlagStatus.DISMISSED.value
+
+    with session_scope() as session:
+        comment = session.get(Comment, comment_id)
+        assert comment is not None
+        assert comment.is_hidden is False
+        flags = session.scalars(
+            select(ModerationFlag).where(ModerationFlag.target_id == comment_id)
+        ).all()
+        assert all(flag.status is ModerationFlagStatus.DISMISSED for flag in flags)
+
+
+def test_restore_review_unhides_content_and_dismisses_flags() -> None:
+    """Restoring a review should unhide it and mark related flags dismissed."""
+
+    _create_schema()
+    admin_id = _create_user(is_admin=True)
+    reviewer = _create_user()
+    reporter = _create_user()
+    game_id = _create_game()
+    review_id = _create_review(game_id, reviewer)
+
+    with session_scope() as session:
+        review = session.get(Review, review_id)
+        assert review is not None
+        review.is_hidden = True
+        flag = ModerationFlag(
+            target_type=ModerationTargetType.REVIEW,
+            target_id=review_id,
+            user_id=reporter,
+            reason=ModerationFlagReason.TOS,
+            status=ModerationFlagStatus.ACTIONED,
+        )
+        session.add(flag)
+
+    client = _build_client()
+    response = client.post(
+        "/v1/admin/mod/restore",
+        json={
+            "user_id": admin_id,
+            "target_type": ModerationTargetType.REVIEW.value,
+            "target_id": review_id,
+        },
+    )
+
+    assert response.status_code == 200
+
+    with session_scope() as session:
+        review = session.get(Review, review_id)
+        assert review is not None
+        assert review.is_hidden is False
+        flag = session.scalars(
+            select(ModerationFlag).where(ModerationFlag.target_id == review_id)
+        ).one()
+        assert flag.status is ModerationFlagStatus.DISMISSED
 

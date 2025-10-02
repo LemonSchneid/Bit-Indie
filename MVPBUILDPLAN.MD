@@ -201,6 +201,14 @@ M3 — Developer Settings
 M4 — Admin & Moderation
 - Provide admin-only tools to hide or restore abusive comments and reviews, enforce simple rate limits, and surface an abuse-triage dashboard for day-to-day moderation.
 
+### Ticket M4-T001 — Hidden content triage and restoration ✅ Done
+- **Milestone:** M4 — Admin & Moderation
+- **Summary:** Expand the moderation dashboard with hidden content triage, enabling administrators to review and restore previously removed comments and reviews.
+- **Acceptance Criteria:**
+  1. `/v1/admin/mod/hidden` returns hidden comments and reviews for admin users, including associated game metadata.
+  2. `/v1/admin/mod/restore` unhides comments or reviews and dismisses related moderation flags, with automated tests covering both endpoints.
+  3. The admin moderation UI displays hidden items with restore actions that call the new API endpoints and update state after completion.
+
 M5 — Download Delivery
 - Complete the storage pipeline with uploads to S3/R2 (MinIO in dev), generate presigned download links, and enforce safe file-type and size checks before games go live.
 
