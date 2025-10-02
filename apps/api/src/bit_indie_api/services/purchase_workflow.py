@@ -61,6 +61,16 @@ class PurchaseWorkflowService:
     payouts: RevenuePayoutManager
     downloads: PurchaseDownloadManager
 
+    def _get_owned_purchase(self, *, purchase_id: str, user_id: str) -> Purchase:
+        """Return the purchase owned by ``user_id`` raising if missing."""
+
+        purchase = self.session.get(Purchase, purchase_id)
+        if purchase is None:
+            raise PurchaseNotFoundError()
+        if purchase.user_id != user_id:
+            raise PurchasePermissionError()
+        return purchase
+
     def lookup_purchase(
         self,
         *,
@@ -121,12 +131,9 @@ class PurchaseWorkflowService:
     ) -> PurchaseDownloadResult:
         """Return a pre-signed download URL for a paid purchase."""
 
-        purchase = self.session.get(Purchase, purchase_id)
-        if purchase is None:
-            raise PurchaseNotFoundError()
-
-        if purchase.user_id != user_id:
-            raise PurchasePermissionError()
+        purchase = self._get_owned_purchase(
+            purchase_id=purchase_id, user_id=user_id
+        )
 
         self.downloads.ensure_downloadable(purchase)
         download = self.downloads.create_download(purchase=purchase)
@@ -136,12 +143,9 @@ class PurchaseWorkflowService:
     def request_refund(self, *, purchase_id: str, user_id: str) -> Purchase:
         """Flag a paid purchase for refund review."""
 
-        purchase = self.session.get(Purchase, purchase_id)
-        if purchase is None:
-            raise PurchaseNotFoundError()
-
-        if purchase.user_id != user_id:
-            raise PurchasePermissionError()
+        purchase = self._get_owned_purchase(
+            purchase_id=purchase_id, user_id=user_id
+        )
 
         if purchase.invoice_status is not InvoiceStatus.PAID:
             raise PurchaseNotRefundableError()
