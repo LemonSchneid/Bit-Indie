@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import type { InvoiceCreateResponse } from "../../lib/api";
-import type { CopyState, InvoiceFlowState } from "./hooks";
+import type { CopyState, InvoiceFlowState } from "./types";
 import { ReceiptActions } from "./receipt-actions";
 
 type InvoicePanelProps = {
