@@ -235,6 +235,36 @@ Post-MVP follow-up will be captured in future planning documents once the legacy
 
 ---
 
+M2 — Accounts & Developer Tooling
+- Deliver the core account system, developer console surfaces, and production-ready media assets so creators can manage their catalogs before launch.
+
+### Ticket M2-T001 — Launch Email-Based Account Flow
+- **Milestone:** M2 — Accounts & Developer Tooling
+- **Summary:** Implement the non-Nostr account creation and login experience so players and admins can authenticate without seeded profiles.
+- **Acceptance Criteria:**
+  1. Expose FastAPI routes for sign-up, login, logout, and session refresh backed by the neutral account model introduced in M8-T004.
+  2. Persist hashed credentials, profile basics, and admin flags while maintaining guest checkout for anonymous purchases.
+  3. Replace the "coming soon" login card and landing widgets with working React Query mutations that store the session and hydrate the `UserProfile` client cache.
+  4. Cover happy-path and failure flows with backend and frontend tests.
+
+### Ticket M2-T002 — Ship Developer Console Dashboard
+- **Milestone:** M2 — Accounts & Developer Tooling
+- **Summary:** Build the `/admin` dashboard that wraps `GameDraftForm`, enabling developers to manage drafts, uploads, and publish readiness.
+- **Acceptance Criteria:**
+  1. Render a secure dashboard route gated by the authenticated admin session from M2-T001.
+  2. Integrate the existing `GameDraftForm` with asset upload helpers, publish checklist status, and draft metadata editing.
+  3. Provide optimistic UI feedback and error handling for uploads and checklist actions, with tests or Storybook coverage verifying the flow.
+  4. Ensure moderation and integrity views remain accessible via the updated navigation.
+
+### Ticket M2-T003 — Replace Placeholder Media with Production Assets
+- **Milestone:** M2 — Accounts & Developer Tooling
+- **Summary:** Eliminate "coming soon" catalog imagery and receipts by seeding production-ready assets through the draft workflow.
+- **Acceptance Criteria:**
+  1. Populate launch-ready cover art, hero images, and receipt thumbnails for all catalog entries via the upload pipeline.
+  2. Update catalog, game detail, and receipt components to display the new assets while keeping fallbacks for missing media.
+  3. Add validation preventing publishes without required media and confirm staging data matches production expectations.
+  4. Document the asset seeding process for future catalog updates.
+
 M8 — Legacy Social Stack Removal
 - Strip every remaining dependency on the discontinued Nostr/zap/noted relay features.
 - Ensure the product, API, and data models no longer reference the legacy social stack while preserving current Lightning purchase flows.
