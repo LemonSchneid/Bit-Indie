@@ -82,12 +82,12 @@ export function ChatSupportPanel(): JSX.Element {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/15 bg-slate-950/60 p-6 shadow-[0_0_35px_rgba(16,185,129,0.2)] backdrop-blur-xl before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-emerald-500/15 before:opacity-60">
+    <div className="relative overflow-hidden rounded-3xl border border-[#7bffc8]/20 bg-[#060606]/90 p-6 shadow-[0_0_45px_rgba(123,255,200,0.18)] backdrop-blur-xl before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-[#7bffc8]/25 before:opacity-60">
       <div className="relative z-10">
         <header className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Live chat</p>
+          <p className="text-xs uppercase tracking-[0.35em] text-[#7bffc8]/70">Live chat</p>
           <h2 className="text-2xl font-semibold text-white">Talk with the Bit Indie crew</h2>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-[#dcfff2]/80">
             Ask about invoices, downloads, or upcoming releases. We monitor this channel during demo windows and respond within a
             minute.
           </p>
@@ -99,17 +99,17 @@ export function ChatSupportPanel(): JSX.Element {
               const isPlayer = message.author === "player";
               const alignment = isPlayer ? "items-end" : "items-start";
               const bubbleClasses = isPlayer
-                ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-50"
-                : "bg-slate-900/70 border-slate-700 text-slate-100";
+                ? "bg-[#7bffc8]/20 border-[#7bffc8]/40 text-[#050505]"
+                : "bg-[#0b0b0b]/90 border-white/10 text-[#e8f9f1]";
 
               return (
                 <li className={`flex ${alignment}`} key={message.id}>
-                  <div className={`max-w-[80%] rounded-2xl border px-4 py-3 shadow-[0_0_22px_rgba(15,118,110,0.25)] ${bubbleClasses}`}>
-                    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.35em] text-emerald-200/70">
+                  <div className={`max-w-[80%] rounded-2xl border px-4 py-3 shadow-[0_0_30px_rgba(123,255,200,0.18)] ${bubbleClasses}`}>
+                    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.35em] text-[#7bffc8]/70">
                       {isPlayer ? "You" : "Bit Indie"}
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-current">{message.body}</p>
-                    <p className="mt-2 text-[0.6rem] uppercase tracking-[0.35em] text-slate-400">{message.timestamp}</p>
+                    <p className="mt-2 text-[0.6rem] uppercase tracking-[0.35em] text-[#b8ffe5]/60">{message.timestamp}</p>
                   </div>
                 </li>
               );
@@ -126,12 +126,12 @@ export function ChatSupportPanel(): JSX.Element {
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             placeholder="Ask about payouts, downloads, or publishing"
-            className="flex-1 rounded-full border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-slate-500 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+            className="flex-1 rounded-full border border-white/10 bg-[#0b0b0b] px-4 py-3 text-sm text-white placeholder:text-[#7bffc8]/40 transition focus:border-[#7bffc8] focus:outline-none focus:ring-2 focus:ring-[#7bffc8]/40"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full border border-emerald-400/70 bg-emerald-500/20 px-6 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)] transition hover:border-emerald-300 hover:text-emerald-50"
+            className="inline-flex items-center justify-center rounded-full border border-[#7bffc8]/70 bg-[#7bffc8]/20 px-6 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-white shadow-[0_0_24px_rgba(123,255,200,0.25)] transition hover:border-[#7bffc8] hover:bg-[#7bffc8]/90 hover:text-[#050505]"
           >
             Send
           </button>
