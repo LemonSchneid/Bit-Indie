@@ -5,10 +5,10 @@ from __future__ import annotations
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
-from bit_indie_api.db.models import Comment, Game, InvoiceStatus, Purchase, User
+from bit_indie_api.db.models import Comment, Game, User
 
 from .dto import CommentAuthorDTO, CommentDTO, CommentDTOBuilder, CommentSource
-from .verification import load_verified_user_ids
+from .verification import has_verified_purchase, load_verified_user_ids
 
 
 class CommentThreadService:
@@ -32,7 +32,7 @@ class CommentThreadService:
             msg = "Comment must reference a persisted user before serialization."
             raise ValueError(msg)
 
-        verified = self._has_verified_purchase(
+        verified = has_verified_purchase(
             session=session,
             game_id=comment.game_id,
             user_id=user.id,
@@ -70,19 +70,6 @@ class CommentThreadService:
             )
             dtos.append(dto)
         return dtos
-
-    def _has_verified_purchase(
-        self, *, session: Session, game_id: str, user_id: str
-    ) -> bool:
-        stmt = (
-            select(Purchase.id)
-            .where(Purchase.game_id == game_id)
-            .where(Purchase.user_id == user_id)
-            .where(Purchase.invoice_status == InvoiceStatus.PAID)
-            .limit(1)
-        )
-        return session.scalar(stmt) is not None
-
 
 __all__ = [
     "CommentAuthorDTO",
