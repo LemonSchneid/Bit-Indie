@@ -33,6 +33,15 @@ Runbook steps:
 - Ensure `S3_*` env is configured. Validate presign works by requesting a download URL.
 - Watch for 403/404 errors from the object store; verify object ACLs and bucket/endpoint.
 
+## Catalog Media Seeding
+
+The MVP ships with curated cover, hero, and receipt art for seeded games. To upload the bundled assets to your storage bucket:
+
+1. Configure the S3/MinIO variables (`S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`).
+2. Run `python -m bit_indie_api.scripts.seed_media_assets` from `apps/api`. The script uploads the SVG assets in `apps/api/assets/media/` and updates the corresponding database rows with public URLs.
+3. Execute `python -m bit_indie_api.scripts.seed_simple_mvp` afterward to ensure catalog metadata references the generated URLs.
+4. Verify the uploads by visiting `/v1/games` and `/v1/purchases/:id/receipt` through the API or the web app.
+
 ## Moderation & Abuse
 
 - Admin routes allow hide/unhide of comments and reviews.

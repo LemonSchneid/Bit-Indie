@@ -5,6 +5,7 @@ type GameDetailHeroProps = {
   summary: string | null;
   statusLabel: string;
   categoryLabel: string;
+  heroUrl: string | null;
   coverUrl: string | null;
   priceLabel: string;
   updatedLabel: string;
@@ -15,10 +16,14 @@ export function GameDetailHero({
   summary,
   statusLabel,
   categoryLabel,
+  heroUrl,
   coverUrl,
   priceLabel,
   updatedLabel,
 }: GameDetailHeroProps): JSX.Element {
+  const primaryImage = heroUrl ?? coverUrl;
+  const altLabel = heroUrl ? `${title} hero art` : `${title} cover art`;
+
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_0_55px_rgba(123,255,200,0.1)]">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(123,255,200,0.2),_transparent_65%)]" />
@@ -49,10 +54,10 @@ export function GameDetailHero({
           </div>
         </div>
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#060606]/90 shadow-[0_0_35px_rgba(123,255,200,0.07)]">
-          {coverUrl ? (
+          {primaryImage ? (
             <Image
-              src={coverUrl}
-              alt={`${title} cover art`}
+              src={primaryImage}
+              alt={altLabel}
               width={1280}
               height={720}
               className="h-full w-full object-cover"
@@ -60,7 +65,7 @@ export function GameDetailHero({
             />
           ) : (
             <div className="flex h-full min-h-[300px] items-center justify-center bg-gradient-to-br from-[#0f0f0f] via-[#121212] to-[#070707] text-[#7bffc8]/60">
-              Cover art coming soon
+              Showcase art coming soon
             </div>
           )}
         </div>

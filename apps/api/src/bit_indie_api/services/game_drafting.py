@@ -218,6 +218,22 @@ class PublishRequirementsEvaluator:
                 )
             )
 
+        if not game.hero_url:
+            missing.append(
+                GamePublishRequirement(
+                    code=PublishRequirementCode.HERO_IMAGE,
+                    message="Add a hero image to headline the game detail page.",
+                )
+            )
+
+        if not game.receipt_thumbnail_url:
+            missing.append(
+                GamePublishRequirement(
+                    code=PublishRequirementCode.RECEIPT_THUMBNAIL,
+                    message="Provide a receipt thumbnail so buyers recognize their purchase.",
+                )
+            )
+
         build_requirements = (
             game.build_object_key,
             game.build_size_bytes,

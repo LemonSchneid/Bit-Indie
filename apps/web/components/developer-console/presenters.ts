@@ -1,6 +1,6 @@
 import type { GamePublishChecklist } from "../../lib/api";
 
-export type AssetKind = "cover" | "build";
+export type AssetKind = "cover" | "hero" | "receipt" | "build";
 
 export type AssetUploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -23,6 +23,8 @@ export interface AssetUploadDescriptor {
 
 const DEFAULT_UPLOAD_MESSAGES: Record<AssetKind, string> = {
   cover: "Upload a cover image to refresh your catalog tile.",
+  hero: "Upload a cinematic hero image for the game page.",
+  receipt: "Upload a receipt thumbnail so buyers can recognize the download.",
   build: "Upload a build archive to unlock purchases and downloads.",
 };
 

@@ -19,6 +19,8 @@ class GameBase(BaseModel):
     description_md: str | None = None
     price_msats: int | None = Field(default=None, ge=0)
     cover_url: AnyUrl | None = None
+    hero_url: AnyUrl | None = None
+    receipt_thumbnail_url: AnyUrl | None = None
     trailer_url: AnyUrl | None = None
     category: GameCategory = GameCategory.PROTOTYPE
 
@@ -54,6 +56,8 @@ class GameUpdateRequest(BaseModel):
     description_md: str | None = None
     price_msats: int | None = Field(default=None, ge=0)
     cover_url: AnyUrl | None = None
+    hero_url: AnyUrl | None = None
+    receipt_thumbnail_url: AnyUrl | None = None
     trailer_url: AnyUrl | None = None
     category: GameCategory | None = None
     build_object_key: str | None = Field(default=None, min_length=1, max_length=500)
@@ -103,6 +107,8 @@ class GameRead(BaseModel):
     description_md: str | None
     price_msats: int | None
     cover_url: AnyUrl | None
+    hero_url: AnyUrl | None
+    receipt_thumbnail_url: AnyUrl | None
     trailer_url: AnyUrl | None
     category: GameCategory
     build_object_key: str | None
@@ -136,6 +142,8 @@ class PublishRequirementCode(str, enum.Enum):
     SUMMARY = "SUMMARY"
     DESCRIPTION = "DESCRIPTION"
     COVER_IMAGE = "COVER_IMAGE"
+    HERO_IMAGE = "HERO_IMAGE"
+    RECEIPT_THUMBNAIL = "RECEIPT_THUMBNAIL"
     BUILD_UPLOAD = "BUILD_UPLOAD"
     MALWARE_SCAN = "MALWARE_SCAN"
 

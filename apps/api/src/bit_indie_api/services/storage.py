@@ -36,6 +36,8 @@ class GameAssetKind(str, enum.Enum):
     """Enumerate the supported asset types for a game listing."""
 
     COVER = "cover"
+    HERO = "hero"
+    RECEIPT_THUMBNAIL = "receipt"
     BUILD = "build"
 
 
@@ -144,7 +146,13 @@ class StorageService:
 
         suffix = PurePath(filename).suffix.lower()
         token = uuid.uuid4().hex
-        directory = "cover" if asset is GameAssetKind.COVER else "build"
+        directory_map = {
+            GameAssetKind.COVER: "cover",
+            GameAssetKind.HERO: "hero",
+            GameAssetKind.RECEIPT_THUMBNAIL: "receipt",
+            GameAssetKind.BUILD: "build",
+        }
+        directory = directory_map.get(asset, "misc")
         return f"games/{game_id}/{directory}/{token}{suffix}"
 
     def build_public_url(self, object_key: str) -> str:

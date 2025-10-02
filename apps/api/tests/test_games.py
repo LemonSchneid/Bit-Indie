@@ -510,6 +510,8 @@ def test_get_publish_checklist_returns_missing_requirements() -> None:
     assert PublishRequirementCode.SUMMARY.value in codes
     assert PublishRequirementCode.DESCRIPTION.value in codes
     assert PublishRequirementCode.COVER_IMAGE.value in codes
+    assert PublishRequirementCode.HERO_IMAGE.value in codes
+    assert PublishRequirementCode.RECEIPT_THUMBNAIL.value in codes
     assert PublishRequirementCode.BUILD_UPLOAD.value in codes
 
 
@@ -575,6 +577,8 @@ def test_publish_game_activates_listing_and_enables_slug_lookup() -> None:
             "summary": "High-speed hover bike racing across the stars.",
             "description_md": "Race solo or with friends in procedurally generated tracks.",
             "cover_url": "https://cdn.example.com/covers/nebula-riders.png",
+            "hero_url": "https://cdn.example.com/hero/nebula-riders.png",
+            "receipt_thumbnail_url": "https://cdn.example.com/receipts/nebula-riders.png",
             "build_object_key": f"games/{game_id}/build/nebula-riders.zip",
             "build_size_bytes": 2_097_152,
             "checksum_sha256": "b" * 64,

@@ -46,6 +46,7 @@ export interface PurchaseReceiptGame {
   title: string;
   slug: string;
   cover_url: string | null;
+  receipt_thumbnail_url: string | null;
   price_msats: number | null;
   build_available: boolean;
 }

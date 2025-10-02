@@ -256,7 +256,7 @@ M2 — Accounts & Developer Tooling
   3. Provide optimistic UI feedback and error handling for uploads and checklist actions, with tests or Storybook coverage verifying the flow.
   4. Ensure moderation and integrity views remain accessible via the updated navigation.
 
-### Ticket M2-T003 — Replace Placeholder Media with Production Assets
+### Ticket M2-T003 — Replace Placeholder Media with Production Assets ✅ Done
 - **Milestone:** M2 — Accounts & Developer Tooling
 - **Summary:** Eliminate "coming soon" catalog imagery and receipts by seeding production-ready assets through the draft workflow.
 - **Acceptance Criteria:**

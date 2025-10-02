@@ -412,6 +412,8 @@ def test_read_purchase_receipt_includes_related_details() -> None:
         game = session.get(Game, game_id)
         assert game is not None
         game.cover_url = "https://cdn.example.com/covers/synth-runner.jpg"
+        game.hero_url = "https://cdn.example.com/hero/synth-runner.jpg"
+        game.receipt_thumbnail_url = "https://cdn.example.com/receipt/synth-runner.jpg"
         session.flush()
 
         purchase = Purchase(
@@ -442,6 +444,7 @@ def test_read_purchase_receipt_includes_related_details() -> None:
         "title": "Synth Runner",
         "slug": "synth-runner",
         "cover_url": "https://cdn.example.com/covers/synth-runner.jpg",
+        "receipt_thumbnail_url": "https://cdn.example.com/receipt/synth-runner.jpg",
         "price_msats": 5000,
         "build_available": False,
     }

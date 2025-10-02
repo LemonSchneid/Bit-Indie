@@ -84,6 +84,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         summary={game.summary}
         statusLabel={statusLabel}
         categoryLabel={categoryLabel}
+        heroUrl={game.hero_url}
         coverUrl={game.cover_url}
         priceLabel={priceLabel}
         updatedLabel={updatedLabel}

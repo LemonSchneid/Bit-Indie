@@ -37,9 +37,25 @@ const EMPTY_ASSET_STATE: AssetUploadState = { status: "idle", message: null };
 function createInitialAssetStates(): Record<AssetKind, AssetUploadState> {
   return {
     cover: { ...EMPTY_ASSET_STATE },
+    hero: { ...EMPTY_ASSET_STATE },
+    receipt: { ...EMPTY_ASSET_STATE },
     build: { ...EMPTY_ASSET_STATE },
   };
 }
+
+const UPLOAD_START_MESSAGE: Record<AssetKind, string> = {
+  cover: "Uploading cover image…",
+  hero: "Uploading hero image…",
+  receipt: "Uploading receipt thumbnail…",
+  build: "Uploading build archive and computing checksum…",
+};
+
+const UPLOAD_SUCCESS_MESSAGE: Record<AssetKind, string> = {
+  cover: "Cover uploaded and draft updated.",
+  hero: "Hero image uploaded and draft updated.",
+  receipt: "Receipt thumbnail uploaded and draft updated.",
+  build: "Build uploaded, checksum recorded, and scan queued.",
+};
 
 const ADMIN_LINK_CLASS =
   "inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 transition hover:text-white hover:border-white/40";
@@ -146,10 +162,7 @@ export function DeveloperDashboard(): JSX.Element {
 
       updateAssetState(kind, {
         status: "uploading",
-        message:
-          kind === "cover"
-            ? "Uploading cover image…"
-            : "Uploading build archive and computing checksum…",
+        message: UPLOAD_START_MESSAGE[kind],
       });
 
       try {
@@ -168,27 +181,34 @@ export function DeveloperDashboard(): JSX.Element {
           file,
         );
 
-        const payload = kind === "cover"
+        const payload = kind === "build"
           ? {
-              user_id: profile.id,
-              cover_url: upload.public_url,
-            }
-          : {
               user_id: profile.id,
               build_object_key: upload.object_key,
               build_size_bytes: file.size,
               checksum_sha256: await computeSha256Hex(file),
-            };
+            }
+          : kind === "cover"
+            ? {
+                user_id: profile.id,
+                cover_url: upload.public_url,
+              }
+            : kind === "hero"
+              ? {
+                  user_id: profile.id,
+                  hero_url: upload.public_url,
+                }
+              : {
+                  user_id: profile.id,
+                  receipt_thumbnail_url: upload.public_url,
+                };
 
         const updated = await updateGameDraft(draft.id, payload);
         formApi?.replaceDraft(updated);
 
         updateAssetState(kind, {
           status: "success",
-          message:
-            kind === "cover"
-              ? "Cover uploaded and draft updated."
-              : "Build uploaded, checksum recorded, and scan queued.",
+          message: UPLOAD_SUCCESS_MESSAGE[kind],
         });
         setPublishState((prev) => ({
           status: prev.status === "success" ? prev.status : "idle",
@@ -353,6 +373,18 @@ export function DeveloperDashboard(): JSX.Element {
               kind="cover"
               state={assetStates.cover}
               onFileSelected={(file) => void handleUpload("cover", file)}
+              disabled={!currentDraft}
+            />
+            <AssetUploadCard
+              kind="hero"
+              state={assetStates.hero}
+              onFileSelected={(file) => void handleUpload("hero", file)}
+              disabled={!currentDraft}
+            />
+            <AssetUploadCard
+              kind="receipt"
+              state={assetStates.receipt}
+              onFileSelected={(file) => void handleUpload("receipt", file)}
               disabled={!currentDraft}
             />
             <AssetUploadCard

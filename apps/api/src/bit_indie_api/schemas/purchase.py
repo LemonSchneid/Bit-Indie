@@ -92,6 +92,7 @@ class PurchaseReceiptGame(BaseModel):
     title: str
     slug: str
     cover_url: str | None
+    receipt_thumbnail_url: str | None
     price_msats: int | None
     build_available: bool
 

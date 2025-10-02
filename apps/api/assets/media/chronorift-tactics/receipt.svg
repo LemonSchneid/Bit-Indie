@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="chronorift-receipt-bg" x1="0" x2="1" y1="1" y2="0">
+      <stop offset="0%" stop-color="#082433" />
+      <stop offset="100%" stop-color="#1b4d68" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="26" fill="url(#chronorift-receipt-bg)" />
+  <rect x="40" y="52" width="560" height="256" rx="22" fill="#0a2c3f" opacity="0.7" />
+  <text x="60" y="128" font-family="'Audiowide', sans-serif" font-size="40" fill="#e8faff" letter-spacing="5">
+    CHRONORIFT TACTICS
+  </text>
+  <text x="60" y="176" font-family="'Inter', sans-serif" font-size="18" fill="#9fe4ff" letter-spacing="3">
+    STRATEGIC COMMAND RECEIPT
+  </text>
+  <text x="60" y="220" font-family="'Inter', sans-serif" font-size="16" fill="#dff8ff">
+    VERIFIED PURCHASE · 120,000 MSATS
+  </text>
+</svg>

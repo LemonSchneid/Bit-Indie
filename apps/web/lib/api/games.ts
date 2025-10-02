@@ -13,6 +13,8 @@ export interface GameDraft {
   description_md: string | null;
   price_msats: number | null;
   cover_url: string | null;
+  hero_url: string | null;
+  receipt_thumbnail_url: string | null;
   trailer_url: string | null;
   category: GameCategory;
   build_object_key: string | null;
@@ -40,6 +42,8 @@ export type PublishRequirementCode =
   | "SUMMARY"
   | "DESCRIPTION"
   | "COVER_IMAGE"
+  | "HERO_IMAGE"
+  | "RECEIPT_THUMBNAIL"
   | "BUILD_UPLOAD";
 
 export interface GamePublishRequirement {
@@ -52,7 +56,7 @@ export interface GamePublishChecklist {
   missing_requirements: GamePublishRequirement[];
 }
 
-export type GameAssetKind = "cover" | "build";
+export type GameAssetKind = "cover" | "hero" | "receipt" | "build";
 
 export interface GameAssetUploadRequest {
   user_id: string;
@@ -76,6 +80,8 @@ export interface CreateGameDraftRequest {
   description_md?: string | null;
   price_msats?: number | null;
   cover_url?: string | null;
+  hero_url?: string | null;
+  receipt_thumbnail_url?: string | null;
   trailer_url?: string | null;
   category?: GameCategory;
 }
@@ -88,6 +94,8 @@ export interface UpdateGameDraftRequest {
   description_md?: string | null;
   price_msats?: number | null;
   cover_url?: string | null;
+  hero_url?: string | null;
+  receipt_thumbnail_url?: string | null;
   trailer_url?: string | null;
   category?: GameCategory;
   build_object_key?: string | null;

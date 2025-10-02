@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="starpath-receipt-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#071326" />
+      <stop offset="100%" stop-color="#1f3a66" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="28" fill="url(#starpath-receipt-bg)" />
+  <rect x="36" y="48" width="568" height="264" rx="24" fill="#0a1f3e" opacity="0.75" />
+  <text x="60" y="122" font-family="'Russo One', sans-serif" font-size="42" fill="#f7fffd" letter-spacing="4">
+    STARPATH SIEGE
+  </text>
+  <text x="60" y="170" font-family="'Inter', sans-serif" font-size="18" fill="#b8f6e2" letter-spacing="4">
+    SKY TEMPLE OPERATIONS
+  </text>
+  <text x="60" y="214" font-family="'Inter', sans-serif" font-size="16" fill="#9ac9ff">
+    VERIFIED PURCHASE · 150,000 MSATS
+  </text>
+</svg>

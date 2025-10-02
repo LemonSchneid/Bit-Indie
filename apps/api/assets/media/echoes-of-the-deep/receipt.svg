@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="echoes-receipt-bg" x1="0" x2="1" y1="1" y2="0">
+      <stop offset="0%" stop-color="#031422" />
+      <stop offset="100%" stop-color="#0a3751" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="26" fill="url(#echoes-receipt-bg)" />
+  <rect x="42" y="52" width="556" height="256" rx="22" fill="#06283b" opacity="0.7" />
+  <text x="64" y="126" font-family="'Josefin Sans', sans-serif" font-size="42" fill="#e9fbff" letter-spacing="6">
+    ECHOES OF THE DEEP
+  </text>
+  <text x="64" y="174" font-family="'Inter', sans-serif" font-size="18" fill="#abecff" letter-spacing="4">
+    DIVE LICENSE RECEIPT
+  </text>
+  <text x="64" y="218" font-family="'Inter', sans-serif" font-size="16" fill="#d7f6ff">
+    VERIFIED PURCHASE · 95,000 MSATS
+  </text>
+</svg>
