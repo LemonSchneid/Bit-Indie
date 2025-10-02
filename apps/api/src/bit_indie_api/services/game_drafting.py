@@ -24,7 +24,6 @@ from bit_indie_api.services.game_promotion import update_game_featured_status
 from bit_indie_api.services.game_publication import GamePublicationService
 from bit_indie_api.services.malware_scanner import (
     BuildScanResult,
-    BuildScanStatus as ScannerBuildScanStatus,
     MalwareScannerService,
     get_malware_scanner,
 )
@@ -290,12 +289,11 @@ class BuildScanCoordinator:
             size_bytes=game.build_size_bytes,
             checksum_sha256=game.checksum_sha256,
         )
-        scanner_status = ScannerBuildScanStatus(result.status.value)
-        game.build_scan_status = BuildScanStatus(scanner_status.value)
+        game.build_scan_status = result.status
         game.build_scan_message = result.message
         game.build_scanned_at = datetime.now(timezone.utc)
 
-        if scanner_status is ScannerBuildScanStatus.FAILED:
+        if result.status is BuildScanStatus.FAILED:
             raise BuildScanFailedError(result.message)
 
 
