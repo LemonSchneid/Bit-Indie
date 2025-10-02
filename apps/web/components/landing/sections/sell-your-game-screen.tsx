@@ -49,7 +49,7 @@ export function SellYourGameScreen({
         <p className="mt-4 max-w-2xl text-sm text-[#9fb5aa]">
           Connect <span className="font-semibold text-[#abffd9]">{developerLightningAddress}</span>, upload your latest build,
           and flip on verified reviews. The developer console walks you from draft to featured slot without leaving the control
-          deck.
+          deck, and you keep 85% of every sale while Bit Indie retains 15% to keep the marketplace humming.
         </p>
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-[#2dff85]/35 bg-[rgba(13,19,15,0.92)] p-5 shadow-[0_0_35px_rgba(57,255,20,0.22)]">
