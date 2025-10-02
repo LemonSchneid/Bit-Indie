@@ -170,6 +170,18 @@ M7 — Code Health & Refactors
 M2 — Accounts & Developer Tooling
 - Deliver the core account system, developer console surfaces, and production-ready media assets so creators can manage their catalogs before launch.
 
+M3 — Developer Settings
+- Creators can authenticate into a settings surface to manage Lightning payout details, core game metadata, and upload a playable build with basic validation and guidance.
+
+M4 — Admin & Moderation
+- Provide admin-only tools to hide or restore abusive comments and reviews, enforce simple rate limits, and surface an abuse-triage dashboard for day-to-day moderation.
+
+M5 — Download Delivery
+- Complete the storage pipeline with uploads to S3/R2 (MinIO in dev), generate presigned download links, and enforce safe file-type and size checks before games go live.
+
+M6 — Telemetry & Docs
+- Ship health endpoints alongside structured logging/tracing, and refresh README/runbooks to reflect the Lightning-first architecture and removal of the legacy social stack.
+
 M8 — Legacy Social Stack Removal
 - Strip every remaining dependency on the discontinued Nostr/zap/noted relay features.
 - Ensure the product, API, and data models no longer reference the legacy social stack while preserving current Lightning purchase flows.
