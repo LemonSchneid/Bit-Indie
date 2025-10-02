@@ -139,169 +139,17 @@ class PublishRequirementsNotMetError(GameDraftingError):
         self.missing_requirements = missing_list
 
 
-class GameDraftingService:
-    """Encapsulate domain logic for creating, updating, and publishing game drafts."""
+class DraftSlugValidator:
+    """Ensure game draft slugs remain unique across the catalog."""
 
-    def __init__(self, *, build_scanner: MalwareScannerService | None = None) -> None:
-        """Initialize the service with injectable dependencies for testing."""
-
-        self._build_scanner = build_scanner or get_malware_scanner()
-
-    def get_developer(self, *, session: Session, user_id: str) -> Developer:
-        """Return the developer profile for a user or raise an error if unavailable."""
-
-        user = session.get(User, user_id)
-        if user is None:
-            raise UserNotFoundError()
-
-        developer = user.developer_profile
-        if developer is None:
-            raise MissingDeveloperProfileError()
-
-        return developer
-
-    def authorize_game_access(
-        self, *, session: Session, user_id: str, game_id: str
-    ) -> Game:
-        """Return a game owned by the supplied developer, enforcing authorization."""
-
-        developer = self.get_developer(session=session, user_id=user_id)
-        game = session.get(Game, game_id)
-        if game is None:
-            raise GameNotFoundError()
-        if game.developer_id != developer.id:
-            raise UnauthorizedDeveloperError()
-        return game
-
-    def create_draft(
-        self, *, session: Session, request: GameCreateRequest
-    ) -> Game:
-        """Persist a new draft for the requesting developer."""
-
-        developer = self.get_developer(session=session, user_id=request.user_id)
-        if not (developer.user and (developer.user.lightning_address or "").strip()):
-            raise MissingLightningAddressError()
-        self._ensure_slug_available(session=session, slug=request.slug)
-        self._validate_price(request.price_msats)
-
-        payload = request.model_dump(exclude={"user_id"})
-        for field, value in list(payload.items()):
-            if isinstance(value, AnyUrl):
-                payload[field] = str(value)
-
-        game = Game(developer_id=developer.id, active=False, **payload)
-        session.add(game)
-        session.flush()
-        session.refresh(game)
-        return game
-
-    def update_draft(
-        self,
-        *,
-        session: Session,
-        game_id: str,
-        request: GameUpdateRequest,
-    ) -> Game:
-        """Apply updates to a draft owned by the requesting developer."""
-
-        game = self.authorize_game_access(
-            session=session, user_id=request.user_id, game_id=game_id
-        )
-
-        developer = game.developer
-        if developer and not (developer.user and (developer.user.lightning_address or "").strip()):
-            raise MissingLightningAddressError()
-
-        updates = request.model_dump(exclude_unset=True, exclude={"user_id"})
-
-        new_slug = updates.get("slug")
-        if new_slug:
-            self._ensure_slug_available(
-                session=session, slug=new_slug, exclude_game_id=game.id
-            )
-
-        if "price_msats" in updates:
-            self._validate_price(updates["price_msats"])
-
-        new_build_key = updates.get("build_object_key")
-        if new_build_key:
-            self._validate_build_key(game=game, build_object_key=new_build_key)
-
-        build_fields = {"build_object_key", "build_size_bytes", "checksum_sha256"}
-        build_metadata_updated = any(field in updates for field in build_fields)
-
-        for field, value in updates.items():
-            if isinstance(value, AnyUrl):
-                value = str(value)
-            setattr(game, field, value)
-
-        if build_metadata_updated:
-            self._apply_build_scan(game=game)
-
-        session.flush()
-        session.refresh(game)
-
-        self._refresh_featured_status(session=session, game=game)
-        return game
-
-    def get_publish_checklist(
-        self,
-        *,
-        session: Session,
-        user_id: str,
-        game_id: str,
-    ) -> PublishChecklistResult:
-        """Return publish readiness details for the requesting developer's game."""
-
-        game = self.authorize_game_access(
-            session=session, user_id=user_id, game_id=game_id
-        )
-        missing = self._evaluate_publish_requirements(game)
-        checklist = GamePublishChecklist(
-            is_publish_ready=not missing, missing_requirements=list(missing)
-        )
-        return PublishChecklistResult(checklist=checklist, game=game)
-
-    def publish_game(
-        self,
-        *,
-        session: Session,
-        game_id: str,
-        request: GamePublishRequest,
-        publication: GamePublicationService,
-    ) -> Game:
-        """Promote a draft to the unlisted catalog once requirements are met."""
-
-        game = self.authorize_game_access(
-            session=session, user_id=request.user_id, game_id=game_id
-        )
-
-        missing = list(self._evaluate_publish_requirements(game))
-        if missing:
-            raise PublishRequirementsNotMetError(missing=missing)
-
-        result = publication.publish(
-            session=session,
-            game=game,
-        )
-        return result.game
-
-    def _refresh_featured_status(self, *, session: Session, game: Game) -> None:
-        """Recalculate featured eligibility and persist any status changes."""
-
-        changed, _ = update_game_featured_status(session=session, game=game)
-        if changed:
-            session.flush()
-            session.refresh(game)
-
-    def _ensure_slug_available(
+    def ensure_available(
         self,
         *,
         session: Session,
         slug: str,
         exclude_game_id: str | None = None,
     ) -> None:
-        """Raise an error when the provided slug conflicts with another game."""
+        """Raise an error if the slug collides with an existing game."""
 
         stmt: Select[str] = select(Game.id).where(Game.slug == slug)
         if exclude_game_id is not None:
@@ -310,41 +158,12 @@ class GameDraftingService:
         if conflict is not None:
             raise SlugConflictError()
 
-    def _validate_build_key(self, *, game: Game, build_object_key: str) -> None:
-        """Ensure build uploads remain scoped to the owning game."""
 
-        expected_prefix = f"games/{game.id}/build/"
-        if not build_object_key.startswith(expected_prefix):
-            raise InvalidBuildObjectKeyError()
+class DraftPriceValidator:
+    """Validate that draft prices respect Lightning invoicing constraints."""
 
-    def _apply_build_scan(self, *, game: Game) -> None:
-        """Run malware scanning whenever build metadata is modified."""
-
-        if not (
-            game.build_object_key
-            and game.build_size_bytes is not None
-            and game.checksum_sha256
-        ):
-            game.build_scan_status = BuildScanStatus.NOT_SCANNED
-            game.build_scan_message = None
-            game.build_scanned_at = None
-            return
-
-        result: BuildScanResult = self._build_scanner.scan(
-            object_key=game.build_object_key,
-            size_bytes=game.build_size_bytes,
-            checksum_sha256=game.checksum_sha256,
-        )
-        scanner_status = ScannerBuildScanStatus(result.status.value)
-        game.build_scan_status = BuildScanStatus(scanner_status.value)
-        game.build_scan_message = result.message
-        game.build_scanned_at = datetime.now(timezone.utc)
-
-        if scanner_status is ScannerBuildScanStatus.FAILED:
-            raise BuildScanFailedError(result.message)
-
-    def _validate_price(self, price_msats: int | None) -> None:
-        """Ensure prices are either unset or divisible by 1,000 milli-satoshis."""
+    def validate(self, price_msats: int | None) -> None:
+        """Ensure prices are non-negative and divisible by 1,000."""
 
         if price_msats is None:
             return
@@ -355,10 +174,23 @@ class GameDraftingService:
                 "Game price must be divisible by 1,000 milli-satoshis."
             )
 
-    def _evaluate_publish_requirements(
-        self, game: Game
-    ) -> list[GamePublishRequirement]:
-        """Return any unmet publish requirements for the supplied game."""
+
+class BuildMetadataValidator:
+    """Confirm that uploaded build metadata remains scoped to the game."""
+
+    def ensure_valid_key(self, *, game: Game, build_object_key: str) -> None:
+        """Raise when the build key belongs to a different game namespace."""
+
+        expected_prefix = f"games/{game.id}/build/"
+        if not build_object_key.startswith(expected_prefix):
+            raise InvalidBuildObjectKeyError()
+
+
+class PublishRequirementsEvaluator:
+    """Determine outstanding requirements preventing publication."""
+
+    def evaluate(self, game: Game) -> list[GamePublishRequirement]:
+        """Return a list of unmet publish requirements for the supplied game."""
 
         missing: list[GamePublishRequirement] = []
 
@@ -418,6 +250,211 @@ class GameDraftingService:
         return missing
 
 
+class BuildScanCoordinator:
+    """Orchestrate malware scanning when build metadata changes."""
+
+    def __init__(self, *, scanner: MalwareScannerService) -> None:
+        self._scanner = scanner
+
+    def apply(self, *, game: Game) -> None:
+        """Trigger a malware scan or reset state when metadata is incomplete."""
+
+        if not (
+            game.build_object_key
+            and game.build_size_bytes is not None
+            and game.checksum_sha256
+        ):
+            game.build_scan_status = BuildScanStatus.NOT_SCANNED
+            game.build_scan_message = None
+            game.build_scanned_at = None
+            return
+
+        result: BuildScanResult = self._scanner.scan(
+            object_key=game.build_object_key,
+            size_bytes=game.build_size_bytes,
+            checksum_sha256=game.checksum_sha256,
+        )
+        scanner_status = ScannerBuildScanStatus(result.status.value)
+        game.build_scan_status = BuildScanStatus(scanner_status.value)
+        game.build_scan_message = result.message
+        game.build_scanned_at = datetime.now(timezone.utc)
+
+        if scanner_status is ScannerBuildScanStatus.FAILED:
+            raise BuildScanFailedError(result.message)
+
+
+class GameDraftingService:
+    """Encapsulate domain logic for creating, updating, and publishing game drafts."""
+
+    def __init__(
+        self,
+        *,
+        build_scanner: MalwareScannerService | None = None,
+        slug_validator: DraftSlugValidator | None = None,
+        price_validator: DraftPriceValidator | None = None,
+        metadata_validator: BuildMetadataValidator | None = None,
+        publish_evaluator: PublishRequirementsEvaluator | None = None,
+        scan_coordinator: BuildScanCoordinator | None = None,
+    ) -> None:
+        """Initialize the service with injectable dependencies for testing."""
+
+        scanner = build_scanner or get_malware_scanner()
+        self._slug_validator = slug_validator or DraftSlugValidator()
+        self._price_validator = price_validator or DraftPriceValidator()
+        self._metadata_validator = metadata_validator or BuildMetadataValidator()
+        self._publish_evaluator = publish_evaluator or PublishRequirementsEvaluator()
+        self._scan_coordinator = scan_coordinator or BuildScanCoordinator(scanner=scanner)
+
+    def get_developer(self, *, session: Session, user_id: str) -> Developer:
+        """Return the developer profile for a user or raise an error if unavailable."""
+
+        user = session.get(User, user_id)
+        if user is None:
+            raise UserNotFoundError()
+
+        developer = user.developer_profile
+        if developer is None:
+            raise MissingDeveloperProfileError()
+
+        return developer
+
+    def authorize_game_access(
+        self, *, session: Session, user_id: str, game_id: str
+    ) -> Game:
+        """Return a game owned by the supplied developer, enforcing authorization."""
+
+        developer = self.get_developer(session=session, user_id=user_id)
+        game = session.get(Game, game_id)
+        if game is None:
+            raise GameNotFoundError()
+        if game.developer_id != developer.id:
+            raise UnauthorizedDeveloperError()
+        return game
+
+    def create_draft(
+        self, *, session: Session, request: GameCreateRequest
+    ) -> Game:
+        """Persist a new draft for the requesting developer."""
+
+        developer = self.get_developer(session=session, user_id=request.user_id)
+        if not (developer.user and (developer.user.lightning_address or "").strip()):
+            raise MissingLightningAddressError()
+        self._slug_validator.ensure_available(session=session, slug=request.slug)
+        self._price_validator.validate(request.price_msats)
+
+        payload = request.model_dump(exclude={"user_id"})
+        for field, value in list(payload.items()):
+            if isinstance(value, AnyUrl):
+                payload[field] = str(value)
+
+        game = Game(developer_id=developer.id, active=False, **payload)
+        session.add(game)
+        session.flush()
+        session.refresh(game)
+        return game
+
+    def update_draft(
+        self,
+        *,
+        session: Session,
+        game_id: str,
+        request: GameUpdateRequest,
+    ) -> Game:
+        """Apply updates to a draft owned by the requesting developer."""
+
+        game = self.authorize_game_access(
+            session=session, user_id=request.user_id, game_id=game_id
+        )
+
+        developer = game.developer
+        if developer and not (developer.user and (developer.user.lightning_address or "").strip()):
+            raise MissingLightningAddressError()
+
+        updates = request.model_dump(exclude_unset=True, exclude={"user_id"})
+
+        new_slug = updates.get("slug")
+        if new_slug:
+            self._slug_validator.ensure_available(
+                session=session, slug=new_slug, exclude_game_id=game.id
+            )
+
+        if "price_msats" in updates:
+            self._price_validator.validate(updates["price_msats"])
+
+        new_build_key = updates.get("build_object_key")
+        if new_build_key:
+            self._metadata_validator.ensure_valid_key(
+                game=game, build_object_key=new_build_key
+            )
+
+        build_fields = {"build_object_key", "build_size_bytes", "checksum_sha256"}
+        build_metadata_updated = any(field in updates for field in build_fields)
+
+        for field, value in updates.items():
+            if isinstance(value, AnyUrl):
+                value = str(value)
+            setattr(game, field, value)
+
+        if build_metadata_updated:
+            self._scan_coordinator.apply(game=game)
+
+        session.flush()
+        session.refresh(game)
+
+        self._refresh_featured_status(session=session, game=game)
+        return game
+
+    def get_publish_checklist(
+        self,
+        *,
+        session: Session,
+        user_id: str,
+        game_id: str,
+    ) -> PublishChecklistResult:
+        """Return publish readiness details for the requesting developer's game."""
+
+        game = self.authorize_game_access(
+            session=session, user_id=user_id, game_id=game_id
+        )
+        missing = self._publish_evaluator.evaluate(game)
+        checklist = GamePublishChecklist(
+            is_publish_ready=not missing, missing_requirements=list(missing)
+        )
+        return PublishChecklistResult(checklist=checklist, game=game)
+
+    def publish_game(
+        self,
+        *,
+        session: Session,
+        game_id: str,
+        request: GamePublishRequest,
+        publication: GamePublicationService,
+    ) -> Game:
+        """Promote a draft to the unlisted catalog once requirements are met."""
+
+        game = self.authorize_game_access(
+            session=session, user_id=request.user_id, game_id=game_id
+        )
+
+        missing = list(self._publish_evaluator.evaluate(game))
+        if missing:
+            raise PublishRequirementsNotMetError(missing=missing)
+
+        result = publication.publish(
+            session=session,
+            game=game,
+        )
+        return result.game
+
+    def _refresh_featured_status(self, *, session: Session, game: Game) -> None:
+        """Recalculate featured eligibility and persist any status changes."""
+
+        changed, _ = update_game_featured_status(session=session, game=game)
+        if changed:
+            session.flush()
+            session.refresh(game)
+
+
 def get_game_drafting_service() -> GameDraftingService:
     """Return a new `GameDraftingService` instance for request-scoped operations."""
 
@@ -438,4 +475,9 @@ __all__ = [
     "UnauthorizedDeveloperError",
     "UserNotFoundError",
     "get_game_drafting_service",
+    "DraftSlugValidator",
+    "DraftPriceValidator",
+    "BuildMetadataValidator",
+    "PublishRequirementsEvaluator",
+    "BuildScanCoordinator",
 ]

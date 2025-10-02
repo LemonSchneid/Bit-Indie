@@ -19,7 +19,9 @@
     "components/game-purchase-flow/**/*.ts",
     "components/game-purchase-flow/**/*.tsx",
     "components/ui/**/*.ts",
-    "components/ui/**/*.tsx"
+    "components/ui/**/*.tsx",
+    "components/game-draft-form/**/*.ts",
+    "components/game-draft-form/**/*.tsx"
   ],
   "exclude": [
     "node_modules"
