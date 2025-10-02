@@ -1,101 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
-  AdminIntegrityStats,
-  UserProfile,
-  getAdminIntegrityStats,
-} from "../lib/api";
-import {
-  USER_PROFILE_STORAGE_EVENT,
-  loadStoredUserProfile,
-} from "../lib/user-storage";
-
-type LoadState = "idle" | "loading" | "success" | "error";
-
-function formatPercentage(value: number): string {
-  if (!Number.isFinite(value)) {
-    return "0%";
-  }
-  const clamped = Math.max(0, Math.min(value, 1));
-  return `${(clamped * 100).toFixed(1)}%`;
-}
-
-function formatHours(value: number): string {
-  if (!Number.isFinite(value)) {
-    return "0";
-  }
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-}
-
-function formatMsats(value: number): string {
-  const msats = Math.max(0, value);
-  const sats = msats / 1000;
-  const formattedMsats = msats.toLocaleString("en-US");
-  const formattedSats = sats.toLocaleString("en-US", {
-    minimumFractionDigits: sats > 0 && sats < 1 ? 2 : 0,
-    maximumFractionDigits: 2,
-  });
-  return `${formattedMsats} msats (${formattedSats} sats)`;
-}
-
-function formatCount(value: number): string {
-  return Math.max(0, value).toLocaleString("en-US");
-}
+  formatIntegrityCount,
+  formatIntegrityHours,
+  formatIntegrityMsats,
+  formatIntegrityPercentage,
+} from "../lib/format/admin-integrity";
+import { useAdminIntegrityMetrics } from "../lib/hooks/use-admin-integrity-metrics";
 
 export function AdminIntegrityDashboard(): JSX.Element {
-  const [profile, setProfile] = useState<UserProfile | null>(() => loadStoredUserProfile());
-  const [stats, setStats] = useState<AdminIntegrityStats | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    function handleProfileChange() {
-      setProfile(loadStoredUserProfile());
-    }
-
-    window.addEventListener(USER_PROFILE_STORAGE_EVENT, handleProfileChange);
-    return () => window.removeEventListener(USER_PROFILE_STORAGE_EVENT, handleProfileChange);
-  }, []);
-
-  useEffect(() => {
-    if (!profile || !profile.is_admin) {
-      setStats(null);
-      setLoadState("idle");
-      setError(null);
-    }
-  }, [profile]);
-
-  const refreshStats = useCallback(async () => {
-    if (!profile || !profile.is_admin) {
-      return;
-    }
-
-    setLoadState("loading");
-    setError(null);
-    try {
-      const payload = await getAdminIntegrityStats(profile.id);
-      setStats(payload);
-      setLoadState("success");
-    } catch (cause) {
-      setLoadState("error");
-      if (cause instanceof Error) {
-        setError(cause.message);
-      } else {
-        setError("Unable to load integrity metrics.");
-      }
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (profile && profile.is_admin) {
-      void refreshStats();
-    }
-  }, [profile, refreshStats]);
+  const { profile, stats, loadState, error, refresh } = useAdminIntegrityMetrics();
 
   const isEmpty = useMemo(() => {
     if (!stats) {
@@ -129,7 +45,7 @@ export function AdminIntegrityDashboard(): JSX.Element {
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <button
             type="button"
-            onClick={() => void refreshStats()}
+            onClick={() => void refresh()}
             disabled={loadState === "loading"}
             className="inline-flex items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -139,9 +55,7 @@ export function AdminIntegrityDashboard(): JSX.Element {
       </div>
 
       {loadState === "error" && error ? (
-        <div className="rounded-3xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm text-rose-100">
-          {error}
-        </div>
+        <div className="rounded-3xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm text-rose-100">{error}</div>
       ) : null}
 
       {loadState === "loading" && !stats ? (
@@ -155,25 +69,23 @@ export function AdminIntegrityDashboard(): JSX.Element {
           <div className="grid gap-4 md:grid-cols-3">
             <article className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 text-slate-200">
               <h3 className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Refund rate</h3>
-              <p className="mt-3 text-3xl font-semibold text-white">{formatPercentage(stats.refund_rate)}</p>
+              <p className="mt-3 text-3xl font-semibold text-white">{formatIntegrityPercentage(stats.refund_rate)}</p>
               <p className="mt-2 text-xs text-slate-400">
-                {formatCount(stats.refunded_purchase_count)} refunded purchases out of {formatCount(stats.paid_purchase_count)}
-                {" "}
-                paid.
+                {formatIntegrityCount(stats.refunded_purchase_count)} refunded purchases out of {formatIntegrityCount(stats.paid_purchase_count)} paid.
               </p>
             </article>
             <article className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 text-slate-200">
               <h3 className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Takedown rate</h3>
-              <p className="mt-3 text-3xl font-semibold text-white">{formatPercentage(stats.takedown_rate)}</p>
+              <p className="mt-3 text-3xl font-semibold text-white">{formatIntegrityPercentage(stats.takedown_rate)}</p>
               <p className="mt-2 text-xs text-slate-400">
-                {formatCount(stats.actioned_flag_count)} takedowns processed across {formatCount(stats.total_flag_count)} flags.
+                {formatIntegrityCount(stats.actioned_flag_count)} takedowns processed across {formatIntegrityCount(stats.total_flag_count)} flags.
               </p>
             </article>
             <article className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 text-slate-200">
               <h3 className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Moderator hours</h3>
-              <p className="mt-3 text-3xl font-semibold text-white">{formatHours(stats.estimated_moderation_hours)} hrs</p>
+              <p className="mt-3 text-3xl font-semibold text-white">{formatIntegrityHours(stats.estimated_moderation_hours)} hrs</p>
               <p className="mt-2 text-xs text-slate-400">
-                Estimated from {formatCount(stats.handled_flag_count)} handled flags with a 6 minute average per review.
+                Estimated from {formatIntegrityCount(stats.handled_flag_count)} handled flags with a 6 minute average per review.
               </p>
             </article>
           </div>
@@ -185,15 +97,15 @@ export function AdminIntegrityDashboard(): JSX.Element {
               <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Refund payouts</dt>
-                  <dd className="mt-2 text-base text-white">{formatMsats(stats.total_refund_payout_msats)}</dd>
+                  <dd className="mt-2 text-base text-white">{formatIntegrityMsats(stats.total_refund_payout_msats)}</dd>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Handled flags</dt>
-                  <dd className="mt-2 text-base text-white">{formatCount(stats.handled_flag_count)}</dd>
+                  <dd className="mt-2 text-base text-white">{formatIntegrityCount(stats.handled_flag_count)}</dd>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Open flags</dt>
-                  <dd className="mt-2 text-base text-white">{formatCount(stats.open_flag_count)}</dd>
+                  <dd className="mt-2 text-base text-white">{formatIntegrityCount(stats.open_flag_count)}</dd>
                 </div>
               </dl>
             )}

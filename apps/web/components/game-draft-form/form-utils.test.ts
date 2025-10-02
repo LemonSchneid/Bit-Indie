@@ -7,9 +7,6 @@ import {
   buildUpdatePayload,
   createInitialValues,
   mapDraftToValues,
-  normalizeChecksum,
-  normalizeOrNull,
-  parseOptionalNonNegativeInteger,
 } from "./form-utils";
 
 test("createInitialValues returns empty defaults", () => {
@@ -27,22 +24,6 @@ test("createInitialValues returns empty defaults", () => {
     build_size_bytes: "",
     checksum_sha256: "",
   });
-});
-
-test("normalizeOrNull trims whitespace and returns null when empty", () => {
-  assert.equal(normalizeOrNull("   hello  "), "hello");
-  assert.equal(normalizeOrNull("   "), null);
-});
-
-test("parseOptionalNonNegativeInteger converts values when valid", () => {
-  assert.equal(parseOptionalNonNegativeInteger(" 42 ", "Field"), 42);
-  assert.equal(parseOptionalNonNegativeInteger("", "Field"), null);
-  assert.throws(() => parseOptionalNonNegativeInteger("-5", "Field"));
-});
-
-test("normalizeChecksum lowercases non-empty strings", () => {
-  assert.equal(normalizeChecksum(" ABC123 "), "abc123");
-  assert.equal(normalizeChecksum("   "), null);
 });
 
 test("buildCreatePayload normalizes strings and numeric inputs", () => {

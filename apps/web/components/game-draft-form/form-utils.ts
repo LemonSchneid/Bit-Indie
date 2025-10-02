@@ -1,4 +1,14 @@
-import { type GameCategory, type GameDraft, type CreateGameDraftRequest, type UpdateGameDraftRequest } from "../../lib/api";
+import {
+  type GameCategory,
+  type GameDraft,
+  type CreateGameDraftRequest,
+  type UpdateGameDraftRequest,
+} from "../../lib/api";
+import {
+  normalizeToLowercaseOrNull,
+  parseOptionalInteger,
+  trimToNull,
+} from "../../lib/forms/normalizers";
 
 export type GameDraftFormValues = {
   title: string;
@@ -30,39 +40,16 @@ export function createInitialValues(): GameDraftFormValues {
   };
 }
 
-export function normalizeOrNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed;
-}
-
-export function parseOptionalNonNegativeInteger(value: string, fieldName: string): number | null {
-  const trimmed = value.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  const numeric = Number(trimmed);
-  if (!Number.isFinite(numeric) || numeric < 0) {
-    throw new Error(`${fieldName} must be a non-negative number.`);
-  }
-  return Math.trunc(numeric);
-}
-
-export function normalizeChecksum(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed === "" ? null : trimmed.toLowerCase();
-}
-
 export function buildCreatePayload(values: GameDraftFormValues, userId: string): CreateGameDraftRequest {
   return {
     user_id: userId,
     title: values.title.trim(),
     slug: values.slug.trim(),
-    summary: normalizeOrNull(values.summary),
-    description_md: normalizeOrNull(values.description_md),
-    price_msats: parseOptionalNonNegativeInteger(values.price_msats, "Price"),
-    cover_url: normalizeOrNull(values.cover_url),
-    trailer_url: normalizeOrNull(values.trailer_url),
+    summary: trimToNull(values.summary),
+    description_md: trimToNull(values.description_md),
+    price_msats: parseOptionalInteger(values.price_msats, "Price", { min: 0 }),
+    cover_url: trimToNull(values.cover_url),
+    trailer_url: trimToNull(values.trailer_url),
     category: values.category,
   };
 }
@@ -70,9 +57,9 @@ export function buildCreatePayload(values: GameDraftFormValues, userId: string):
 export function buildUpdatePayload(values: GameDraftFormValues, userId: string): UpdateGameDraftRequest {
   return {
     ...buildCreatePayload(values, userId),
-    build_object_key: normalizeOrNull(values.build_object_key),
-    build_size_bytes: parseOptionalNonNegativeInteger(values.build_size_bytes, "Build size"),
-    checksum_sha256: normalizeChecksum(values.checksum_sha256),
+    build_object_key: trimToNull(values.build_object_key),
+    build_size_bytes: parseOptionalInteger(values.build_size_bytes, "Build size", { min: 0 }),
+    checksum_sha256: normalizeToLowercaseOrNull(values.checksum_sha256),
   };
 }
 
