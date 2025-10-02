@@ -5,10 +5,10 @@ import type { Dispatch, SetStateAction } from "react";
 import { cn } from "./shared";
 
 const SCREEN_OPTIONS = [
-  { label: "Storefront", value: 1 },
-  { label: "Sell your game", value: 2 },
-  { label: "Lightning checkout", value: 3 },
-  { label: "Receipt flow", value: 4 },
+  { label: "Catalog", value: 1 },
+  { label: "Sell Your Game", value: 2 },
+  { label: "Info for Players", value: 3 },
+  { label: "Chat", value: 4 },
 ] as const;
 
 function uppercaseLabel(value: string): string {
