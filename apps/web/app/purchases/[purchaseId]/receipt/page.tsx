@@ -178,10 +178,10 @@ export default async function PurchaseReceiptPage({
 
         <aside className="space-y-5">
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-            {game.cover_url ? (
+            {game.receipt_thumbnail_url || game.cover_url ? (
               <Image
-                src={game.cover_url}
-                alt={`${game.title} cover art`}
+                src={game.receipt_thumbnail_url ?? game.cover_url ?? ""}
+                alt={`${game.title} receipt thumbnail`}
                 width={960}
                 height={540}
                 className="h-full w-full object-cover"
@@ -190,7 +190,7 @@ export default async function PurchaseReceiptPage({
               />
             ) : (
               <div className="flex h-48 items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] text-[#7bffc8]/60">
-                Cover art coming soon
+                Receipt art coming soon
               </div>
             )}
           </div>

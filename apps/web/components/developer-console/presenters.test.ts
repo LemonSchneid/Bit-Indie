@@ -12,6 +12,10 @@ test("describeAssetUpload surfaces optimistic states", () => {
   assert.equal(success.tone, "success");
   assert.match(success.message, /build archive/i);
 
+  const hero = describeAssetUpload("hero", { status: "success", message: null });
+  assert.equal(hero.tone, "success");
+  assert.match(hero.message, /hero image/i);
+
   const error = describeAssetUpload("cover", { status: "error", message: "Upload failed" });
   assert.equal(error.tone, "error");
   assert.equal(error.message, "Upload failed");

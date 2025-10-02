@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from bit_indie_api.core.config import get_storage_settings
 from bit_indie_api.db import session_scope
 from bit_indie_api.db.models import (
     BuildScanStatus,
@@ -29,6 +30,44 @@ from bit_indie_api.db.models import (
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+ASSET_SUFFIXES = {
+    "cover": "-cover.svg",
+    "hero": "-hero.svg",
+    "receipt_thumbnail": "-receipt.svg",
+}
+
+ASSET_DIRECTORIES = {
+    "cover": "cover",
+    "hero": "hero",
+    "receipt_thumbnail": "receipt",
+}
+
+GAME_MEDIA_SLUGS = {
+    "game-seed-001": "starpath-siege",
+    "game-seed-002": "chronorift-tactics",
+    "game-seed-003": "lumen-forge",
+    "game-seed-004": "echoes-of-the-deep",
+    "game-seed-005": "quantum-drift-rally",
+}
+
+
+def _media_url(object_key: str) -> str:
+    """Build a public asset URL for the provided object key."""
+
+    settings = get_storage_settings()
+    base = settings.public_base_url.rstrip("/")
+    key = object_key.lstrip("/")
+    return f"{base}/{key}"
+
+
+def _media_object_key(*, game_id: str, slug: str, asset: str) -> str:
+    """Return the storage object key for the requested asset."""
+
+    directory = ASSET_DIRECTORIES[asset]
+    suffix = ASSET_SUFFIXES[asset]
+    return f"games/{game_id}/{directory}/{slug}{suffix}"
 
 
 def seed() -> None:
@@ -92,7 +131,19 @@ def seed() -> None:
                     "before the storm front crashes in."
                 ),
                 "price_msats": 150_000,
-                "cover_url": "https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80",
+                "cover_url": _media_url(
+                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="cover")
+                ),
+                "hero_url": _media_url(
+                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="hero")
+                ),
+                "receipt_thumbnail_url": _media_url(
+                    _media_object_key(
+                        game_id="game-seed-001",
+                        slug="starpath-siege",
+                        asset="receipt_thumbnail",
+                    )
+                ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.FEATURED,
                 "build_object_key": "games/starpath-siege/v0.3.2.zip",
@@ -112,7 +163,19 @@ def seed() -> None:
                     "Weekly challenge seeds remix enemy loadouts and terrain for tournament runs."
                 ),
                 "price_msats": 120_000,
-                "cover_url": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+                "cover_url": _media_url(
+                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="cover")
+                ),
+                "hero_url": _media_url(
+                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="hero")
+                ),
+                "receipt_thumbnail_url": _media_url(
+                    _media_object_key(
+                        game_id="game-seed-002",
+                        slug="chronorift-tactics",
+                        asset="receipt_thumbnail",
+                    )
+                ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.DISCOVER,
                 "build_object_key": "games/chronorift-tactics/v0.5.0.zip",
@@ -132,7 +195,19 @@ def seed() -> None:
                     "Supports drop-in multiplayer with synced blueprint sharing."
                 ),
                 "price_msats": 190_000,
-                "cover_url": "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=1200&q=80",
+                "cover_url": _media_url(
+                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="cover")
+                ),
+                "hero_url": _media_url(
+                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="hero")
+                ),
+                "receipt_thumbnail_url": _media_url(
+                    _media_object_key(
+                        game_id="game-seed-003",
+                        slug="lumen-forge",
+                        asset="receipt_thumbnail",
+                    )
+                ),
                 "category": GameCategory.FINISHED,
                 "status": GameStatus.FEATURED,
                 "build_object_key": "games/lumen-forge/v1.2.1.zip",
@@ -152,7 +227,19 @@ def seed() -> None:
                     "Dialogue choices echo through future dives, revealing hidden factions."
                 ),
                 "price_msats": 95_000,
-                "cover_url": "https://images.unsplash.com/photo-1526403228363-5fda5f4c1cde?auto=format&fit=crop&w=1200&q=80",
+                "cover_url": _media_url(
+                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="cover")
+                ),
+                "hero_url": _media_url(
+                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="hero")
+                ),
+                "receipt_thumbnail_url": _media_url(
+                    _media_object_key(
+                        game_id="game-seed-004",
+                        slug="echoes-of-the-deep",
+                        asset="receipt_thumbnail",
+                    )
+                ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.DISCOVER,
                 "build_object_key": "games/echoes-of-the-deep/v0.9.4.zip",
@@ -172,7 +259,19 @@ def seed() -> None:
                     "Weekly tournaments rotate track modifiers and leaderboard rewards."
                 ),
                 "price_msats": 70_000,
-                "cover_url": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
+                "cover_url": _media_url(
+                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="cover")
+                ),
+                "hero_url": _media_url(
+                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="hero")
+                ),
+                "receipt_thumbnail_url": _media_url(
+                    _media_object_key(
+                        game_id="game-seed-005",
+                        slug="quantum-drift-rally",
+                        asset="receipt_thumbnail",
+                    )
+                ),
                 "category": GameCategory.PROTOTYPE,
                 "status": GameStatus.DISCOVER,
                 "build_object_key": "games/quantum-drift-rally/v0.2.7.zip",
@@ -201,6 +300,8 @@ def seed() -> None:
             game.description_md = entry.get("description_md")
             game.price_msats = entry.get("price_msats")
             game.cover_url = entry.get("cover_url")
+            game.hero_url = entry.get("hero_url")
+            game.receipt_thumbnail_url = entry.get("receipt_thumbnail_url")
             game.trailer_url = entry.get("trailer_url")
             game.category = entry["category"]
             game.build_object_key = entry.get("build_object_key")

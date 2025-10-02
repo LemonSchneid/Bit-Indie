@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="quantum-receipt-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#180536" />
+      <stop offset="100%" stop-color="#3a1270" />
+    </linearGradient>
+    <linearGradient id="quantum-receipt-bar" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#ff6b8a" />
+      <stop offset="100%" stop-color="#7bffc8" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="26" fill="url(#quantum-receipt-bg)" />
+  <rect x="42" y="52" width="556" height="256" rx="22" fill="#22064a" opacity="0.72" />
+  <rect x="60" y="92" width="240" height="6" rx="3" fill="url(#quantum-receipt-bar)" />
+  <text x="60" y="130" font-family="'Russo One', sans-serif" font-size="40" fill="#f8fffb" letter-spacing="6">
+    QUANTUM DRIFT RALLY
+  </text>
+  <text x="60" y="176" font-family="'Inter', sans-serif" font-size="18" fill="#c3fff1" letter-spacing="4">
+    NEBULA CIRCUIT RECEIPT
+  </text>
+  <text x="60" y="220" font-family="'Inter', sans-serif" font-size="16" fill="#f1fff9">
+    VERIFIED PURCHASE · 70,000 MSATS
+  </text>
+</svg>

@@ -13,16 +13,22 @@ interface AssetUploadCardProps {
 
 const TITLES: Record<AssetKind, string> = {
   cover: "Cover image upload",
+  hero: "Hero image upload",
+  receipt: "Receipt thumbnail upload",
   build: "Build upload",
 };
 
 const DESCRIPTIONS: Record<AssetKind, string> = {
-  cover: "Choose a PNG or JPG under 5 MB. We optimize the image for the catalog tile automatically.",
+  cover: "Choose a PNG, JPG, WEBP, or SVG under 5 MB. We optimize the image for the catalog tile automatically.",
+  hero: "Upload a wide PNG, JPG, WEBP, or SVG under 8 MB for the game detail hero section.",
+  receipt: "Provide a square or landscape PNG, JPG, WEBP, or SVG under 3 MB for purchase receipts.",
   build: "Upload a ZIP archive containing your executable or HTML build. We will compute the checksum and trigger a malware scan.",
 };
 
 const ACCEPT: Record<AssetKind, string> = {
-  cover: "image/png,image/jpeg",
+  cover: "image/png,image/jpeg,image/webp,image/svg+xml",
+  hero: "image/png,image/jpeg,image/webp,image/svg+xml",
+  receipt: "image/png,image/jpeg,image/webp,image/svg+xml",
   build: ".zip",
 };
 

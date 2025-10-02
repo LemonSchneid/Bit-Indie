@@ -175,6 +175,22 @@ export function GameDraftForm({
               onValueChange={(value) => handleFieldChange("cover_url", value)}
             />
             <DraftInputField
+              id="draft-hero"
+              name="hero"
+              label="Hero image URL"
+              value={values.hero_url}
+              placeholder="https://cdn.example.com/hero.jpg"
+              onValueChange={(value) => handleFieldChange("hero_url", value)}
+            />
+            <DraftInputField
+              id="draft-receipt"
+              name="receipt"
+              label="Receipt thumbnail URL"
+              value={values.receipt_thumbnail_url}
+              placeholder="https://cdn.example.com/receipt.png"
+              onValueChange={(value) => handleFieldChange("receipt_thumbnail_url", value)}
+            />
+            <DraftInputField
               id="draft-trailer"
               name="trailer"
               label="Trailer URL"

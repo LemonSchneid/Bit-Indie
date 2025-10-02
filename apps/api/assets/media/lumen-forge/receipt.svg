@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="lumen-receipt-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1a0a33" />
+      <stop offset="100%" stop-color="#3c1461" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" rx="26" fill="url(#lumen-receipt-bg)" />
+  <rect x="42" y="52" width="556" height="256" rx="22" fill="#240b44" opacity="0.7" />
+  <text x="64" y="128" font-family="'Bebas Neue', sans-serif" font-size="44" fill="#fff3d6" letter-spacing="6">
+    LUMEN FORGE
+  </text>
+  <text x="64" y="176" font-family="'Inter', sans-serif" font-size="18" fill="#ffe59f" letter-spacing="4">
+    SOLAR FOUNDRY PURCHASE
+  </text>
+  <text x="64" y="220" font-family="'Inter', sans-serif" font-size="16" fill="#f4e3b2">
+    VERIFIED PURCHASE · 180,000 MSATS
+  </text>
+</svg>

@@ -198,6 +198,8 @@ class Game(TimestampMixin, Base):
     description_md: Mapped[str | None] = mapped_column(Text)
     price_msats: Mapped[int | None] = mapped_column(BigInteger)
     cover_url: Mapped[str | None] = mapped_column(String(500))
+    hero_url: Mapped[str | None] = mapped_column(String(500))
+    receipt_thumbnail_url: Mapped[str | None] = mapped_column(String(500))
     trailer_url: Mapped[str | None] = mapped_column(String(500))
     category: Mapped[GameCategory] = mapped_column(
         SqlEnum(GameCategory, name="game_category", native_enum=False),

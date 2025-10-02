@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="lumen-cover-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#160a2c" />
+      <stop offset="100%" stop-color="#3c1661" />
+    </linearGradient>
+    <radialGradient id="lumen-cover-core" cx="0.55" cy="0.4" r="0.5">
+      <stop offset="0%" stop-color="#ffde7b" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#ffde7b" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#lumen-cover-bg)" />
+  <rect width="1280" height="720" fill="url(#lumen-cover-core)" />
+  <g opacity="0.45" stroke="#ffde7b" stroke-width="5">
+    <circle cx="640" cy="360" r="220" fill="none" />
+    <circle cx="640" cy="360" r="300" fill="none" stroke-dasharray="20 18" />
+  </g>
+  <g fill="#2b0c4a" opacity="0.6">
+    <rect x="300" y="180" width="220" height="360" rx="30" />
+    <rect x="760" y="160" width="220" height="380" rx="34" />
+  </g>
+  <text x="320" y="520" font-family="'Bebas Neue', 'Oswald', sans-serif" font-size="92" fill="#fff7df" letter-spacing="12">
+    LUMEN FORGE
+  </text>
+  <text x="324" y="580" font-family="'Inter', sans-serif" font-size="28" fill="#ffe8a6" letter-spacing="14">
+    SOLAR-CARVED CRAFTING SANCTUARY
+  </text>
+</svg>

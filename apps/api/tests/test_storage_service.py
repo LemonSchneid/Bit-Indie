@@ -89,6 +89,34 @@ def test_build_asset_key_handles_cover_extensions() -> None:
     assert key.endswith(".png")
 
 
+def test_build_asset_key_handles_hero_and_receipt_assets() -> None:
+    """Hero and receipt uploads should use their own storage directories."""
+
+    client = _RecordingClient()
+    service = StorageService(
+        client=client,
+        bucket="pop-games",
+        presign_expiration=600,
+        public_base_url="http://localhost:9000/pop-games",
+    )
+
+    hero_key = service.build_asset_key(
+        game_id="abc",
+        asset=GameAssetKind.HERO,
+        filename="Hero.JPG",
+    )
+    receipt_key = service.build_asset_key(
+        game_id="abc",
+        asset=GameAssetKind.RECEIPT_THUMBNAIL,
+        filename="Receipt.webp",
+    )
+
+    assert hero_key.startswith("games/abc/hero/")
+    assert hero_key.endswith(".jpg")
+    assert receipt_key.startswith("games/abc/receipt/")
+    assert receipt_key.endswith(".webp")
+
+
 def test_create_presigned_download_returns_expiring_url() -> None:
     """Generating a download link should call the client and record expiration."""
 

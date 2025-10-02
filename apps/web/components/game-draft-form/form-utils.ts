@@ -17,6 +17,8 @@ export type GameDraftFormValues = {
   description_md: string;
   price_msats: string;
   cover_url: string;
+  hero_url: string;
+  receipt_thumbnail_url: string;
   trailer_url: string;
   category: GameCategory;
   build_object_key: string;
@@ -32,6 +34,8 @@ export function createInitialValues(): GameDraftFormValues {
     description_md: "",
     price_msats: "",
     cover_url: "",
+    hero_url: "",
+    receipt_thumbnail_url: "",
     trailer_url: "",
     category: "PROTOTYPE",
     build_object_key: "",
@@ -49,6 +53,8 @@ export function buildCreatePayload(values: GameDraftFormValues, userId: string):
     description_md: trimToNull(values.description_md),
     price_msats: parseOptionalInteger(values.price_msats, "Price", { min: 0 }),
     cover_url: trimToNull(values.cover_url),
+    hero_url: trimToNull(values.hero_url),
+    receipt_thumbnail_url: trimToNull(values.receipt_thumbnail_url),
     trailer_url: trimToNull(values.trailer_url),
     category: values.category,
   };
@@ -71,6 +77,8 @@ export function mapDraftToValues(draft: GameDraft): GameDraftFormValues {
     description_md: draft.description_md ?? "",
     price_msats: draft.price_msats != null ? String(draft.price_msats) : "",
     cover_url: draft.cover_url ?? "",
+    hero_url: draft.hero_url ?? "",
+    receipt_thumbnail_url: draft.receipt_thumbnail_url ?? "",
     trailer_url: draft.trailer_url ?? "",
     category: draft.category,
     build_object_key: draft.build_object_key ?? "",

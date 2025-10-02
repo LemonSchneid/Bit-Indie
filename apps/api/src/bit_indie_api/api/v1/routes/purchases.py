@@ -117,6 +117,7 @@ def read_purchase_receipt(
         title=game.title,
         slug=game.slug,
         cover_url=game.cover_url,
+        receipt_thumbnail_url=game.receipt_thumbnail_url,
         price_msats=game.price_msats,
         build_available=bool(game.build_object_key),
     )

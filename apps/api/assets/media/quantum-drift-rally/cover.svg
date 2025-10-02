@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="quantum-cover-bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#150330" />
+      <stop offset="100%" stop-color="#41166f" />
+    </linearGradient>
+    <linearGradient id="quantum-cover-trail" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#ff6b8a" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#7bffc8" stop-opacity="0.8" />
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#quantum-cover-bg)" />
+  <g opacity="0.7">
+    <path d="M-80 620 C 260 540, 520 520, 880 400 S 1440 220, 1440 220" fill="none" stroke="url(#quantum-cover-trail)" stroke-width="18" stroke-linecap="round" />
+  </g>
+  <g fill="#24064f" opacity="0.5">
+    <rect x="200" y="220" width="260" height="320" rx="40" />
+    <rect x="560" y="180" width="280" height="360" rx="48" />
+    <rect x="920" y="240" width="220" height="300" rx="36" />
+  </g>
+  <text x="180" y="520" font-family="'Russo One', 'Orbitron', sans-serif" font-size="86" fill="#f7fffc" letter-spacing="14">
+    QUANTUM DRIFT RALLY
+  </text>
+  <text x="184" y="580" font-family="'Inter', sans-serif" font-size="26" fill="#c2fff0" letter-spacing="12">
+    NEBULA CIRCUITS · TIMELINE BOOSTS
+  </text>
+</svg>

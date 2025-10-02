@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 960">
+  <defs>
+    <linearGradient id="lumen-hero-bg" x1="0" x2="1" y1="0.2" y2="0.8">
+      <stop offset="0%" stop-color="#19092f" />
+      <stop offset="50%" stop-color="#2b1253" />
+      <stop offset="100%" stop-color="#5a1f76" />
+    </linearGradient>
+    <radialGradient id="lumen-hero-core" cx="0.6" cy="0.35" r="0.55">
+      <stop offset="0%" stop-color="#ffd55c" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#ffd55c" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="960" fill="url(#lumen-hero-bg)" />
+  <rect width="1920" height="960" fill="url(#lumen-hero-core)" />
+  <g fill="#2a0d4a" opacity="0.55">
+    <rect x="260" y="200" width="320" height="520" rx="44" />
+    <rect x="720" y="160" width="360" height="580" rx="56" />
+    <rect x="1200" y="220" width="320" height="520" rx="48" />
+  </g>
+  <g stroke="#ffe07f" stroke-width="3" stroke-dasharray="18 14" opacity="0.6">
+    <circle cx="960" cy="480" r="260" fill="none" />
+    <circle cx="960" cy="480" r="360" fill="none" />
+  </g>
+  <text x="260" y="720" font-family="'Bebas Neue', 'Oswald', sans-serif" font-size="128" fill="#fff6da" letter-spacing="18">
+    LUMEN FORGE
+  </text>
+  <text x="264" y="792" font-family="'Inter', sans-serif" font-size="38" fill="#ffeab6" letter-spacing="16">
+    INFUSE THE FORGE · CAPTURE SOLAR SONGS
+  </text>
+</svg>
