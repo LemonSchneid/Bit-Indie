@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="space-y-1">
                   <Link
-                    href="/"
+                    href="/games"
                     className="text-lg font-semibold tracking-tight text-white transition hover:text-[#7bffc8]"
                   >
                     Bit Indie
@@ -44,9 +44,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       Chat
                     </Link>
                   </nav>
-                  <span className="text-xs uppercase tracking-[0.35em] text-[#7bffc8]/70 lg:text-right">
-                    Simple MVP preview
-                  </span>
+                  <Link
+                    href="/sign-in"
+                    className="text-xs uppercase tracking-[0.35em] text-[#7bffc8]/70 transition hover:text-[#a9ffe4] lg:text-right"
+                  >
+                    Sign In
+                  </Link>
                 </div>
               </div>
             </div>

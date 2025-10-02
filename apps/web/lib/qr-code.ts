@@ -11,7 +11,8 @@ export function buildQrCodeUrl(value: string, size = 220): string {
 
   const qrUrl = new URL("https://api.qrserver.com/v1/create-qr-code/");
   qrUrl.searchParams.set("size", `${size}x${size}`);
-  qrUrl.searchParams.set("data", trimmed);
+  // Encode as a Lightning deep link for broader wallet compatibility
+  qrUrl.searchParams.set("data", `lightning:${trimmed}`);
 
   return qrUrl.toString();
 }

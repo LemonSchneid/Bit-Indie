@@ -11,7 +11,7 @@ type CatalogGridProps = {
 export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
   if (games.length === 0) {
     return (
-      <section className="rounded-3xl border border-white/10 bg-[#060606]/90 p-8 text-[#dcfff2]/80 shadow-[0_0_45px_rgba(123,255,200,0.08)]">
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-[#060606]/90 p-8 text-[#dcfff2]/80 shadow-[0_0_45px_rgba(123,255,200,0.12)] backdrop-blur-xl before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-[#7bffc8]/20 before:opacity-60 before:content-['']">
         <h2 className="text-xl font-semibold text-white">No games available yet</h2>
         <p className="mt-3 text-sm text-[#dcfff2]/75">
           Start the Docker Compose stack and run the seed script to populate the sandbox catalog.
@@ -29,7 +29,7 @@ export function CatalogGrid({ games }: CatalogGridProps): JSX.Element {
         <Link
           key={game.id}
           href={`/games/${game.slug}`}
-          className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#060606]/90 shadow-[0_0_45px_rgba(123,255,200,0.08)] transition hover:border-[#7bffc8]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7bffc8]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+          className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-emerald-500/20 bg-[#060606]/90 shadow-[0_0_45px_rgba(123,255,200,0.12)] backdrop-blur-xl transition hover:border-[#7bffc8]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7bffc8]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-[#7bffc8]/20 before:opacity-60 before:transition before:content-[''] hover:before:border-[#7bffc8]/40"
         >
           <div className="relative h-48 w-full bg-[#0b0b0b]">
             {game.cover_url ? (

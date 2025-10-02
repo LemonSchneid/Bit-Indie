@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { openLightningInvoice } from "../../lib/lightning";
 
 import type { InvoiceCreateResponse } from "../../lib/api";
 import type { CopyState, InvoiceFlowState } from "./types";
@@ -124,6 +125,13 @@ export function InvoicePanel({
                 className="inline-flex items-center rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 font-semibold uppercase tracking-[0.2em] text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30"
               >
                 Copy payment request
+              </button>
+              <button
+                type="button"
+                onClick={() => openLightningInvoice(invoice.payment_request)}
+                className="inline-flex items-center rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-500/20 px-4 py-2 font-semibold uppercase tracking-[0.2em] text-emerald-100 shadow shadow-emerald-500/20 transition hover:from-emerald-400/30 hover:to-cyan-500/30"
+              >
+                Open in wallet
               </button>
               {copyState === "copied" ? (
                 <span className="text-emerald-200">Copied to clipboard.</span>

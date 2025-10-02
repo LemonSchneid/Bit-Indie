@@ -61,6 +61,20 @@ export async function createGuestInvoice(
   const endpoint = deps.resolveLightningPayEndpoint({ lightningAddress: normalizedLightningAddress });
   const payParams = await deps.fetchLnurlPayParams(endpoint);
   const amountSats = Math.max(1, Math.ceil(Number(priceMsats) / 1000));
+  const desiredMsats = amountSats * 1000;
+
+  if (desiredMsats < payParams.minSendable) {
+    const minSats = Math.ceil(payParams.minSendable / 1000);
+    throw new Error(
+      `This developer's LNURL minimum is ${minSats} sats, which is above the game price (${amountSats} sats). Ask the developer to lower their LNURL minimum or raise the game price.`,
+    );
+  }
+  if (payParams.maxSendable && desiredMsats > payParams.maxSendable) {
+    const maxSats = Math.floor(payParams.maxSendable / 1000);
+    throw new Error(
+      `This developer's LNURL maximum is ${maxSats} sats, which is below the game price (${amountSats} sats).`;
+    );
+  }
   const invoiceResponse = await deps.requestLnurlInvoice(
     payParams,
     amountSats,

@@ -13,10 +13,10 @@ export default function GameNotFound() {
           other games or ask the developer for an updated link.
         </p>
         <Link
-          href="/"
+          href="/games"
           className="rounded-full border border-white/10 bg-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/20"
         >
-          Back to home
+          Back to catalog
         </Link>
       </div>
     </main>

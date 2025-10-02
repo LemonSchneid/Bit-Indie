@@ -7,12 +7,12 @@ import {
   logoutAccount,
   refreshAccountSession,
   signUpAccount,
-} from "../../../lib/api/auth";
-import { useStoredUserProfile } from "../../../lib/hooks/use-stored-user-profile";
-import { useMutation, useQueryClient } from "../../../lib/react-query";
-import { clearUserSession, storeUserSession } from "../../../lib/user-session";
-import { SIGN_IN_OPTIONS } from "../landing-fallbacks";
-import { MicroLabel, NeonCard } from "./shared";
+} from "../../lib/api/auth";
+import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
+import { useMutation, useQueryClient } from "../../lib/react-query";
+import { clearUserSession, storeUserSession } from "../../lib/user-session";
+import { SIGN_IN_BENEFITS } from "./sign-in-benefits";
+import { MicroLabel, NeonCard } from "./auth-ui";
 
 type AuthMode = "login" | "signup";
 
@@ -165,7 +165,7 @@ export function AccountAccessWidget(): JSX.Element {
         a guest whenever you prefer.
       </p>
       <ul className="mt-5 space-y-4 text-sm text-[#cbd5f5]/80">
-        {SIGN_IN_OPTIONS.map((benefit) => (
+        {SIGN_IN_BENEFITS.map((benefit) => (
           <li key={benefit.title} className="flex gap-3">
             <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-[#2dff85]/60 bg-[rgba(21,34,26,0.9)] text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#c6ffe9]">
               ✶
