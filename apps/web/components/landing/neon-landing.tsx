@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import type { FeaturedGameSummary, GameDraft } from "../../lib/api/games";
 import { formatCategory, formatDateLabel } from "../../lib/format";
@@ -10,6 +10,7 @@ import {
   FALLBACK_FEATURED,
   FALLBACK_INVOICE_STEPS,
 } from "./landing-fallbacks";
+import { useLandingScreenMachine } from "./landing-screen-machine";
 import {
   buildChecklist,
   buildDescriptionFromMarkdown,
@@ -87,7 +88,7 @@ function computeHeroMetrics(
 }
 
 export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFailure }: NeonLandingProps): JSX.Element {
-  const [activeScreen, setActiveScreen] = useState<number>(1);
+  const { activeScreen, selectScreen } = useLandingScreenMachine();
 
   const summaryMap = useMemo(() => buildSummaryMap(featuredSummaries), [featuredSummaries]);
 
@@ -153,7 +154,7 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
             </div>
             <AccountAccessWidget />
           </div>
-          <ScreenSwitcher activeScreen={activeScreen} onSelect={setActiveScreen} />
+          <ScreenSwitcher activeScreen={activeScreen} onSelect={selectScreen} />
         </header>
         <main className="space-y-10 pb-16">
           {activeScreen === 1 && (

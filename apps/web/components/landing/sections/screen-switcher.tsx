@@ -1,15 +1,15 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import type { LandingScreen } from "../landing-screen-machine";
 
 import { cn } from "./shared";
 
-const SCREEN_OPTIONS = [
+const SCREEN_OPTIONS: ReadonlyArray<{ label: string; value: LandingScreen }> = [
   { label: "Storefront", value: 1 },
   { label: "Sell your game", value: 2 },
   { label: "Lightning checkout", value: 3 },
   { label: "Receipt flow", value: 4 },
-] as const;
+];
 
 function uppercaseLabel(value: string): string {
   return value.toUpperCase();
@@ -19,8 +19,8 @@ export function ScreenSwitcher({
   activeScreen,
   onSelect,
 }: {
-  activeScreen: number;
-  onSelect: Dispatch<SetStateAction<number>>;
+  activeScreen: LandingScreen;
+  onSelect: (screen: LandingScreen) => void;
 }): JSX.Element {
   return (
     <div className="flex flex-wrap gap-3">

@@ -16,8 +16,12 @@
     "lib/lightning.test.ts",
     "lib/api/comments.ts",
     "lib/api/comments.test.ts",
+    "lib/telemetry.ts",
+    "lib/telemetry.test.ts",
     "components/game-purchase-flow/**/*.ts",
     "components/game-purchase-flow/**/*.tsx",
+    "components/landing/**/*.ts",
+    "components/landing/**/*.tsx",
     "components/ui/**/*.ts",
     "components/ui/**/*.tsx"
   ],
