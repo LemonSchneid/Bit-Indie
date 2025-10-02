@@ -18,6 +18,9 @@ from bit_indie_api.scripts.seed_simple_mvp import (
 
 
 ASSET_TYPES = ("cover", "hero", "receipt_thumbnail")
+ASSET_GLOB_PATTERNS = {
+    "receipt_thumbnail": "receipt.*",
+}
 ASSET_ROOT = Path(__file__).resolve().parents[3] / "assets" / "media"
 
 
@@ -29,7 +32,8 @@ def _resolve_local_asset(slug: str, asset: str) -> Path:
         msg = f"Missing local asset directory for slug '{slug}'"
         raise FileNotFoundError(msg)
 
-    matches = sorted(directory.glob(f"{asset}.*"))
+    pattern = ASSET_GLOB_PATTERNS.get(asset, f"{asset}.*")
+    matches = sorted(directory.glob(pattern))
     if not matches:
         msg = f"Missing local asset file for slug '{slug}' and asset '{asset}'"
         raise FileNotFoundError(msg)
