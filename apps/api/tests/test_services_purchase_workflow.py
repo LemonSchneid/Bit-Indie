@@ -23,6 +23,9 @@ from bit_indie_api.services.payments import (
     InvoiceStatus as ProviderInvoiceStatus,
     PayoutResult,
 )
+from bit_indie_api.services.purchase_downloads import PurchaseDownloadManager
+from bit_indie_api.services.purchase_lookup import PurchaseLookupService
+from bit_indie_api.services.purchase_payouts import RevenuePayoutManager
 from bit_indie_api.services.purchase_workflow import (
     MissingLookupIdentifierError,
     PurchaseBuildUnavailableError,
@@ -143,11 +146,18 @@ def _build_service(
 ) -> PurchaseWorkflowService:
     """Instantiate a workflow service bound to ``session`` for testing."""
 
+    payment_service = payments or _StubPaymentService()
+    storage_service = storage or _StubStorageService()
+    guest_service = GuestCheckoutService(session=session)
     return PurchaseWorkflowService(
         session=session,
-        guest_checkout=GuestCheckoutService(session=session),
-        payments=payments or _StubPaymentService(),
-        storage=storage or _StubStorageService(),
+        payments=payment_service,
+        lookup=PurchaseLookupService(session=session, guest_checkout=guest_service),
+        payouts=RevenuePayoutManager(payments=payment_service),
+        downloads=PurchaseDownloadManager(
+            session=session,
+            storage=storage_service,
+        ),
     )
 
 
