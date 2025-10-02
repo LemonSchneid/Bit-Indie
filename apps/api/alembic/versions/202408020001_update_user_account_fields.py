@@ -8,7 +8,7 @@ from sqlalchemy.sql import column, table
 
 # revision identifiers, used by Alembic.
 revision = "202408020001"
-down_revision = ("202408010001_remove_release_note_features", "202408010001")
+down_revision = ("202408010002", "202408010001")
 branch_labels = None
 depends_on = None
 
