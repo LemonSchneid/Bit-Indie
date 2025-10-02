@@ -1,14 +1,10 @@
 "use client";
 
-import type {
-  CommunityComment,
-  DeveloperChecklistItem,
-  ReviewHighlight,
-} from "../landing-types";
+import type { CommunityComment, ReviewHighlight } from "../landing-types";
 
-import { cn, MicroLabel, NeonCard, Pill } from "./shared";
+import { MicroLabel, NeonCard, Pill } from "./shared";
 
-type DetailGameViewProps = {
+type PlayerInfoScreenProps = {
   title: string;
   statusLabel: string;
   categoryLabel: string;
@@ -20,11 +16,10 @@ type DetailGameViewProps = {
   description: string[];
   comments: CommunityComment[];
   reviews: ReviewHighlight[];
-  checklist: DeveloperChecklistItem[];
   verifiedReviewsCount: number;
 };
 
-export function GameDetailScreen({
+export function PlayerInfoScreen({
   title,
   statusLabel,
   categoryLabel,
@@ -36,12 +31,18 @@ export function GameDetailScreen({
   description,
   comments,
   reviews,
-  checklist,
   verifiedReviewsCount,
-}: DetailGameViewProps): JSX.Element {
+}: PlayerInfoScreenProps): JSX.Element {
+  const playerChecklist = [
+    "Grab the latest build from your receipts page",
+    "Link a Lightning wallet so tips land instantly",
+    "Drop a review once you clear the first crew contract",
+  ];
+
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <NeonCard className="p-8">
+        <MicroLabel>Info for players</MicroLabel>
         <div className="flex flex-wrap items-center gap-3">
           <Pill>{statusLabel}</Pill>
           <Pill intent="magenta">{categoryLabel}</Pill>
@@ -56,7 +57,7 @@ export function GameDetailScreen({
           </div>
           <div className="space-y-6 text-sm text-[#9fb5aa]">
             <p className="text-base text-[#ebfff4]">
-              {title} pairs lightning-fast play with a marketplace tuned for sats.
+              {title} keeps the crew synced with Lightning receipts, instant patches, and verified community boosts.
             </p>
             <div className="space-y-3">
               {description.map((line) => (
@@ -70,23 +71,22 @@ export function GameDetailScreen({
                 type="button"
                 className="rounded-full border border-[#2dff85]/70 bg-[rgba(18,34,24,0.95)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#d9ffe9] shadow-[0_0_30px_rgba(57,255,20,0.3)] transition hover:border-[#7affc8] hover:text-white"
               >
-                Launch Lightning purchase modal
+                Checkout with Lightning
               </button>
               <button
                 type="button"
                 className="rounded-full border border-[#3ab4ff]/60 bg-[rgba(12,27,33,0.9)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#9bf5ff] shadow-[0_0_28px_rgba(58,180,255,0.28)] transition hover:border-[#6cd9ff]"
               >
-                Share crew invite
+                Invite your crew
               </button>
             </div>
           </div>
         </div>
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <NeonCard className="p-6">
-            <MicroLabel>Support the developer</MicroLabel>
+            <MicroLabel>Buy & support</MicroLabel>
             <p className="mt-3 text-sm text-[#8fa39a]">
-              Lightning tips will return alongside the refreshed account system. Until then, keep the hype going by sharing
-              feedback with the team at
+              Pay in sats, keep your download synced, and share feedback directly with the crew at
               <span className="ml-2 font-semibold text-[#abffd9]">{lightningAddress ?? "their usual channels"}</span>.
             </p>
             <div className="mt-4 flex items-center justify-between">
@@ -154,21 +154,14 @@ export function GameDetailScreen({
           </div>
         </NeonCard>
         <NeonCard className="p-6">
-          <MicroLabel>Developer checklist</MicroLabel>
+          <MicroLabel>Player checklist</MicroLabel>
           <ul className="mt-4 space-y-3 text-sm text-[#b6d7c7]">
-            {checklist.map((item) => (
-              <li key={item.title} className="flex items-center gap-3">
-                <span
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full border text-[0.65rem] font-semibold",
-                    item.complete
-                      ? "border-[#2dff85]/70 bg-[rgba(18,34,24,0.95)] text-[#c7ffe9]"
-                      : "border-[#262626] text-[#565656]",
-                  )}
-                >
-                  {item.complete ? "✓" : ""}
+            {playerChecklist.map((item) => (
+              <li key={item} className="flex items-center gap-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#2dff85]/60 bg-[rgba(18,34,24,0.95)] text-[0.65rem] font-semibold text-[#c7ffe9]">
+                  ✓
                 </span>
-                <span className="uppercase tracking-[0.3em] text-[#6f7f77]">{item.title}</span>
+                <span className="uppercase tracking-[0.3em] text-[#6f7f77]">{item}</span>
               </li>
             ))}
           </ul>

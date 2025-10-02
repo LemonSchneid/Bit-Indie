@@ -4,11 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { FeaturedGameSummary, GameDraft } from "../../lib/api/games";
 import { formatCategory, formatDateLabel } from "../../lib/format";
-import {
-  FALLBACK_COMMENTS,
-  FALLBACK_FEATURED,
-  FALLBACK_INVOICE_STEPS,
-} from "./landing-fallbacks";
+import { FALLBACK_COMMENTS, FALLBACK_FEATURED } from "./landing-fallbacks";
 import {
   buildChecklist,
   buildDescriptionFromMarkdown,
@@ -16,17 +12,16 @@ import {
   buildFeaturedCards,
   buildInvoice,
   buildLiveMetrics,
-  buildReceipt,
   buildReviewHighlights,
   formatSatsFromMsats,
   uppercaseLabel,
 } from "./landing-helpers";
 import { AccountAccessWidget } from "./sections/account-access-widget";
-import { GameDetailScreen } from "./sections/game-detail-screen";
-import { LightningCheckoutScreen } from "./sections/lightning-checkout-screen";
+import { CommunityChatScreen } from "./sections/community-chat-screen";
 import { LoadFailureBanner } from "./sections/load-failure-banner";
-import { ReceiptScreen } from "./sections/receipt-screen";
+import { PlayerInfoScreen } from "./sections/player-info-screen";
 import { ScreenSwitcher } from "./sections/screen-switcher";
+import { SellYourGameScreen } from "./sections/sell-your-game-screen";
 import { StorefrontScreen } from "./sections/storefront-screen";
 import { MicroLabel } from "./sections/shared";
 
@@ -110,14 +105,11 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
   );
 
   const comments = FALLBACK_COMMENTS;
-  const reviews = useMemo(
-    () => buildReviewHighlights(primaryGame?.title ?? FALLBACK_FEATURED[1].title),
-    [primaryGame?.title],
-  );
+  const activeGameTitle = primaryGame?.title ?? FALLBACK_FEATURED[1].title;
+  const reviews = useMemo(() => buildReviewHighlights(activeGameTitle), [activeGameTitle]);
   const checklist = useMemo(() => buildChecklist(primarySummary), [primarySummary]);
 
   const invoice = useMemo(() => buildInvoice(primaryGame), [primaryGame]);
-  const receipt = useMemo(() => buildReceipt(primaryGame, invoice), [primaryGame, invoice]);
 
   const heroMetrics = useMemo(() => computeHeroMetrics(primaryGame, primarySummary), [primaryGame, primarySummary]);
 
@@ -150,8 +142,18 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
             <StorefrontScreen featured={featuredCards} discover={discoverCards} metrics={liveMetrics} />
           )}
           {activeScreen === 2 && (
-            <GameDetailScreen
-              title={primaryGame?.title ?? FALLBACK_FEATURED[1].title}
+            <SellYourGameScreen
+              checklist={checklist}
+              metrics={liveMetrics}
+              lightningAddress={invoice.lightningAddress}
+              priceLabel={heroMetrics.priceLabel}
+              tipLabel={heroMetrics.tipLabel}
+              gameTitle={activeGameTitle}
+            />
+          )}
+          {activeScreen === 3 && (
+            <PlayerInfoScreen
+              title={activeGameTitle}
               statusLabel={heroMetrics.statusLabel}
               categoryLabel={heroMetrics.categoryLabel}
               versionLabel={heroMetrics.versionLabel}
@@ -162,12 +164,12 @@ export default function NeonLanding({ catalogGames, featuredSummaries, hadLoadFa
               description={detailDescription}
               comments={comments}
               reviews={reviews}
-              checklist={checklist}
               verifiedReviewsCount={primarySummary?.verified_review_count ?? 0}
             />
           )}
-          {activeScreen === 3 && <LightningCheckoutScreen invoice={invoice} steps={FALLBACK_INVOICE_STEPS} />}
-          {activeScreen === 4 && <ReceiptScreen receipt={receipt} />}
+          {activeScreen === 4 && (
+            <CommunityChatScreen comments={comments} reviews={reviews} gameTitle={activeGameTitle} />
+          )}
         </main>
       </div>
     </div>
