@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import type { DeveloperChecklistItem, LiveMetrics } from "../landing-types";
 
 import { cn, MicroLabel, NeonCard, Pill } from "./shared";
+
+const DEVELOPER_FORM_URL =
+  process.env.NEXT_PUBLIC_DEVELOPER_FORM_URL ?? "https://bitindie.dev/developer-form";
 
 type SellYourGameScreenProps = {
   checklist: DeveloperChecklistItem[];
@@ -86,12 +91,14 @@ export function SellYourGameScreen({
                 <span>Flip on verified reviews to broadcast crew feedback on day one.</span>
               </li>
             </ul>
-            <button
-              type="button"
-              className="mt-6 w-full rounded-full border border-[#2dff85]/70 bg-[rgba(18,34,24,0.95)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#d9ffe9] shadow-[0_0_28px_rgba(57,255,20,0.3)] transition hover:border-[#7affc8] hover:text-white"
+            <Link
+              href={DEVELOPER_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 block w-full rounded-full border border-[#2dff85]/70 bg-[rgba(18,34,24,0.95)] px-5 py-3 text-center text-xs font-semibold uppercase tracking-[0.35em] text-[#d9ffe9] shadow-[0_0_28px_rgba(57,255,20,0.3)] transition hover:border-[#7affc8] hover:text-white"
             >
-              Open developer console
-            </button>
+              Apply via the developer form
+            </Link>
           </div>
         </div>
       </NeonCard>
