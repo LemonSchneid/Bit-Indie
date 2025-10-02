@@ -10,16 +10,17 @@ import {
   type PurchaseRecord,
   createGameInvoice,
   getGameDownloadUrl,
-  getLatestPurchaseForGame,
 } from "../../lib/api";
 import { useInvoicePolling } from "../../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
 import { createGuestInvoice } from "./guest-invoice";
+import { lookupLatestPurchaseForUser } from "./purchase-lookup";
 import { createPurchasePollingHandlers } from "./purchase-polling";
-import { buildReceiptDownloadLines, extractReceiptIdFromInput } from "./receipt-handling";
+import { extractReceiptIdFromInput } from "./receipt-handling";
 import { useClipboardCopy } from "./use-clipboard-copy";
 import { useLightningQrCode } from "./use-qr-code";
 import { useReceiptLinks } from "./use-receipt-links";
+import { useReceiptDownload } from "./use-receipt-download";
 import { useRestoredPurchase } from "./use-restored-purchase";
 export { type CopyState, type InvoiceFlowState } from "./types";
 
@@ -154,24 +155,66 @@ export function useGamePurchaseFlow({
     }
   }, [buildAvailable, gameId]);
 
+  const finalizeUnlockedPurchase = useCallback(
+    (latest: PurchaseRecord) => {
+      setPurchase(latest);
+      setInvoice(null);
+      setFlowState("paid");
+      setErrorMessage(null);
+    },
+    [],
+  );
+
+  const handleInvoiceCreationError = useCallback((error: unknown) => {
+    setInvoice(null);
+    setFlowState("error");
+    if (error instanceof Error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    setErrorMessage("Unable to create a Lightning invoice. Please try again.");
+  }, []);
+
+  const createAuthenticatedInvoice = useCallback(
+    async (userId: string) => {
+      const payload: InvoiceCreateRequest = { user_id: userId };
+      const created = await createGameInvoice(gameId, payload);
+      setInvoice(created);
+      setFlowState("polling");
+    },
+    [gameId],
+  );
+
+  const createGuestInvoiceFlow = useCallback(async () => {
+    if (!isPurchasable) {
+      throw new Error("This game is not currently available for paid checkout.");
+    }
+
+    const guestInvoice = await createGuestInvoice({
+      developerLightningAddress,
+      priceMsats,
+      gameTitle,
+    });
+    setInvoice(guestInvoice);
+    setFlowState("polling");
+  }, [developerLightningAddress, gameTitle, isPurchasable, priceMsats]);
+
+  const loadExistingPurchase = useCallback(async () => {
+    if (!user) {
+      return null;
+    }
+
+    return lookupLatestPurchaseForUser({ gameId, userId: user.id });
+  }, [gameId, user]);
+
   const handleCreateInvoice = useCallback(async () => {
     setErrorMessage(null);
 
-    let existing: PurchaseRecord | null = null;
     if (user) {
-      try {
-        existing = await getLatestPurchaseForGame(gameId, user.id);
-      } catch (_error) {
-        // Ignore lookup errors and attempt to generate a fresh invoice below.
-      }
-
-      if (existing) {
-        if (existing.download_granted || existing.invoice_status === "PAID") {
-          setPurchase(existing);
-          setInvoice(null);
-          setFlowState("paid");
-          return;
-        }
+      const existing = await loadExistingPurchase();
+      if (existing?.downloadUnlocked) {
+        finalizeUnlockedPurchase(existing.purchase);
+        return;
       }
     }
 
@@ -181,73 +224,32 @@ export function useGamePurchaseFlow({
 
     try {
       if (user) {
-        const payload: InvoiceCreateRequest = { user_id: user.id };
-        const created = await createGameInvoice(gameId, payload);
-        setInvoice(created);
-        setFlowState("polling");
+        await createAuthenticatedInvoice(user.id);
         return;
       }
 
-      if (!isPurchasable) {
-        throw new Error("This game is not currently available for paid checkout.");
-      }
-
-      const guestInvoice = await createGuestInvoice({
-        developerLightningAddress,
-        priceMsats,
-        gameTitle,
-      });
-      setInvoice(guestInvoice);
-      setFlowState("polling");
+      await createGuestInvoiceFlow();
     } catch (error) {
-      setInvoice(null);
-      setFlowState("error");
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Unable to create a Lightning invoice. Please try again.");
-      }
+      handleInvoiceCreationError(error);
     }
   }, [
-    developerLightningAddress,
-    gameId,
-    gameTitle,
-    isPurchasable,
-    priceMsats,
+    createAuthenticatedInvoice,
+    createGuestInvoiceFlow,
+    finalizeUnlockedPurchase,
+    handleInvoiceCreationError,
+    loadExistingPurchase,
+    setPurchase,
     user,
   ]);
 
-  const handleDownloadReceipt = useCallback(() => {
-    if (!invoice) {
-      return;
-    }
-
-    const lines = buildReceiptDownloadLines({
-      developerLightningAddress,
-      gameTitle,
-      invoice,
-      isGuestCheckout,
-      priceLabel,
-      receiptLinkToCopy,
-    });
-
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `bit-indie-receipt-${invoice.purchase_id}.txt`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  }, [
+  const handleDownloadReceipt = useReceiptDownload({
     developerLightningAddress,
     gameTitle,
     invoice,
     isGuestCheckout,
     priceLabel,
     receiptLinkToCopy,
-  ]);
+  });
 
   const statusMessage = describeInvoiceStatus(invoiceStatus, flowState, downloadUnlocked, isGuestCheckout);
 
