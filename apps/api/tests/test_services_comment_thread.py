@@ -230,3 +230,32 @@ def test_serialize_comment_returns_dto() -> None:
     assert dto.source is CommentSource.FIRST_PARTY
     assert dto.author.user_id == user_id
     assert dto.is_verified_purchase is False
+
+
+def test_serialize_comment_marks_verified_purchase() -> None:
+    """Serializing a verified purchaser's comment should flag the DTO."""
+
+    _create_schema()
+    service = CommentThreadService()
+
+    with session_scope() as session:
+        _, developer = _create_developer(session)
+        game = _create_game(session, developer)
+        user = _create_user(session)
+        _create_purchase(
+            session,
+            game_id=game.id,
+            user_id=user.id,
+            paid_at=datetime(2024, 1, 6, tzinfo=timezone.utc),
+        )
+        comment = _create_comment(
+            session,
+            game_id=game.id,
+            user_id=user.id,
+            body_md="Verified thoughts",
+            created_at=datetime(2024, 1, 7, tzinfo=timezone.utc),
+        )
+
+        dto = service.serialize_comment(session=session, comment=comment)
+
+    assert dto.is_verified_purchase is True

@@ -27,4 +27,17 @@ def load_verified_user_ids(
     return set(session.scalars(stmt))
 
 
-__all__ = ["load_verified_user_ids"]
+def has_verified_purchase(
+    *, session: Session, game_id: str, user_id: str | None
+) -> bool:
+    """Return whether the user has a verified purchase for the supplied game."""
+
+    if not user_id:
+        return False
+    verified_users = load_verified_user_ids(
+        session=session, game_id=game_id, user_ids=[user_id]
+    )
+    return user_id in verified_users
+
+
+__all__ = ["has_verified_purchase", "load_verified_user_ids"]
