@@ -1,5 +1,5 @@
 import { requestJson } from "./core";
-import { loadStoredSessionToken } from "../user-storage";
+import { resolveSessionToken } from "./session";
 
 export interface DeveloperProfile {
   id: string;
@@ -22,16 +22,11 @@ export interface UpdateDeveloperProfilePayload {
   contact_email?: string | null;
 }
 
-function getSessionTokenOrThrow(): string {
-  const token = loadStoredSessionToken();
-  if (!token) {
-    throw new Error("Sign in before managing your developer profile.");
-  }
-  return token;
-}
-
 export async function getDeveloperProfile(userId: string): Promise<DeveloperProfile> {
-  const token = getSessionTokenOrThrow();
+  const token = resolveSessionToken(
+    null,
+    "Sign in before managing your developer profile.",
+  );
   return requestJson<DeveloperProfile>(`/v1/devs/${encodeURIComponent(userId)}`, {
     method: "GET",
     headers: {
@@ -46,7 +41,10 @@ export async function updateDeveloperProfile(
   userId: string,
   payload: UpdateDeveloperProfilePayload,
 ): Promise<DeveloperProfile> {
-  const token = getSessionTokenOrThrow();
+  const token = resolveSessionToken(
+    null,
+    "Sign in before managing your developer profile.",
+  );
   return requestJson<DeveloperProfile>("/v1/devs", {
     method: "POST",
     body: JSON.stringify({

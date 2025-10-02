@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   GameDraftForm,
   type GameDraftFormApi,
-} from "../game-draft-form";
+} from "../game-draft-form/index";
 import {
   type GameDraft,
   type GamePublishChecklist,

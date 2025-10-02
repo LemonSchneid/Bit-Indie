@@ -1,5 +1,5 @@
-import { loadStoredSessionToken } from "../user-storage";
 import { requestJson, requireTrimmedValue } from "./core";
+import { resolveSessionToken } from "./session";
 
 export type GameCategory = "PROTOTYPE" | "EARLY_ACCESS" | "FINISHED";
 
@@ -107,20 +107,14 @@ export interface PublishGameRequest {
   user_id: string;
 }
 
-function requireSessionToken(): string {
-  const token = loadStoredSessionToken();
-  if (!token) {
-    throw new Error("Sign in to continue with developer actions.");
-  }
-
-  return token;
-}
-
 export async function createGameDraft(
   payload: CreateGameDraftRequest,
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<GameDraft> {
-  const token = sessionToken ?? requireSessionToken();
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to continue with developer actions.",
+  );
 
   return requestJson<GameDraft>("/v1/games", {
     method: "POST",
@@ -135,9 +129,12 @@ export async function createGameDraft(
 export async function updateGameDraft(
   gameId: string,
   payload: UpdateGameDraftRequest,
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<GameDraft> {
-  const token = sessionToken ?? requireSessionToken();
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to continue with developer actions.",
+  );
 
   return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}`, {
     method: "PUT",
@@ -152,9 +149,12 @@ export async function updateGameDraft(
 export async function getGamePublishChecklist(
   gameId: string,
   userId: string,
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<GamePublishChecklist> {
-  const token = sessionToken ?? requireSessionToken();
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to continue with developer actions.",
+  );
   const query = new URLSearchParams({ user_id: userId });
   return requestJson<GamePublishChecklist>(
     `/v1/games/${encodeURIComponent(gameId)}/publish-checklist?${query.toString()}`,
@@ -173,9 +173,12 @@ export async function getGamePublishChecklist(
 export async function publishGame(
   gameId: string,
   payload: PublishGameRequest,
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<GameDraft> {
-  const token = sessionToken ?? requireSessionToken();
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to continue with developer actions.",
+  );
   return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}/publish`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -192,9 +195,12 @@ export async function createGameAssetUpload(
   gameId: string,
   asset: GameAssetKind,
   payload: GameAssetUploadRequest,
-  sessionToken: string | null = loadStoredSessionToken(),
+  sessionToken?: string | null,
 ): Promise<GameAssetUploadResponse> {
-  const token = sessionToken ?? requireSessionToken();
+  const token = resolveSessionToken(
+    sessionToken,
+    "Sign in to continue with developer actions.",
+  );
   return requestJson<GameAssetUploadResponse>(
     `/v1/games/${encodeURIComponent(gameId)}/uploads/${asset}`,
     {

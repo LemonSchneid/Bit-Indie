@@ -7,3 +7,4 @@ export * from "./purchases";
 export * from "./reviews";
 export * from "./auth";
 export * from "./users";
+export * from "./session";
