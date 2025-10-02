@@ -1,5 +1,5 @@
 import { type PurchaseRecord } from "../../lib/api";
-import { type InvoiceFlowState } from "./hooks";
+import { type InvoiceFlowState } from "./types";
 
 export type PurchasePollingHandlers = {
   handlePurchaseUpdate(latest: PurchaseRecord): void;

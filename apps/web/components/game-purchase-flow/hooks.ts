@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 
 import {
   type InvoiceCreateRequest,
@@ -14,13 +14,16 @@ import {
 } from "../../lib/api";
 import { useInvoicePolling } from "../../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
-import { buildQrCodeUrl } from "../../lib/qr-code";
 import { createGuestInvoice } from "./guest-invoice";
 import { createPurchasePollingHandlers } from "./purchase-polling";
 import { buildReceiptDownloadLines, extractReceiptIdFromInput } from "./receipt-handling";
+import { useClipboardCopy } from "./use-clipboard-copy";
+import { useLightningQrCode } from "./use-qr-code";
+import { useReceiptLinks } from "./use-receipt-links";
+import { useRestoredPurchase } from "./use-restored-purchase";
+export { type CopyState, type InvoiceFlowState } from "./types";
 
-export type InvoiceFlowState = "idle" | "creating" | "polling" | "paid" | "expired" | "error";
-export type CopyState = "idle" | "copied" | "error";
+import type { InvoiceFlowState } from "./types";
 
 export function describeInvoiceStatus(
   status: InvoiceStatus | null,
@@ -86,48 +89,19 @@ export function useGamePurchaseFlow({
 
   const [flowState, setFlowState] = useState<InvoiceFlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
-  const [purchase, setPurchase] = useState<PurchaseRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [copyState, setCopyState] = useState<CopyState>("idle");
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [qrGenerationFailed, setQrGenerationFailed] = useState(false);
   const [showReceiptLookup, setShowReceiptLookup] = useState(false);
   const [manualReceiptId, setManualReceiptId] = useState("");
-  const [receiptCopyState, setReceiptCopyState] = useState<CopyState>("idle");
-
-  useEffect(() => {
-    if (!isPurchasable || !user || purchase || invoice) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const restorePurchase = async () => {
-      try {
-        const existing = await getLatestPurchaseForGame(gameId, user.id);
-        if (cancelled || !existing) {
-          return;
-        }
-
-        setPurchase(existing);
-        if (existing.download_granted) {
-          setFlowState("paid");
-          setErrorMessage(null);
-        }
-      } catch (_error) {
-        if (cancelled) {
-          return;
-        }
-        // Ignore lookup errors and allow the normal purchase flow to proceed.
-      }
-    };
-
-    void restorePurchase();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [gameId, invoice, isPurchasable, purchase, user]);
+  const { purchase, setPurchase } = useRestoredPurchase({
+    gameId,
+    invoice,
+    isPurchasable,
+    userId: user?.id ?? null,
+    onDownloadUnlocked: () => {
+      setFlowState("paid");
+      setErrorMessage(null);
+    },
+  });
 
   const { handlePurchaseUpdate, handleInvoiceExpired, handlePollingError } = useMemo(
     () =>
@@ -150,37 +124,20 @@ export function useGamePurchaseFlow({
     onError: handlePollingError,
   });
 
-  useEffect(() => {
-    if (copyState !== "copied") {
-      return;
-    }
+  const { receiptUrl, receiptLinkToCopy } = useReceiptLinks({ invoice, isGuestCheckout });
 
-    const timeout = window.setTimeout(() => {
-      setCopyState("idle");
-    }, 3000);
+  const { qrCodeUrl, qrGenerationFailed } = useLightningQrCode(invoice?.payment_request ?? null);
 
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [copyState]);
+  const { copyState, handleCopy: handleCopyInvoice } = useClipboardCopy({
+    text: invoice?.payment_request ?? null,
+  });
 
-  useEffect(() => {
-    setCopyState("idle");
-  }, [invoice?.payment_request]);
-
-  useEffect(() => {
-    if (receiptCopyState !== "copied") {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setReceiptCopyState("idle");
-    }, 3000);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [receiptCopyState]);
+  const { copyState: receiptCopyState, handleCopy: handleCopyReceiptLink } = useClipboardCopy({
+    text: receiptLinkToCopy,
+    onError: (error) => {
+      console.error("Failed to copy receipt link", error);
+    },
+  });
 
   const downloadUnlocked = flowState === "paid" || purchase?.download_granted === true;
   const invoiceStatus: InvoiceStatus | null = purchase?.invoice_status ?? invoice?.invoice_status ?? null;
@@ -196,63 +153,6 @@ export function useGamePurchaseFlow({
       return "#";
     }
   }, [buildAvailable, gameId]);
-
-  const receiptUrl = useMemo(() => {
-    if (!invoice || isGuestCheckout) {
-      return null;
-    }
-
-    return `/purchases/${invoice.purchase_id}/receipt`;
-  }, [invoice, isGuestCheckout]);
-
-  const receiptLinkToCopy = useMemo(() => {
-    if (!invoice) {
-      return "";
-    }
-
-    if (!isGuestCheckout) {
-      if (receiptUrl) {
-        if (typeof window !== "undefined") {
-          try {
-            return new URL(receiptUrl, window.location.origin).toString();
-          } catch (error) {
-            console.error("Failed to build receipt link", error);
-          }
-        }
-        return receiptUrl;
-      }
-      if (invoice.check_url) {
-        return invoice.check_url;
-      }
-      return "";
-    }
-
-    return invoice.payment_request;
-  }, [invoice, isGuestCheckout, receiptUrl]);
-
-  useEffect(() => {
-    setReceiptCopyState("idle");
-  }, [receiptLinkToCopy]);
-
-  useEffect(() => {
-    const paymentRequest = invoice?.payment_request;
-    if (!paymentRequest) {
-      setQrCodeUrl(null);
-      setQrGenerationFailed(false);
-      return;
-    }
-
-    setQrCodeUrl(null);
-    setQrGenerationFailed(false);
-
-    try {
-      const url = buildQrCodeUrl(paymentRequest);
-      setQrCodeUrl(url);
-    } catch (error) {
-      console.error("Failed to generate Lightning invoice QR code.", error);
-      setQrGenerationFailed(true);
-    }
-  }, [invoice?.payment_request]);
 
   const handleCreateInvoice = useCallback(async () => {
     setErrorMessage(null);
@@ -316,43 +216,6 @@ export function useGamePurchaseFlow({
     priceMsats,
     user,
   ]);
-
-  const handleCopyInvoice = useCallback(async () => {
-    if (!invoice) {
-      return;
-    }
-
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      setCopyState("error");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(invoice.payment_request);
-      setCopyState("copied");
-    } catch (error) {
-      setCopyState("error");
-    }
-  }, [invoice]);
-
-  const handleCopyReceiptLink = useCallback(async () => {
-    if (!receiptLinkToCopy) {
-      return;
-    }
-
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      setReceiptCopyState("error");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(receiptLinkToCopy);
-      setReceiptCopyState("copied");
-    } catch (error) {
-      console.error("Failed to copy receipt link", error);
-      setReceiptCopyState("error");
-    }
-  }, [receiptLinkToCopy]);
 
   const handleDownloadReceipt = useCallback(() => {
     if (!invoice) {
