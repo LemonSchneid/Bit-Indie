@@ -238,7 +238,7 @@ Post-MVP follow-up will be captured in future planning documents once the legacy
 M2 — Accounts & Developer Tooling
 - Deliver the core account system, developer console surfaces, and production-ready media assets so creators can manage their catalogs before launch.
 
-### Ticket M2-T001 — Launch Email-Based Account Flow
+### Ticket M2-T001 — Launch Email-Based Account Flow ✅ Done
 - **Milestone:** M2 — Accounts & Developer Tooling
 - **Summary:** Implement the non-Nostr account creation and login experience so players and admins can authenticate without seeded profiles.
 - **Acceptance Criteria:**

@@ -5,4 +5,5 @@ export * from "./health";
 export * from "./moderation";
 export * from "./purchases";
 export * from "./reviews";
+export * from "./auth";
 export * from "./users";
