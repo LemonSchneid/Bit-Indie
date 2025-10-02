@@ -1,4 +1,6 @@
-"""Workflow helpers for orchestrating comment creation."""
+"""Coordinate proof-of-work and rate-limiting checks for comment creation."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 
