@@ -1,3 +1,4 @@
+import { loadStoredSessionToken } from "../user-storage";
 import { requestJson } from "./core";
 
 export type GameCategory = "PROTOTYPE" | "EARLY_ACCESS" | "FINISHED";
@@ -51,6 +52,22 @@ export interface GamePublishChecklist {
   missing_requirements: GamePublishRequirement[];
 }
 
+export type GameAssetKind = "cover" | "build";
+
+export interface GameAssetUploadRequest {
+  user_id: string;
+  filename: string;
+  content_type?: string | null;
+  max_bytes?: number | null;
+}
+
+export interface GameAssetUploadResponse {
+  upload_url: string;
+  fields: Record<string, string>;
+  object_key: string;
+  public_url: string;
+}
+
 export interface CreateGameDraftRequest {
   user_id: string;
   title: string;
@@ -82,29 +99,54 @@ export interface PublishGameRequest {
   user_id: string;
 }
 
-export async function createGameDraft(payload: CreateGameDraftRequest): Promise<GameDraft> {
+function requireSessionToken(): string {
+  const token = loadStoredSessionToken();
+  if (!token) {
+    throw new Error("Sign in to continue with developer actions.");
+  }
+
+  return token;
+}
+
+export async function createGameDraft(
+  payload: CreateGameDraftRequest,
+  sessionToken: string | null = loadStoredSessionToken(),
+): Promise<GameDraft> {
+  const token = sessionToken ?? requireSessionToken();
+
   return requestJson<GameDraft>("/v1/games", {
     method: "POST",
     body: JSON.stringify(payload),
     errorMessage: "Unable to create game draft.",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 
 export async function updateGameDraft(
   gameId: string,
   payload: UpdateGameDraftRequest,
+  sessionToken: string | null = loadStoredSessionToken(),
 ): Promise<GameDraft> {
+  const token = sessionToken ?? requireSessionToken();
+
   return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}`, {
     method: "PUT",
     body: JSON.stringify(payload),
     errorMessage: "Unable to update game draft.",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 
 export async function getGamePublishChecklist(
   gameId: string,
   userId: string,
+  sessionToken: string | null = loadStoredSessionToken(),
 ): Promise<GamePublishChecklist> {
+  const token = sessionToken ?? requireSessionToken();
   const query = new URLSearchParams({ user_id: userId });
   return requestJson<GamePublishChecklist>(
     `/v1/games/${encodeURIComponent(gameId)}/publish-checklist?${query.toString()}`,
@@ -113,6 +155,9 @@ export async function getGamePublishChecklist(
       notFoundMessage: "Game not found.",
       forbiddenMessage: "You do not have permission to view this checklist.",
       errorMessage: "Unable to load publish checklist.",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     },
   );
 }
@@ -120,14 +165,40 @@ export async function getGamePublishChecklist(
 export async function publishGame(
   gameId: string,
   payload: PublishGameRequest,
+  sessionToken: string | null = loadStoredSessionToken(),
 ): Promise<GameDraft> {
+  const token = sessionToken ?? requireSessionToken();
   return requestJson<GameDraft>(`/v1/games/${encodeURIComponent(gameId)}/publish`, {
     method: "POST",
     body: JSON.stringify(payload),
     notFoundMessage: "Game not found.",
     forbiddenMessage: "You do not have permission to publish this game.",
     errorMessage: "Unable to publish game.",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
+}
+
+export async function createGameAssetUpload(
+  gameId: string,
+  asset: GameAssetKind,
+  payload: GameAssetUploadRequest,
+  sessionToken: string | null = loadStoredSessionToken(),
+): Promise<GameAssetUploadResponse> {
+  const token = sessionToken ?? requireSessionToken();
+  return requestJson<GameAssetUploadResponse>(
+    `/v1/games/${encodeURIComponent(gameId)}/uploads/${asset}`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+      errorMessage: "Unable to generate upload credentials.",
+      forbiddenMessage: "You do not have permission to upload assets for this game.",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
 }
 
 export async function getGameBySlug(slug: string): Promise<GameDraft> {

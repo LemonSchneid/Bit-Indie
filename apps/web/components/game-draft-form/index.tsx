@@ -1,6 +1,8 @@
 "use client";
 
-import { type GameCategory, type UserProfile } from "../../lib/api";
+import { useEffect, useMemo } from "react";
+
+import { type GameCategory, type GameDraft, type UserProfile } from "../../lib/api";
 import {
   DraftInputField,
   DraftSelectField,
@@ -9,10 +11,20 @@ import {
 } from "./fields";
 import { BuildMetadataSection, FormFeedback, GameDraftFormHeader, Section } from "./sections";
 import { useGameDraftForm } from "./use-game-draft-form";
+import type { GameDraftFormValues } from "./form-utils";
 
 interface GameDraftFormProps {
   user: UserProfile;
   onUserUpdate?: (user: UserProfile) => void;
+  initialDraft?: GameDraft | null;
+  onDraftChange?: (draft: GameDraft | null) => void;
+  onFormApi?: (api: GameDraftFormApi) => void;
+}
+
+export interface GameDraftFormApi {
+  getDraft: () => GameDraft | null;
+  applyFormValues: (fields: Partial<GameDraftFormValues>) => void;
+  replaceDraft: (draft: GameDraft | null) => void;
 }
 
 const categoryOptions: { value: GameCategory; label: string }[] = [
@@ -21,7 +33,13 @@ const categoryOptions: { value: GameCategory; label: string }[] = [
   { value: "FINISHED", label: "Finished" },
 ];
 
-export function GameDraftForm({ user, onUserUpdate }: GameDraftFormProps): JSX.Element {
+export function GameDraftForm({
+  user,
+  onUserUpdate,
+  initialDraft = null,
+  onDraftChange,
+  onFormApi,
+}: GameDraftFormProps): JSX.Element {
   const {
     values,
     draft,
@@ -36,7 +54,29 @@ export function GameDraftForm({ user, onUserUpdate }: GameDraftFormProps): JSX.E
     handleLightningAddressChange,
     handleSubmit,
     handleStartNewDraft,
-  } = useGameDraftForm({ user, onUserUpdate });
+    applyFormValues,
+    replaceDraft,
+  } = useGameDraftForm({
+    user,
+    onUserUpdate,
+    initialDraft,
+    onDraftChange,
+  });
+
+  const formApi = useMemo<GameDraftFormApi>(
+    () => ({
+      getDraft: () => draft,
+      applyFormValues,
+      replaceDraft,
+    }),
+    [applyFormValues, draft, replaceDraft],
+  );
+
+  useEffect(() => {
+    if (typeof onFormApi === "function") {
+      onFormApi(formApi);
+    }
+  }, [formApi, onFormApi]);
 
   return (
     <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur">
@@ -179,3 +219,4 @@ export function GameDraftForm({ user, onUserUpdate }: GameDraftFormProps): JSX.E
 }
 
 export type { GameDraftFormProps };
+export type { GameDraftFormValues } from "./form-utils";

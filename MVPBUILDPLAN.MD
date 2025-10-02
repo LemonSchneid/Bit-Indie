@@ -247,7 +247,7 @@ M2 — Accounts & Developer Tooling
   3. Replace the "coming soon" login card and landing widgets with working React Query mutations that store the session and hydrate the `UserProfile` client cache.
   4. Cover happy-path and failure flows with backend and frontend tests.
 
-### Ticket M2-T002 — Ship Developer Console Dashboard
+### Ticket M2-T002 — Ship Developer Console Dashboard ✅ Done
 - **Milestone:** M2 — Accounts & Developer Tooling
 - **Summary:** Build the `/admin` dashboard that wraps `GameDraftForm`, enabling developers to manage drafts, uploads, and publish readiness.
 - **Acceptance Criteria:**

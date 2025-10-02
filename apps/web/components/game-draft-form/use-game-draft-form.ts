@@ -23,6 +23,8 @@ export type FormState = "idle" | "submitting" | "success" | "error";
 interface UseGameDraftFormOptions {
   user: UserProfile;
   onUserUpdate?: (user: UserProfile) => void;
+  initialDraft?: GameDraft | null;
+  onDraftChange?: (draft: GameDraft | null) => void;
 }
 
 interface UseGameDraftFormResult {
@@ -39,6 +41,8 @@ interface UseGameDraftFormResult {
   handleLightningAddressChange: (value: string) => void;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   handleStartNewDraft: () => void;
+  applyFormValues: (fields: Partial<GameDraftFormValues>) => void;
+  replaceDraft: (draft: GameDraft | null) => void;
 }
 
 /**
@@ -47,6 +51,8 @@ interface UseGameDraftFormResult {
 export function useGameDraftForm({
   user,
   onUserUpdate,
+  initialDraft = null,
+  onDraftChange,
 }: UseGameDraftFormOptions): UseGameDraftFormResult {
   const [values, setValues] = useState<GameDraftFormValues>(() => createInitialValues());
   const [draft, setDraft] = useState<GameDraft | null>(null);
@@ -63,6 +69,35 @@ export function useGameDraftForm({
     setMessage(null);
     setLightningAddress(user.lightning_address ?? "");
   }, [user.id, user.lightning_address]);
+
+  useEffect(() => {
+    if (!initialDraft && !draft) {
+      return;
+    }
+
+    if (!initialDraft) {
+      setDraft(null);
+      setValues(createInitialValues());
+      setState("idle");
+      setMessage(null);
+      return;
+    }
+
+    if (draft && draft.id === initialDraft.id && draft.updated_at === initialDraft.updated_at) {
+      return;
+    }
+
+    setDraft(initialDraft);
+    setValues(mapDraftToValues(initialDraft));
+    setState("idle");
+    setMessage(null);
+  }, [draft, initialDraft]);
+
+  useEffect(() => {
+    if (typeof onDraftChange === "function") {
+      onDraftChange(draft);
+    }
+  }, [draft, onDraftChange]);
 
   const buttonLabel = useMemo(() => {
     if (state === "submitting") {
@@ -101,6 +136,27 @@ export function useGameDraftForm({
   const handleLightningAddressChange = useCallback((value: string) => {
     setLightningAddress(value);
   }, []);
+
+  const applyFormValues = useCallback(
+    (fields: Partial<GameDraftFormValues>) => {
+      setValues((previous) => ({ ...previous, ...fields }));
+    },
+    [],
+  );
+
+  const replaceDraft = useCallback(
+    (nextDraft: GameDraft | null) => {
+      setDraft(nextDraft);
+      if (nextDraft) {
+        setValues(mapDraftToValues(nextDraft));
+      } else {
+        setValues(createInitialValues());
+      }
+      setState("idle");
+      setMessage(null);
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -175,5 +231,7 @@ export function useGameDraftForm({
     handleLightningAddressChange,
     handleSubmit,
     handleStartNewDraft,
+    applyFormValues,
+    replaceDraft,
   };
 }
