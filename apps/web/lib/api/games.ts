@@ -1,5 +1,5 @@
 import { loadStoredSessionToken } from "../user-storage";
-import { requestJson } from "./core";
+import { requestJson, requireTrimmedValue } from "./core";
 
 export type GameCategory = "PROTOTYPE" | "EARLY_ACCESS" | "FINISHED";
 
@@ -210,10 +210,7 @@ export async function createGameAssetUpload(
 }
 
 export async function getGameBySlug(slug: string): Promise<GameDraft> {
-  const normalized = slug.trim();
-  if (!normalized) {
-    throw new Error("Slug is required.");
-  }
+  const normalized = requireTrimmedValue(slug, "Slug is required.");
 
   return requestJson<GameDraft>(`/v1/games/slug/${encodeURIComponent(normalized)}`, {
     cache: "no-store",

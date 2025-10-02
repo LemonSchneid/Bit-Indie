@@ -1,4 +1,4 @@
-import { buildApiUrl, parseErrorMessage } from "./core";
+import { buildApiUrl, parseErrorMessage, requireTrimmedValue } from "./core";
 
 export interface GameReviewAuthor {
   id: string;
@@ -21,10 +21,10 @@ export interface GameReview {
 }
 
 export async function getGameReviews(gameId: string): Promise<GameReview[]> {
-  const normalizedId = gameId.trim();
-  if (!normalizedId) {
-    throw new Error("Game ID is required to load reviews.");
-  }
+  const normalizedId = requireTrimmedValue(
+    gameId,
+    "Game ID is required to load reviews.",
+  );
 
   const response = await fetch(
     buildApiUrl(`/v1/games/${encodeURIComponent(normalizedId)}/reviews`),
