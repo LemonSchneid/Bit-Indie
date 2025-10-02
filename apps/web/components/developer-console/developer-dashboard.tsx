@@ -31,6 +31,7 @@ import {
   PublishChecklistCard,
   type PublishActionState,
 } from "./publish-checklist-card";
+import { DeveloperProfileSettings } from "./developer-profile-settings";
 
 const EMPTY_ASSET_STATE: AssetUploadState = { status: "idle", message: null };
 
@@ -397,6 +398,7 @@ export function DeveloperDashboard(): JSX.Element {
         </div>
 
         <div className="space-y-6">
+          {profile.is_developer ? <DeveloperProfileSettings user={profile} /> : null}
           <PublishChecklistCard
             checklist={checklist}
             state={checklistState}

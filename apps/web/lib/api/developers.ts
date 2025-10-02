@@ -1,4 +1,5 @@
-import { buildApiUrl } from "./core";
+import { requestJson } from "./core";
+import { loadStoredSessionToken } from "../user-storage";
 
 export interface DeveloperProfile {
   id: string;
@@ -16,25 +17,52 @@ export interface BecomeDeveloperRequest {
   contact_email?: string | null;
 }
 
-export async function becomeDeveloper(
-  payload: BecomeDeveloperRequest,
-): Promise<DeveloperProfile> {
-  const response = await fetch(buildApiUrl("/v1/devs"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+export interface UpdateDeveloperProfilePayload {
+  profile_url?: string | null;
+  contact_email?: string | null;
+}
 
-  if (!response.ok) {
-    const message = await response
-      .json()
-      .then((body) => (body?.detail as string | undefined) ?? "Unable to create developer profile.")
-      .catch(() => "Unable to create developer profile.");
-    throw new Error(message);
+function getSessionTokenOrThrow(): string {
+  const token = loadStoredSessionToken();
+  if (!token) {
+    throw new Error("Sign in before managing your developer profile.");
   }
+  return token;
+}
 
-  return (await response.json()) as DeveloperProfile;
+export async function getDeveloperProfile(userId: string): Promise<DeveloperProfile> {
+  const token = getSessionTokenOrThrow();
+  return requestJson<DeveloperProfile>(`/v1/devs/${encodeURIComponent(userId)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    errorMessage: "Unable to load developer profile.",
+    notFoundMessage: "Developer profile not found.",
+  });
+}
+
+export async function updateDeveloperProfile(
+  userId: string,
+  payload: UpdateDeveloperProfilePayload,
+): Promise<DeveloperProfile> {
+  const token = getSessionTokenOrThrow();
+  return requestJson<DeveloperProfile>("/v1/devs", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: userId,
+      ...payload,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    errorMessage: "Unable to update developer profile.",
+  });
+}
+
+export async function becomeDeveloper(payload: BecomeDeveloperRequest): Promise<DeveloperProfile> {
+  return updateDeveloperProfile(payload.user_id, {
+    profile_url: payload.profile_url,
+    contact_email: payload.contact_email,
+  });
 }
