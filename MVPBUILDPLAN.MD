@@ -190,6 +190,14 @@ M3 — Developer Settings
   3. Blank submissions and API failures surface actionable error messages without clearing the current address.
   4. Automated tests cover the Lightning status helper utilities and the web API client responsible for updating Lightning addresses.
 
+### Ticket M3-T003 — Auto-generate game draft slugs ✅ Done
+- **Milestone:** M3 — Developer Settings
+- **Summary:** Help developers create URL-ready slugs by automatically generating one from the draft title while still allowing manual overrides.
+- **Acceptance Criteria:**
+  1. Typing a draft title pre-populates the slug input with a normalized value that updates as the title changes until the slug is manually edited.
+  2. Manually entering a slug keeps the custom value intact on subsequent title edits unless the field is cleared.
+  3. Utility tests cover the slug normalization helper to prevent regressions.
+
 M4 — Admin & Moderation
 - Provide admin-only tools to hide or restore abusive comments and reviews, enforce simple rate limits, and surface an abuse-triage dashboard for day-to-day moderation.
 

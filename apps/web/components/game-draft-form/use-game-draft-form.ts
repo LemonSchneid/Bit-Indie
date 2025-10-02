@@ -13,6 +13,7 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
   createInitialValues,
+  generateSlug,
   mapDraftToValues,
   type GameDraftFormValues,
 } from "./form-utils";
@@ -37,6 +38,8 @@ interface UseGameDraftFormResult {
   scanInfo: ScanStatusDisplay | null;
   lastScannedAt: string | null;
   lightningAddress: string;
+  handleTitleChange: (value: string) => void;
+  handleSlugChange: (value: string) => void;
   handleFieldChange: (field: keyof GameDraftFormValues, value: string) => void;
   handleLightningAddressChange: (value: string) => void;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -61,6 +64,7 @@ export function useGameDraftForm({
   const [lightningAddress, setLightningAddress] = useState<string>(
     user.lightning_address ?? "",
   );
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
 
   useEffect(() => {
     setValues(createInitialValues());
@@ -68,6 +72,7 @@ export function useGameDraftForm({
     setState("idle");
     setMessage(null);
     setLightningAddress(user.lightning_address ?? "");
+    setSlugManuallyEdited(false);
   }, [user.id, user.lightning_address]);
 
   useEffect(() => {
@@ -91,6 +96,7 @@ export function useGameDraftForm({
     setValues(mapDraftToValues(initialDraft));
     setState("idle");
     setMessage(null);
+    setSlugManuallyEdited(true);
   }, [draft, initialDraft]);
 
   useEffect(() => {
@@ -126,6 +132,30 @@ export function useGameDraftForm({
     return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString("en-US");
   }, [draft?.build_scanned_at]);
 
+  const handleTitleChange = useCallback(
+    (value: string) => {
+      let generatedSlug: string | null = null;
+      setValues((previous) => {
+        const next: GameDraftFormValues = { ...previous, title: value };
+        if (!slugManuallyEdited) {
+          generatedSlug = generateSlug(value);
+          next.slug = generatedSlug;
+        }
+        return next;
+      });
+      if (generatedSlug !== null) {
+        setSlugManuallyEdited(false);
+      }
+    },
+    [slugManuallyEdited],
+  );
+
+  const handleSlugChange = useCallback((value: string) => {
+    const normalized = generateSlug(value);
+    setValues((previous) => ({ ...previous, slug: normalized }));
+    setSlugManuallyEdited(normalized.length > 0);
+  }, []);
+
   const handleFieldChange = useCallback(
     (field: keyof GameDraftFormValues, value: string) => {
       setValues((previous) => ({ ...previous, [field]: value }));
@@ -149,8 +179,10 @@ export function useGameDraftForm({
       setDraft(nextDraft);
       if (nextDraft) {
         setValues(mapDraftToValues(nextDraft));
+        setSlugManuallyEdited(true);
       } else {
         setValues(createInitialValues());
+        setSlugManuallyEdited(false);
       }
       setState("idle");
       setMessage(null);
@@ -215,6 +247,7 @@ export function useGameDraftForm({
     setValues(createInitialValues());
     setState("idle");
     setMessage(null);
+    setSlugManuallyEdited(false);
   }, []);
 
   return {
@@ -227,6 +260,8 @@ export function useGameDraftForm({
     scanInfo,
     lastScannedAt,
     lightningAddress,
+    handleTitleChange,
+    handleSlugChange,
     handleFieldChange,
     handleLightningAddressChange,
     handleSubmit,

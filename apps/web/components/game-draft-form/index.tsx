@@ -50,6 +50,8 @@ export function GameDraftForm({
     scanInfo,
     lastScannedAt,
     lightningAddress,
+    handleTitleChange,
+    handleSlugChange,
     handleFieldChange,
     handleLightningAddressChange,
     handleSubmit,
@@ -91,7 +93,7 @@ export function GameDraftForm({
             value={values.title}
             placeholder="Enter a working title"
             required
-            onValueChange={(value) => handleFieldChange("title", value)}
+            onValueChange={handleTitleChange}
           />
 
           <DraftInputField
@@ -103,7 +105,7 @@ export function GameDraftForm({
             required
             className="font-mono text-sm uppercase tracking-widest"
             helperText="Slugs are lower-case and appear in the public URL for your game."
-            onValueChange={(value) => handleFieldChange("slug", value)}
+            onValueChange={handleSlugChange}
           />
 
           <LightningAddressField
