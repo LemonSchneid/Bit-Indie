@@ -28,6 +28,11 @@ from bit_indie_api.services.storage import (
     StorageService,
     get_storage_service,
 )
+from bit_indie_api.services.storage_policy import (
+    AssetUploadValidationError,
+    GameAssetUploadValidator,
+    get_game_asset_upload_validator,
+)
 
 router = APIRouter(prefix="/v1/games", tags=["game-drafts"])
 
@@ -89,6 +94,7 @@ def create_game_asset_upload(
     request: GameAssetUploadRequest,
     session: Session = Depends(get_session),
     storage: StorageService = Depends(get_storage_service),
+    validator: GameAssetUploadValidator = Depends(get_game_asset_upload_validator),
     drafting: GameDraftingService = Depends(get_game_drafting_service),
 ) -> GameAssetUploadResponse:
     """Return a pre-signed upload payload for a developer owned game asset."""
@@ -100,12 +106,22 @@ def create_game_asset_upload(
     except GameDraftingError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
+    try:
+        validated = validator.validate(
+            asset=asset,
+            filename=request.filename,
+            content_type=request.content_type,
+            file_size=request.max_bytes,
+        )
+    except AssetUploadValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
     upload = storage.generate_game_asset_upload(
         game_id=game_id,
         asset=asset,
         filename=request.filename,
-        content_type=request.content_type,
-        max_bytes=request.max_bytes,
+        content_type=validated.content_type,
+        max_bytes=validated.max_bytes,
     )
 
     return GameAssetUploadResponse(
