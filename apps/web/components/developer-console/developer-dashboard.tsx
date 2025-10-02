@@ -32,6 +32,7 @@ import {
   type PublishActionState,
 } from "./publish-checklist-card";
 import { DeveloperProfileSettings } from "./developer-profile-settings";
+import { DeveloperLightningSettings } from "./developer-lightning-settings";
 
 const EMPTY_ASSET_STATE: AssetUploadState = { status: "idle", message: null };
 
@@ -398,6 +399,12 @@ export function DeveloperDashboard(): JSX.Element {
         </div>
 
         <div className="space-y-6">
+          {profile.is_developer ? (
+            <DeveloperLightningSettings
+              user={profile}
+              onUserUpdate={handleUserUpdate}
+            />
+          ) : null}
           {profile.is_developer ? <DeveloperProfileSettings user={profile} /> : null}
           <PublishChecklistCard
             checklist={checklist}
