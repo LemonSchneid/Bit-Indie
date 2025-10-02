@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { getLatestPurchaseForGame, type InvoiceCreateResponse, type PurchaseRecord } from "../../lib/api";
+import { type InvoiceCreateResponse, type PurchaseRecord } from "../../lib/api";
+import { lookupLatestPurchaseForUser } from "./purchase-lookup";
 
 type UseRestoredPurchaseOptions = {
   gameId: string;
@@ -24,31 +25,29 @@ export function useRestoredPurchase({
       return undefined;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     const restorePurchase = async () => {
-      try {
-        const existing = await getLatestPurchaseForGame(gameId, userId);
-        if (cancelled || !existing) {
-          return;
-        }
+      const existing = await lookupLatestPurchaseForUser({
+        gameId,
+        userId,
+        signal: controller.signal,
+      });
 
-        setPurchase(existing);
-        if (existing.download_granted) {
-          onDownloadUnlocked();
-        }
-      } catch (_error) {
-        if (cancelled) {
-          return;
-        }
-        // Ignore lookup errors and allow the normal purchase flow to proceed.
+      if (!existing) {
+        return;
+      }
+
+      setPurchase(existing.purchase);
+      if (existing.downloadUnlocked) {
+        onDownloadUnlocked();
       }
     };
 
     void restorePurchase();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [gameId, invoice, isPurchasable, onDownloadUnlocked, purchase, userId]);
 
