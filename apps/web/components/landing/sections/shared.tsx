@@ -11,7 +11,7 @@ export function cn(...classes: ClassValue[]): string {
 
 export function MicroLabel({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.55em] text-emerald-300/70">{children}</p>
+    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.55em] text-[#69ffb0]/80">{children}</p>
   );
 }
 
@@ -23,9 +23,11 @@ export function Pill({
   intent?: "emerald" | "magenta" | "slate";
 }): JSX.Element {
   const intentClasses = {
-    emerald: "text-emerald-200 border-emerald-400/40 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.25)]",
-    magenta: "text-fuchsia-200 border-fuchsia-400/40 bg-fuchsia-500/10 shadow-[0_0_20px_rgba(232,121,249,0.25)]",
-    slate: "text-slate-200 border-slate-500/40 bg-slate-500/10 shadow-[0_0_20px_rgba(148,163,184,0.12)]",
+    emerald:
+      "text-[#c2ffe7] border-[#2dff85]/60 bg-[rgba(23,36,27,0.9)] shadow-[0_0_25px_rgba(57,255,20,0.28)]",
+    magenta:
+      "text-[#9bf5ff] border-[#3ab4ff]/50 bg-[rgba(12,30,36,0.88)] shadow-[0_0_25px_rgba(58,180,255,0.25)]",
+    slate: "text-slate-100 border-[#2a2a2a] bg-[rgba(14,14,14,0.92)] shadow-[0_0_18px_rgba(15,15,15,0.6)]",
   } as const;
 
   return (
@@ -50,8 +52,8 @@ export function NeonCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-emerald-500/10 bg-slate-950/60 p-6 shadow-[0_0_45px_rgba(16,185,129,0.18)] backdrop-blur-xl",
-        "before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-emerald-500/20 before:opacity-60",
+        "relative overflow-hidden rounded-3xl border border-[#1f1f1f] bg-[rgba(9,9,9,0.92)] p-6 shadow-[0_0_45px_rgba(57,255,20,0.14)] backdrop-blur",
+        "before:pointer-events-none before:absolute before:-inset-px before:rounded-[1.45rem] before:border before:border-[#2dff85]/15 before:bg-[radial-gradient(circle_at_top,_rgba(57,255,20,0.09),_transparent_70%)] before:opacity-70",
         className,
       )}
     >
@@ -65,8 +67,8 @@ export function NeonLinkButton({ href, children }: { href: string; children: Rea
   const baseClasses =
     "inline-flex items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition";
   const enabledClasses =
-    "border-emerald-400/60 bg-emerald-500/10 text-emerald-100 shadow-[0_0_24px_rgba(16,185,129,0.3)] hover:border-emerald-300 hover:text-emerald-50";
-  const disabledClasses = "cursor-not-allowed border-slate-800 bg-slate-900/60 text-slate-500";
+    "border-[#2dff85]/70 bg-[rgba(15,34,22,0.9)] text-[#d7ffe9] shadow-[0_0_24px_rgba(57,255,20,0.32)] hover:border-[#7affc8] hover:text-white";
+  const disabledClasses = "cursor-not-allowed border-[#232323] bg-[rgba(12,12,12,0.9)] text-[#5b5b5b]";
 
   if (isDisabled) {
     return <span className={cn(baseClasses, disabledClasses)}>{children}</span>;

@@ -34,8 +34,8 @@ export function ScreenSwitcher({
             className={cn(
               "rounded-full border px-5 py-2 text-xs font-semibold uppercase tracking-[0.35em] transition",
               isActive
-                ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200 shadow-[0_0_24px_rgba(16,185,129,0.35)]"
-                : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-emerald-400/60 hover:text-emerald-200",
+                ? "border-[#2dff85]/80 bg-[rgba(20,37,26,0.95)] text-[#cffff0] shadow-[0_0_24px_rgba(57,255,20,0.35)]"
+                : "border-[#262626] bg-[rgba(12,12,12,0.85)] text-[#6e6e6e] hover:border-[#2dff85]/60 hover:text-[#adffd8]",
             )}
           >
             {uppercaseLabel(option.label)}
