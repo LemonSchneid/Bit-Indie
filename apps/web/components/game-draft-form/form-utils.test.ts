@@ -6,6 +6,7 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
   createInitialValues,
+  generateSlug,
   mapDraftToValues,
 } from "./form-utils";
 
@@ -132,4 +133,15 @@ test("mapDraftToValues flattens draft objects to form values", () => {
     build_size_bytes: "4096",
     checksum_sha256: "abc123",
   });
+});
+
+test("generateSlug normalizes whitespace and casing", () => {
+  assert.equal(generateSlug("  Solar Drift  "), "solar-drift");
+  assert.equal(generateSlug("Neon   Nights"), "neon-nights");
+});
+
+test("generateSlug collapses invalid characters", () => {
+  assert.equal(generateSlug("Rogue/Agent!"), "rogue-agent");
+  assert.equal(generateSlug("###"), "");
+  assert.equal(generateSlug("dash--chain"), "dash-chain");
 });

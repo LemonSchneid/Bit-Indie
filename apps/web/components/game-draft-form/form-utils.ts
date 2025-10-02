@@ -44,6 +44,17 @@ export function createInitialValues(): GameDraftFormValues {
   };
 }
 
+export function generateSlug(source: string): string {
+  const normalized = source
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized;
+}
+
 export function buildCreatePayload(values: GameDraftFormValues, userId: string): CreateGameDraftRequest {
   return {
     user_id: userId,
