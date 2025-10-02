@@ -22,9 +22,11 @@ from bit_indie_api.schemas.moderation import (
     FlaggedCommentSummary,
     FlaggedGameSummary,
     FlaggedReviewSummary,
+    HiddenModerationItem,
     ModerationActionResponse,
     ModerationQueueItem,
     ModerationReporter,
+    ModerationRestoreRequest,
     ModerationTakedownRequest,
 )
 from bit_indie_api.services.game_publication import (
@@ -180,8 +182,124 @@ def apply_moderation_takedown(
     )
 
 
+@router.get(
+    "/hidden",
+    response_model=list[HiddenModerationItem],
+    summary="List hidden comments and reviews",
+)
+def list_hidden_moderation_items(
+    user_id: str,
+    session: Session = Depends(get_session),
+) -> list[HiddenModerationItem]:
+    """Return hidden first-party comments and reviews for admins to triage."""
+
+    require_admin_user(session=session, user_id=user_id)
+
+    items: list[HiddenModerationItem] = []
+
+    comment_stmt = (
+        select(Comment)
+        .options(joinedload(Comment.game))
+        .where(Comment.is_hidden.is_(True))
+        .order_by(Comment.created_at.desc(), Comment.id.asc())
+    )
+    for comment in session.scalars(comment_stmt):
+        related_game = comment.game or session.get(Game, comment.game_id)
+        if related_game is None:
+            continue
+        items.append(
+            HiddenModerationItem(
+                target_type=ModerationTargetType.COMMENT,
+                target_id=comment.id,
+                created_at=comment.created_at,
+                game=FlaggedGameSummary.model_validate(related_game),
+                comment=FlaggedCommentSummary.model_validate(comment),
+                review=None,
+            )
+        )
+
+    review_stmt = (
+        select(Review)
+        .options(joinedload(Review.game))
+        .where(Review.is_hidden.is_(True))
+        .order_by(Review.created_at.desc(), Review.id.asc())
+    )
+    for review in session.scalars(review_stmt):
+        related_game = review.game or session.get(Game, review.game_id)
+        if related_game is None:
+            continue
+        items.append(
+            HiddenModerationItem(
+                target_type=ModerationTargetType.REVIEW,
+                target_id=review.id,
+                created_at=review.created_at,
+                game=FlaggedGameSummary.model_validate(related_game),
+                comment=None,
+                review=FlaggedReviewSummary.model_validate(review),
+            )
+        )
+
+    items.sort(key=lambda value: (value.created_at, value.target_id), reverse=True)
+    return items
+
+
+@router.post(
+    "/restore",
+    response_model=ModerationActionResponse,
+    summary="Restore hidden moderated content",
+)
+def restore_moderated_target(
+    request: ModerationRestoreRequest,
+    session: Session = Depends(get_session),
+) -> ModerationActionResponse:
+    """Unhide moderated comments or reviews and dismiss related flags."""
+
+    require_admin_user(session=session, user_id=request.user_id)
+
+    target_type = request.target_type
+    if target_type is ModerationTargetType.COMMENT:
+        comment = session.get(Comment, request.target_id)
+        if comment is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
+        comment.is_hidden = False
+    elif target_type is ModerationTargetType.REVIEW:
+        review = session.get(Review, request.target_id)
+        if review is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found.")
+        review.is_hidden = False
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only comments or reviews can be restored via this endpoint.",
+        )
+
+    session.flush()
+
+    affected_ids: list[str] = []
+    flag_stmt = (
+        select(ModerationFlag)
+        .where(ModerationFlag.target_type == target_type)
+        .where(ModerationFlag.target_id == request.target_id)
+        .where(ModerationFlag.status != ModerationFlagStatus.DISMISSED)
+    )
+    for flag in session.scalars(flag_stmt):
+        flag.status = ModerationFlagStatus.DISMISSED
+        affected_ids.append(flag.id)
+
+    session.flush()
+
+    return ModerationActionResponse(
+        target_type=target_type,
+        target_id=request.target_id,
+        applied_status=ModerationFlagStatus.DISMISSED,
+        affected_flag_ids=affected_ids,
+    )
+
+
 __all__ = [
     "apply_moderation_takedown",
+    "list_hidden_moderation_items",
     "read_moderation_queue",
     "require_admin_user",
+    "restore_moderated_target",
 ]
