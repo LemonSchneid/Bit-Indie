@@ -18,17 +18,37 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="bg-slate-950 text-slate-100 antialiased">
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-slate-800 bg-slate-950/70">
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
-              <div className="space-y-1">
-                <Link
-                  href="/"
-                  className="text-lg font-semibold tracking-tight text-white transition hover:text-emerald-200"
-                >
-                  Bit Indie
-                </Link>
-                <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
+            <div className="mx-auto w-full max-w-6xl px-6 py-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-1">
+                  <Link
+                    href="/"
+                    className="text-lg font-semibold tracking-tight text-white transition hover:text-emerald-200"
+                  >
+                    Bit Indie
+                  </Link>
+                  <p className="text-sm text-slate-400">Lightning-fast publishing for indie worlds.</p>
+                </div>
+                <div className="flex flex-col gap-2 lg:items-end">
+                  <nav className="flex flex-wrap items-center gap-3 text-[0.65rem] uppercase tracking-[0.35em] text-slate-300">
+                    <Link className="transition hover:text-emerald-200" href="/games">
+                      Catalog
+                    </Link>
+                    <Link className="transition hover:text-emerald-200" href="/sell">
+                      Sell Your Game
+                    </Link>
+                    <Link className="transition hover:text-emerald-200" href="/players">
+                      Info for Players
+                    </Link>
+                    <Link className="transition hover:text-emerald-200" href="/chat">
+                      Chat
+                    </Link>
+                  </nav>
+                  <span className="text-xs uppercase tracking-[0.35em] text-emerald-200/70 lg:text-right">
+                    Simple MVP preview
+                  </span>
+                </div>
               </div>
-              <span className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Simple MVP preview</span>
             </div>
           </header>
 
