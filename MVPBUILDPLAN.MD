@@ -151,7 +151,7 @@ M4 — Admin & Moderation
 - Hide/unhide comments and reviews; basic rate limits.
 - Admin dashboard for abuse triage.
 
-M5 — Download Delivery
+M5 — Download Delivery ✅ Done
 - S3/R2 object upload and presigned download links.
 - Safe file type and size checks.
 

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from bit_indie_api.api.security import require_authenticated_user_id
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
     Developer,
@@ -94,13 +95,20 @@ def _create_schema() -> None:
     Base.metadata.create_all(engine)
 
 
-def _build_client(stub: _StubPaymentService, storage: object | None = None) -> TestClient:
-    """Return a FastAPI client with the payment and storage dependencies overridden."""
+def _build_client(
+    stub: _StubPaymentService,
+    storage: object | None = None,
+    *,
+    authenticated_user_id: str | None = None,
+) -> TestClient:
+    """Return a FastAPI client with the payment, storage, and auth dependencies overridden."""
 
     app = create_application()
     app.dependency_overrides[get_payment_service] = lambda: stub
     resolved_storage = storage or _StubStorageService()
     app.dependency_overrides[get_storage_service] = lambda: resolved_storage
+    if authenticated_user_id is not None:
+        app.dependency_overrides[require_authenticated_user_id] = lambda: authenticated_user_id
     return TestClient(app)
 
 
@@ -704,6 +712,127 @@ def test_create_download_link_blocks_other_users() -> None:
     )
 
     assert response.status_code == 403
+    assert storage_stub.object_keys == []
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is None
+
+
+def test_download_game_redirects_to_signed_url() -> None:
+    """Authenticated buyers should be redirected to the presigned download."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash-download",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(
+        stub,
+        storage=storage_stub,
+        authenticated_user_id=user_id,
+    )
+
+    response = client.get(
+        f"/v1/games/{game_id}/download",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 307
+    assert response.headers["location"] == storage_stub.response.url
+    assert response.headers["x-download-expires-at"] == storage_stub.response.expires_at.isoformat()
+    assert response.headers["cache-control"] == "no-store"
+    assert storage_stub.object_keys == [f"games/{game_id}/build/build.zip"]
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is not None
+        assert log.purchase_id == purchase_id
+        assert log.user_id == user_id
+        assert log.game_id == game_id
+
+
+def test_download_game_requires_authentication() -> None:
+    """Download requests without credentials should be rejected."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash-download",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.get(f"/v1/games/{game_id}/download")
+
+    assert response.status_code == 401
+
+
+def test_download_game_rejects_unpaid_purchase() -> None:
+    """Buyers cannot download builds until payment is complete."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash-download",
+            invoice_status=PurchaseInvoiceStatus.PENDING,
+            amount_msats=5000,
+            download_granted=False,
+        )
+        session.add(purchase)
+        session.flush()
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(
+        stub,
+        storage=storage_stub,
+        authenticated_user_id=user_id,
+    )
+
+    response = client.get(f"/v1/games/{game_id}/download")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Purchase is not eligible for download."
     assert storage_stub.object_keys == []
 
     with session_scope() as session:

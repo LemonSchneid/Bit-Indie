@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from bit_indie_api.api.security import require_authenticated_user_id
 from bit_indie_api.db import get_session
 from bit_indie_api.db.models import Game, InvoiceStatus, Purchase, User
 from bit_indie_api.schemas.purchase import (
@@ -16,6 +18,11 @@ from bit_indie_api.services.payments import (
     PaymentService,
     PaymentServiceError,
     get_payment_service,
+)
+from bit_indie_api.services.purchase_workflow import (
+    PurchaseWorkflowError,
+    PurchaseWorkflowService,
+    get_purchase_workflow_service,
 )
 
 router = APIRouter(prefix="/v1/games", tags=["game-purchases"])
@@ -110,7 +117,42 @@ def create_game_invoice(
     )
 
 
+@router.get(
+    "/{game_id}/download",
+    summary="Redirect to a signed download link for the authenticated buyer",
+    status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+)
+def download_game_build(
+    game_id: str,
+    authenticated_user_id: str = Depends(require_authenticated_user_id),
+    workflow: PurchaseWorkflowService = Depends(get_purchase_workflow_service),
+) -> RedirectResponse:
+    """Return a temporary redirect to a presigned download link for the game build."""
+
+    try:
+        purchase = workflow.lookup_purchase(
+            game_id=game_id,
+            user_id=authenticated_user_id,
+            anon_id=None,
+        )
+        result = workflow.create_download_link(
+            purchase_id=purchase.id,
+            user_id=authenticated_user_id,
+        )
+    except PurchaseWorkflowError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    response = RedirectResponse(
+        url=result.download.url,
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Download-Expires-At"] = result.download.expires_at.isoformat()
+    return response
+
+
 __all__ = [
     "create_game_invoice",
+    "download_game_build",
     "router",
 ]
