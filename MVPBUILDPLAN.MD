@@ -173,6 +173,14 @@ M2 — Accounts & Developer Tooling
 M3 — Developer Settings
 - Creators can authenticate into a settings surface to manage Lightning payout details, core game metadata, and upload a playable build with basic validation and guidance.
 
+### Ticket M3-T001 — Developer profile settings surface ✅ Done
+- **Milestone:** M3 — Developer Settings
+- **Summary:** Add a secure developer profile API and console form so admins can publish contact email and studio URLs alongside their listings.
+- **Acceptance Criteria:**
+  1. `/v1/devs/{user_id}` returns the authenticated developer profile and both GET and POST mutations require a valid session for the matching user.
+  2. Developer console renders a profile settings form gated behind the developer flag, allowing admins to save contact email and optional studio URL.
+  3. Automated tests cover the new API authentication paths and the updated web API client helpers.
+
 M4 — Admin & Moderation
 - Provide admin-only tools to hide or restore abusive comments and reviews, enforce simple rate limits, and surface an abuse-triage dashboard for day-to-day moderation.
 
