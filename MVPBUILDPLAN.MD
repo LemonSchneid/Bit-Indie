@@ -140,7 +140,7 @@ M2 — First-Party Social Surface
 - Build comments and reviews with verified-purchase indicators for buyer feedback. ✅ Done
 
 M3 — Developer Controls
-- Provide creator settings to manage Lightning payout addresses, upload builds, and edit listings.
+- Provide creator settings to manage Lightning payout addresses, upload builds, and edit listings. ✅ Done
 
 M4 — Moderation Tools
 - Deliver a lightweight admin experience with basic rate limiting to mitigate spam.

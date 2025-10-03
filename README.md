@@ -17,6 +17,7 @@ Legacy social integrations have been removed so the MVP ships with a purely firs
 ## 2. Developers
 
 - Create listings, upload builds, and set a Lightning Address to receive payments.
+- Use the `/admin` developer console to edit drafts, monitor publish readiness, and manage payout settings.
 - All data is first‑party in our database with no external service dependencies.
 - Revenue: game sales (minus platform cut).
 
