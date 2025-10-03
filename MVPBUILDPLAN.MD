@@ -143,7 +143,7 @@ M3 — Developer Controls
 - Provide creator settings to manage Lightning payout addresses, upload builds, and edit listings. ✅ Done
 
 M4 — Moderation Tools
-- Deliver a lightweight admin experience with basic rate limiting to mitigate spam.
+- Deliver a lightweight admin experience with basic rate limiting to mitigate spam. ✅ Done
 
 M5 — Download Fulfillment
 - Wire up secure distribution of purchased builds via presigned storage URLs.
