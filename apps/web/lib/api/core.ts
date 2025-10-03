@@ -10,7 +10,8 @@ function sanitizeBaseUrl(value: string | undefined | null): string | null {
     return null;
   }
 
-  return trimmed.replace(/\/$/, "");
+  const normalized = trimmed.replace(/\/+$/, "");
+  return normalized === "" ? null : normalized;
 }
 
 function resolveApiBaseUrl(): string {
