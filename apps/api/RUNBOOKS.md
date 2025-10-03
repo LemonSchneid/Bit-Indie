@@ -11,6 +11,9 @@ Recommended basic telemetry:
 - Request latency and error rate by route.
 - Database connection pool saturation and slow queries.
 - Storage (S3/R2) errors and presign latency.
+- Structured logs stream as JSON and embed the correlation header (`X-Request-ID` by default). Use this identifier to stitch
+  together reverse-proxy access logs, application traces, and payment provider webhooks. Override the header name via
+  `REQUEST_ID_HEADER` when the edge terminates a different key.
 
 ## Purchase Flow Issues
 

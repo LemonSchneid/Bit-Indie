@@ -12,6 +12,13 @@ docker compose -f infra/docker-compose.yml up --build
 
 The API listens on [http://localhost:8080](http://localhost:8080) and exposes a simple health endpoint at `/health`.
 
+### Observability
+
+- Logs are JSON formatted and capture the `X-Request-ID` correlation header. Provide a custom header name with the
+  `REQUEST_ID_HEADER` environment variable when your ingress forwards a different identifier.
+- Request lifecycle logs include method, path, response code, latency (ms), and client IP, making it easy to ship metrics from
+  your log pipeline.
+
 ### Seed demo data
 
 - When running via Docker (`./scripts/dev_bootstrap.sh`), migrations and the `seed_simple_mvp` script run automatically. Disable by setting `RUN_SIMPLE_MVP_SEED=0` in `infra/docker-compose.yml`.
