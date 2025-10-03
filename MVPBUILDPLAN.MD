@@ -137,7 +137,7 @@ M1 — Core Lightning Purchase Flow
 - Allow players to restore receipts post-payment so they can re-download purchases. ✅ Done
 
 M2 — First-Party Social Surface
-- Build comments and reviews with verified-purchase indicators for buyer feedback.
+- Build comments and reviews with verified-purchase indicators for buyer feedback. ✅ Done
 
 M3 — Developer Controls
 - Provide creator settings to manage Lightning payout addresses, upload builds, and edit listings.
