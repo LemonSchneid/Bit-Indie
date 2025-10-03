@@ -47,11 +47,11 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
         RequestContextMiddleware,
         header_name=logging_settings.request_id_header,
     )
-    application.add_middleware(RequestLoggingMiddleware)
     application.include_router(auth_router)
     application.include_router(health_router)
     application.include_router(admin_router)
