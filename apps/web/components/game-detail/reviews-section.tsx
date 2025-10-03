@@ -3,6 +3,7 @@ import { formatDateLabel } from "../../lib/format";
 
 import { ReviewBadge } from "./review-badge";
 import { getReviewParagraphs } from "./utils";
+import { FlagContentButton } from "./flag-content-button";
 
 type GameReviewsSectionProps = {
   gameTitle: string;
@@ -82,6 +83,7 @@ export function GameReviewsSection({
                     <p key={`${review.id}-paragraph-${index}`}>{paragraph}</p>
                   ))}
                 </div>
+                <FlagContentButton targetType="REVIEW" targetId={review.id} />
               </article>
             );
           })}

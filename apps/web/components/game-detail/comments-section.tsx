@@ -6,6 +6,7 @@ import {
   getCommentAuthorLabel,
   getCommentParagraphs,
 } from "./utils";
+import { FlagContentButton } from "./flag-content-button";
 
 type GameCommentsSectionProps = {
   gameTitle: string;
@@ -82,6 +83,7 @@ export function GameCommentsSection({
                     <p key={`${comment.id}-paragraph-${index}`}>{paragraph}</p>
                   ))}
                 </div>
+                <FlagContentButton targetType="COMMENT" targetId={comment.id} />
               </article>
             );
           })}

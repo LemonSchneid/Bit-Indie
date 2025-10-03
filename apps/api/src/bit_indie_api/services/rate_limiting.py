@@ -25,6 +25,12 @@ REVIEW_RATE_LIMIT_WINDOW_SECONDS: Final[int] = 3600
 REVIEW_RATE_LIMIT_MAX_ITEMS: Final[int] = 3
 """Maximum number of reviews a user may submit within the rate limit window."""
 
+FLAG_RATE_LIMIT_WINDOW_SECONDS: Final[int] = 3600
+"""Duration of the rolling window governing moderation flag submissions (1 hour)."""
+
+FLAG_RATE_LIMIT_MAX_ITEMS: Final[int] = 10
+"""Maximum number of moderation flags a user may submit within the rate limit window."""
+
 
 @dataclass(slots=True)
 class RateLimitExceeded(RuntimeError):
@@ -113,6 +119,8 @@ def enforce_rate_limit(
 __all__ = [
     "COMMENT_RATE_LIMIT_MAX_ITEMS",
     "COMMENT_RATE_LIMIT_WINDOW_SECONDS",
+    "FLAG_RATE_LIMIT_MAX_ITEMS",
+    "FLAG_RATE_LIMIT_WINDOW_SECONDS",
     "REVIEW_RATE_LIMIT_MAX_ITEMS",
     "REVIEW_RATE_LIMIT_WINDOW_SECONDS",
     "RateLimitExceeded",

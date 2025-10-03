@@ -13,9 +13,10 @@ from bit_indie_api.api.v1.routes.game_catalog import router as game_catalog_rout
 from bit_indie_api.api.v1.routes.game_drafts import router as game_drafts_router
 from bit_indie_api.api.v1.routes.game_purchases import router as game_purchases_router
 from bit_indie_api.api.v1.routes.health import router as health_router
+from bit_indie_api.api.v1.routes.moderation_flags import router as moderation_flags_router
 from bit_indie_api.api.v1.routes.purchases import router as purchases_router
-from bit_indie_api.api.v1.routes.users import router as users_router
 from bit_indie_api.api.v1.routes.reviews import router as reviews_router
+from bit_indie_api.api.v1.routes.users import router as users_router
 from bit_indie_api.core.config import get_settings
 from bit_indie_api.core.telemetry import (
     configure_telemetry,
@@ -50,6 +51,7 @@ def create_application() -> FastAPI:
     application.include_router(game_purchases_router)
     application.include_router(comments_router)
     application.include_router(reviews_router)
+    application.include_router(moderation_flags_router)
     application.include_router(purchases_router)
     return application
 

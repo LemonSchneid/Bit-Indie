@@ -95,6 +95,28 @@ class ModerationActionResponse(BaseModel):
     affected_flag_ids: list[str] = Field(default_factory=list)
 
 
+class ModerationFlagCreateRequest(BaseModel):
+    """Player-submitted report targeting games, comments, or reviews."""
+
+    user_id: str = Field(..., description="Identifier of the reporting user.")
+    target_type: ModerationTargetType
+    target_id: str
+    reason: ModerationFlagReason
+
+
+class ModerationFlagRead(BaseModel):
+    """Details about a moderation flag stored in the system."""
+
+    id: str
+    target_type: ModerationTargetType
+    target_id: str
+    reason: ModerationFlagReason
+    status: ModerationFlagStatus
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ModerationRestoreRequest(BaseModel):
     """Administrative request to restore hidden moderated content."""
 
@@ -118,10 +140,12 @@ __all__ = [
     "FlaggedCommentSummary",
     "FlaggedGameSummary",
     "FlaggedReviewSummary",
-    "ModerationActionResponse",
-    "ModerationRestoreRequest",
     "HiddenModerationItem",
+    "ModerationActionResponse",
+    "ModerationFlagCreateRequest",
+    "ModerationFlagRead",
     "ModerationQueueItem",
     "ModerationReporter",
+    "ModerationRestoreRequest",
     "ModerationTakedownRequest",
 ]

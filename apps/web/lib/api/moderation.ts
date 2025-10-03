@@ -65,6 +65,22 @@ export interface ModerationActionResponse {
   affected_flag_ids: string[];
 }
 
+export interface ModerationFlagPayload {
+  user_id: string;
+  target_type: ModerationTargetType;
+  target_id: string;
+  reason: ModerationFlagReason;
+}
+
+export interface ModerationFlag {
+  id: string;
+  target_type: ModerationTargetType;
+  target_id: string;
+  reason: ModerationFlagReason;
+  status: ModerationFlagStatus;
+  created_at: string;
+}
+
 export interface HiddenModerationItem {
   target_type: ModerationTargetType;
   target_id: string;
@@ -151,6 +167,40 @@ export async function executeModerationTakedown(
   }
 
   return (await response.json()) as ModerationActionResponse;
+}
+
+export async function submitModerationFlag(payload: ModerationFlagPayload): Promise<ModerationFlag> {
+  const response = await fetch(buildApiUrl("/v1/moderation/flags"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 404) {
+    const message = await parseErrorMessage(response, "Reporting failed because the target was not found.");
+    throw new Error(message);
+  }
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After");
+    const message = await parseErrorMessage(
+      response,
+      retryAfter
+        ? `You have submitted too many reports. Try again in ${retryAfter} seconds.`
+        : "You have submitted too many reports. Please try again later.",
+    );
+    throw new Error(message);
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, "Unable to submit a moderation report.");
+    throw new Error(message);
+  }
+
+  return (await response.json()) as ModerationFlag;
 }
 
 export async function getHiddenModerationItems(userId: string): Promise<HiddenModerationItem[]> {
