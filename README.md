@@ -129,6 +129,14 @@ MVP feature flags:
 
 - The catalog pulls real data from the FastAPI backend; run the Docker seed script to explore the full storefront.
 
+### Observability quick start
+
+- API logs are emitted as structured JSON and include the `X-Request-ID` correlation header by default. Override the header name
+  with `REQUEST_ID_HEADER` if your ingress already sets a different identifier.
+- The request logger captures method, path, status code, latency, and client IP so you can stream metrics into your preferred
+  log pipeline without additional adapters.
+- Keep uptime checks pointed at `/health`; FastAPI returns `{ "status": "ok" }` when the service is ready.
+
 ### Full-stack dev loop
 
 - Start the full stack (Postgres, MinIO, FastAPI + Web) with seeded data and hot reload for Web:

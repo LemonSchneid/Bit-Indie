@@ -18,6 +18,12 @@ from bit_indie_api.api.v1.routes.purchases import router as purchases_router
 from bit_indie_api.api.v1.routes.reviews import router as reviews_router
 from bit_indie_api.api.v1.routes.users import router as users_router
 from bit_indie_api.core.config import get_settings
+from bit_indie_api.core.logging import (
+    RequestContextMiddleware,
+    RequestLoggingMiddleware,
+    configure_logging,
+    get_logging_settings,
+)
 from bit_indie_api.core.telemetry import (
     configure_telemetry,
     get_telemetry_settings,
@@ -27,6 +33,8 @@ from bit_indie_api.core.telemetry import (
 def create_application() -> FastAPI:
     """Build and configure the FastAPI application instance."""
 
+    logging_settings = get_logging_settings()
+    configure_logging(logging_settings)
     settings = get_settings()
     telemetry_settings = get_telemetry_settings()
     configure_telemetry(telemetry_settings)
@@ -39,6 +47,11 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    application.add_middleware(
+        RequestContextMiddleware,
+        header_name=logging_settings.request_id_header,
+    )
+    application.add_middleware(RequestLoggingMiddleware)
     application.include_router(auth_router)
     application.include_router(health_router)
     application.include_router(admin_router)
