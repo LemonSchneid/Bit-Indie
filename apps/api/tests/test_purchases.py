@@ -249,6 +249,61 @@ def test_create_game_invoice_rejects_invalid_price() -> None:
     assert response.status_code == 400
 
 
+def test_create_game_invoice_rejects_inactive_game() -> None:
+    """Invoices cannot be created for games that are not currently purchasable."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000, active=False)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"user_id": user_id})
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Game is not available for purchase."}
+    assert stub.invoices == []
+
+
+def test_create_game_invoice_rejects_missing_price() -> None:
+    """Games without a configured price should block Lightning invoice creation."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.price_msats = None
+        session.flush()
+
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"user_id": user_id})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Game does not have a price configured for purchase.",
+    }
+    assert stub.invoices == []
+
+
+def test_create_game_invoice_rejects_price_not_divisible_by_thousand() -> None:
+    """Lightning invoices must align with whole-satoshi price increments."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5_500)
+    stub = _StubPaymentService()
+    client = _build_client(stub)
+
+    response = client.post(f"/v1/games/{game_id}/invoice", json={"user_id": user_id})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Game price must be divisible by 1,000 milli-satoshis.",
+    }
+    assert stub.invoices == []
+
+
 def test_create_game_invoice_rejects_blank_anon_id() -> None:
     """Guest checkout should enforce non-empty anonymous identifiers."""
 
