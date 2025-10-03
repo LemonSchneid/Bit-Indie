@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bit_indie_api.api.security import require_authenticated_user_id
+from bit_indie_api.core.config import clear_payment_settings_cache
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
     Developer,
@@ -81,6 +82,10 @@ def _reset_state(monkeypatch):
     """Ensure each test runs with isolated database and payment service instances."""
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("OPENNODE_API_KEY", "test-api-key")
+    monkeypatch.setenv("OPENNODE_TREASURY_WALLET", "platform@ln.example.com")
+    monkeypatch.delenv("OPENNODE_WEBHOOK_SECRET", raising=False)
+    clear_payment_settings_cache()
     reset_database_state()
     reset_payment_service()
     yield
