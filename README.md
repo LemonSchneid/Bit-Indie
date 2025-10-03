@@ -150,6 +150,16 @@ MVP feature flags:
 - During local development, expose the API with a tunnel (for example `ngrok http 8080`) and point the OpenNode webhook URL to `https://<your-tunnel>/v1/purchases/opennode/webhook` so Lightning charges flip to PAID automatically.
 - In production keep the webhook under HTTPS (e.g. `https://api.example.com/v1/purchases/opennode/webhook`) and rotate the secret periodically. Client polling remains as a fallback if the webhook is delayed.
 
+### Webhook fulfilment checklist
+
+Follow these steps once the payment provider confirms the invoice so the buyer can download their build:
+
+1. Persist the invoice ID returned from the payment provider when you create the checkout session. The webhook handler relies on `Purchase.invoice_id` to reconcile the incoming payload with a stored purchase record. The API will skip the webhook entirely if it cannot find a matching invoice ID.
+2. Ensure the OpenNode callback is signed. The route at `/v1/purchases/opennode/webhook` verifies either the `X-OpenNode-Signature` or `X-OpenNode-HMAC-SHA256` header against `OPENNODE_WEBHOOK_SECRET` and responds with `401` when the signature is missing or invalid. Unsigned requests never mark purchases as paid.
+3. Let the webhook handler call back into OpenNode to double-check the invoice status. `PurchaseWorkflowService.reconcile_opennode_webhook()` only marks a purchase as paid when the provider reports `paid=True`; unpaid-but-finalised invoices are marked as expired so the storefront does not keep polling forever.
+4. Once the purchase is marked paid, the workflow sets `download_granted=True`, stamps `paid_at`, and triggers revenue payout bookkeeping. At this point the client can request a signed download URL via `POST /v1/purchases/{purchase_id}/download-link` (for authenticated users) or `POST /v1/purchases/{purchase_id}/download-link` with the receipt token when the buyer checked out anonymously. The download manager enforces that the build exists in object storage before issuing a URL.
+5. Keep the download polling flow as a fallback. The `GET /v1/purchases/{purchase_id}` endpoint lets the client refresh purchase status if the webhook is delayed or retried; the download endpoint rejects requests until `download_granted` is true.
+
 ### Observability quick start
 
 - API logs are emitted as structured JSON and include the `X-Request-ID` correlation header by default. Override the header name
