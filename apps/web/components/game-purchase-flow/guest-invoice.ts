@@ -72,7 +72,7 @@ export async function createGuestInvoice(
   if (payParams.maxSendable && desiredMsats > payParams.maxSendable) {
     const maxSats = Math.floor(payParams.maxSendable / 1000);
     throw new Error(
-      `This developer's LNURL maximum is ${maxSats} sats, which is below the game price (${amountSats} sats).`;
+      `This developer's LNURL maximum is ${maxSats} sats, which is below the game price (${amountSats} sats).`,
     );
   }
   const invoiceResponse = await deps.requestLnurlInvoice(
