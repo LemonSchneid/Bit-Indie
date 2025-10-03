@@ -9,6 +9,7 @@ import {
   type PurchaseRecord,
   createGameInvoice,
   getGameDownloadUrl,
+  restorePurchaseDownload,
 } from "../../lib/api";
 import { useInvoicePolling } from "../../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
@@ -89,6 +90,8 @@ export function useGamePurchaseFlow({
   const [flowState, setFlowState] = useState<InvoiceFlowState>("idle");
   const [invoice, setInvoice] = useState<InvoiceCreateResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloadRequestPending, setIsDownloadRequestPending] = useState(false);
   const {
     showReceiptLookup,
     manualReceiptId,
@@ -148,16 +151,16 @@ export function useGamePurchaseFlow({
   const invoiceStatus: InvoiceStatus | null = purchase?.invoice_status ?? invoice?.invoice_status ?? null;
 
   const downloadUrl = useMemo(() => {
-    if (!buildAvailable) {
-      return "#";
+    if (!buildAvailable || isGuestCheckout) {
+      return null;
     }
 
     try {
       return getGameDownloadUrl(gameId);
     } catch (error) {
-      return "#";
+      return null;
     }
-  }, [buildAvailable, gameId]);
+  }, [buildAvailable, gameId, isGuestCheckout]);
 
   const finalizeUnlockedPurchase = useCallback(
     (latest: PurchaseRecord) => {
@@ -178,6 +181,44 @@ export function useGamePurchaseFlow({
     }
     setErrorMessage("Unable to create a Lightning invoice. Please try again.");
   }, []);
+
+  const handleGuestDownload = useCallback(async () => {
+    if (!buildAvailable) {
+      return;
+    }
+
+    const receiptId = purchase?.id ?? invoice?.purchase_id ?? null;
+    if (!receiptId) {
+      setDownloadError("The receipt is still syncing. Try again shortly.");
+      return;
+    }
+
+    setIsDownloadRequestPending(true);
+    setDownloadError(null);
+
+    try {
+      const response = await restorePurchaseDownload(receiptId);
+      window.location.assign(response.download_url);
+    } catch (error) {
+      console.error("Failed to restore download from receipt", error);
+      if (error instanceof Error) {
+        if (error.message === "Purchase is not eligible for download.") {
+          setDownloadError("Payment confirmation is still processing. Try again soon.");
+          return;
+        }
+        if (error.message === "Game build is not available for download.") {
+          setDownloadError("The developer hasn't uploaded a downloadable build yet.");
+          return;
+        }
+        setDownloadError(error.message);
+        return;
+      }
+
+      setDownloadError("Unable to open the download link. Please try again.");
+    } finally {
+      setIsDownloadRequestPending(false);
+    }
+  }, [buildAvailable, invoice?.purchase_id, purchase?.id]);
 
   const createAuthenticatedInvoice = useCallback(
     async (userId: string) => {
@@ -259,7 +300,10 @@ export function useGamePurchaseFlow({
 
   const prepareCheckout = useCallback(() => {
     setErrorMessage(null);
+    setDownloadError(null);
   }, []);
+
+  const handleDownloadBuild = isGuestCheckout ? handleGuestDownload : null;
 
   return {
     isPurchasable,
@@ -277,6 +321,8 @@ export function useGamePurchaseFlow({
     downloadUnlocked,
     invoiceStatus,
     downloadUrl,
+    downloadError,
+    isDownloadRequestPending,
     receiptUrl,
     receiptLinkToCopy,
     statusMessage,
@@ -284,6 +330,7 @@ export function useGamePurchaseFlow({
     handleCopyInvoice,
     handleCopyReceiptLink,
     handleDownloadReceipt,
+    handleDownloadBuild,
     handleReceiptLookupSubmit,
     prepareCheckout,
     toggleReceiptLookup,

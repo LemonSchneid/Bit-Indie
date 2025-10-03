@@ -34,6 +34,7 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
     receiptCopyState,
     downloadUnlocked,
     downloadUrl,
+    downloadError,
     receiptUrl,
     receiptLinkToCopy,
     statusMessage,
@@ -41,11 +42,13 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
     handleCopyInvoice,
     handleCopyReceiptLink,
     handleDownloadReceipt,
+    handleDownloadBuild,
     handleReceiptLookupSubmit,
     prepareCheckout,
     toggleReceiptLookup,
     closeReceiptLookup,
     setManualReceiptId,
+    isDownloadRequestPending,
   } = useGamePurchaseFlow(props);
 
   useEffect(() => {
@@ -94,6 +97,9 @@ export function GamePurchaseFlow(props: GamePurchaseFlowProps): JSX.Element | nu
               receiptCopyState={receiptCopyState}
               onCopyReceiptLink={handleCopyReceiptLink}
               onDownloadReceipt={handleDownloadReceipt}
+              onRequestDownload={handleDownloadBuild ?? undefined}
+              isDownloadRequestPending={isDownloadRequestPending}
+              downloadError={downloadError}
             />
           ) : (
             <CheckoutPrompt

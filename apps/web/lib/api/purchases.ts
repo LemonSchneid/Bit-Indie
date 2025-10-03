@@ -63,6 +63,16 @@ export interface PurchaseReceipt {
   buyer: PurchaseReceiptBuyer;
 }
 
+export interface PurchaseDownloadLinkRequest {
+  user_id?: string;
+  receipt_token?: string;
+}
+
+export interface PurchaseDownloadLinkResponse {
+  download_url: string;
+  expires_at: string;
+}
+
 export async function createGameInvoice(
   gameId: string,
   payload: InvoiceCreateRequest,
@@ -133,4 +143,46 @@ export function getGameDownloadUrl(gameId: string): string {
   const normalizedId = requireTrimmedValue(gameId, "Game ID is required.");
 
   return buildApiUrl(`/v1/games/${encodeURIComponent(normalizedId)}/download`);
+}
+
+export async function createPurchaseDownloadLink(
+  purchaseId: string,
+  payload: PurchaseDownloadLinkRequest,
+): Promise<PurchaseDownloadLinkResponse> {
+  const normalizedId = requireTrimmedValue(purchaseId, "Purchase ID is required.");
+
+  const body: PurchaseDownloadLinkRequest = {};
+  if (payload.user_id) {
+    body.user_id = requireTrimmedValue(
+      payload.user_id,
+      "User ID is required to request a download link.",
+    );
+  }
+  if (payload.receipt_token) {
+    body.receipt_token = requireTrimmedValue(
+      payload.receipt_token,
+      "Receipt token is required to request a download link.",
+    );
+  }
+
+  return requestJson<PurchaseDownloadLinkResponse>(
+    `/v1/purchases/${encodeURIComponent(normalizedId)}/download-link`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      cache: "no-store",
+      errorMessage: "Unable to create a download link for this purchase.",
+    },
+  );
+}
+
+export async function restorePurchaseDownload(
+  purchaseId: string,
+): Promise<PurchaseDownloadLinkResponse> {
+  const normalizedId = requireTrimmedValue(
+    purchaseId,
+    "Purchase ID is required to restore a download.",
+  );
+
+  return createPurchaseDownloadLink(normalizedId, { receipt_token: normalizedId });
 }
