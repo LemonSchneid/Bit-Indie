@@ -138,5 +138,28 @@ def test_create_presigned_download_returns_expiring_url() -> None:
     assert client.download_calls
     call = client.download_calls[0]
     assert call["ClientMethod"] == "get_object"
-    assert call["Params"] == {"Bucket": "pop-games", "Key": "games/xyz/build/archive.zip"}
+    assert call["Params"] == {
+        "Bucket": "pop-games",
+        "Key": "games/xyz/build/archive.zip",
+        "ResponseContentDisposition": "attachment; filename=\"archive.zip\"; filename*=UTF-8''archive.zip",
+    }
     assert call["ExpiresIn"] == 900
+
+
+def test_create_presigned_download_sanitizes_filename() -> None:
+    """Content disposition headers should be sanitized for unusual filenames."""
+
+    client = _RecordingClient()
+    service = StorageService(
+        client=client,
+        bucket="pop-games",
+        presign_expiration=900,
+        public_base_url="http://localhost:9000/pop-games",
+    )
+
+    service.create_presigned_download(object_key="games/xyz/build/weird \"name\n.zip")
+
+    call = client.download_calls[0]
+    assert call["Params"]["ResponseContentDisposition"] == (
+        "attachment; filename=\"weird name.zip\"; filename*=UTF-8''weird%20name.zip"
+    )
