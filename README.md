@@ -160,6 +160,29 @@ Follow these steps once the payment provider confirms the invoice so the buyer c
 4. Once the purchase is marked paid, the workflow sets `download_granted=True`, stamps `paid_at`, and triggers revenue payout bookkeeping. At this point the client can request a signed download URL via `POST /v1/purchases/{purchase_id}/download-link` (for authenticated users) or `POST /v1/purchases/{purchase_id}/download-link` with the receipt token when the buyer checked out anonymously. The download manager enforces that the build exists in object storage before issuing a URL.
 5. Keep the download polling flow as a fallback. The `GET /v1/purchases/{purchase_id}` endpoint lets the client refresh purchase status if the webhook is delayed or retried; the download endpoint rejects requests until `download_granted` is true.
 
+## Running Tests
+
+### API service (FastAPI)
+
+Set temporary Lightning credentials so the configuration loader passes validation, then execute the suite with the source tree on `PYTHONPATH`:
+
+```bash
+cd apps/api
+export OPENNODE_API_KEY=fake-key
+export OPENNODE_TREASURY_WALLET=fake-wallet
+PYTHONPATH=src pytest
+```
+
+### Web storefront (Next.js)
+
+From the repository root, run the TypeScript build and Node test runner via the workspace script:
+
+```bash
+npm run test --workspace apps/web
+```
+
+The script compiles test fixtures with `tsc --project tsconfig.test.json` before executing the compiled cases with `node --test`.
+
 ### Observability quick start
 
 - API logs are emitted as structured JSON and include the `X-Request-ID` correlation header by default. Override the header name
