@@ -13,7 +13,7 @@ import {
 } from "../../lib/api";
 import { useInvoicePolling } from "../../lib/hooks/use-invoice-polling";
 import { useStoredUserProfile } from "../../lib/hooks/use-stored-user-profile";
-import { createGuestInvoice } from "./guest-invoice";
+import { getOrCreateAnonId } from "../../lib/anon-id";
 import { lookupLatestPurchaseForUser } from "./purchase-lookup";
 import { createPurchasePollingHandlers } from "./purchase-polling";
 import { useClipboardCopy } from "./use-clipboard-copy";
@@ -45,9 +45,7 @@ export function describeInvoiceStatus(
   }
 
   if (!status) {
-    return isGuestCheckout
-      ? "Generate a guest invoice to pay with your Lightning wallet."
-      : "Generate an invoice to pay with your Lightning wallet.";
+    return "Generate an invoice to pay with your Lightning wallet.";
   }
 
   switch (status) {
@@ -59,9 +57,6 @@ export function describeInvoiceStatus(
       return "This purchase was refunded. Generate a new invoice to retry.";
     case "PENDING":
     default:
-      if (isGuestCheckout) {
-        return "Pay the invoice with your Lightning wallet and keep the receipt for your records.";
-      }
       return "Waiting for payment confirmation. We refresh the status every few seconds.";
   }
 }
@@ -125,7 +120,7 @@ export function useGamePurchaseFlow({
 
   useInvoicePolling({
     invoiceId: invoice?.purchase_id ?? null,
-    enabled: flowState === "polling" && Boolean(invoice) && !isGuestCheckout,
+    enabled: flowState === "polling" && Boolean(invoice),
     pollIntervalMs: 4000,
     onPurchase: handlePurchaseUpdate,
     onExpired: handleInvoiceExpired,
@@ -235,14 +230,12 @@ export function useGamePurchaseFlow({
       throw new Error("This game is not currently available for paid checkout.");
     }
 
-    const guestInvoice = await createGuestInvoice({
-      developerLightningAddress,
-      priceMsats,
-      gameTitle,
-    });
-    setInvoice(guestInvoice);
+    const anonId = getOrCreateAnonId();
+    const payload: InvoiceCreateRequest = { anon_id: anonId };
+    const created = await createGameInvoice(gameId, payload);
+    setInvoice(created);
     setFlowState("polling");
-  }, [developerLightningAddress, gameTitle, isPurchasable, priceMsats]);
+  }, [gameId, isPurchasable]);
 
   const loadExistingPurchase = useCallback(async () => {
     if (!user) {

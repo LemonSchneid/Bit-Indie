@@ -27,16 +27,11 @@ export function buildReceiptDownloadLines(context: ReceiptDownloadContext): stri
   }
 
   if (receiptLinkToCopy) {
-    const label = isGuestCheckout ? "Payment request" : "Receipt link";
+    const label = "Receipt link";
     lines.push(`${label}: ${receiptLinkToCopy}`);
   }
 
   lines.push("", "Keep this file so you can restore your purchase later.");
-  if (isGuestCheckout) {
-    lines.push(
-      "Guest checkout does not unlock downloads automatically. Share this receipt with the developer if you need support.",
-    );
-  }
 
   return lines;
 }

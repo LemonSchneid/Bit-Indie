@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import hashlib
+import hmac
+import json
+from urllib.parse import parse_qs
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import ValidationError
 from typing import Annotated
 
 from sqlalchemy.orm import Session
 
+from bit_indie_api.core.config import get_payment_settings
 from bit_indie_api.db import get_session
 from bit_indie_api.db.models import Purchase
 from bit_indie_api.schemas.purchase import (
@@ -133,11 +140,54 @@ def read_purchase_receipt(
     "/opennode/webhook",
     summary="Process OpenNode webhook callbacks for invoice status changes",
 )
-def handle_opennode_webhook(
-    payload: OpenNodeWebhookPayload,
+async def handle_opennode_webhook(
+    request: Request,
     workflow: PurchaseWorkflowService = Depends(get_purchase_workflow_service),
 ) -> dict[str, str]:
     """Verify invoice status with OpenNode and persist any state transitions."""
+
+    raw_body = await request.body()
+
+    secret = get_payment_settings().opennode.callback_secret
+    if secret:
+        signature = (
+            request.headers.get("X-OpenNode-Signature")
+            or request.headers.get("X-OpenNode-HMAC-SHA256")
+        )
+        if not signature:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing webhook signature.",
+            )
+        computed = hmac.new(
+            secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(computed, signature.strip()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature.",
+            )
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    try:
+        if content_type == "application/json" or not content_type:
+            payload_data = json.loads(raw_body.decode("utf-8") or "{}")
+        elif content_type == "application/x-www-form-urlencoded":
+            parsed = parse_qs(raw_body.decode("utf-8"))
+            payload_data = {key: values[-1] for key, values in parsed.items()}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="Unsupported webhook content type.",
+            )
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload.") from exc
+
+    try:
+        payload = OpenNodeWebhookPayload.model_validate(payload_data)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()) from exc
 
     try:
         processed = workflow.reconcile_opennode_webhook(invoice_id=payload.id)

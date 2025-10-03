@@ -22,14 +22,14 @@ test("buildReceiptDownloadLines includes purchase details and optional address",
     invoice: baseInvoice,
     isGuestCheckout: true,
     priceLabel: "2,000 msats",
-    receiptLinkToCopy: "lnbc1example",
+    receiptLinkToCopy: "https://bitindie.example/purchases/purchase-123/receipt",
   });
 
   assert(lines.includes("Game: Space Adventure"));
   assert(lines.includes("Purchase ID: purchase-123"));
   assert(lines.includes("Lightning address: dev@example.com"));
-  assert(lines.some((line) => line.startsWith("Payment request:")));
-  assert(lines.at(-1)?.includes("Guest checkout"));
+  assert(lines.some((line) => line.startsWith("Receipt link:")));
+  assert(lines.at(-1)?.includes("restore your purchase later"));
 });
 
 test("buildReceiptDownloadLines omits optional fields when unavailable", () => {

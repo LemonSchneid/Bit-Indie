@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Mapping, Protocol
+from typing import Any, Mapping, Protocol, cast
 
 import httpx
 
-from bit_indie_api.core.config import OpenNodeSettings, get_payment_settings
+from bit_indie_api.core.config import (
+    OpenNodeSettings,
+    PaymentsConfigurationError,
+    get_payment_settings,
+)
 
 
 class PaymentServiceError(RuntimeError):
     """Raised when the payment provider returns an error response."""
 
+
+logger = logging.getLogger(__name__)
 
 class _HttpResponse(Protocol):
     """Protocol describing the subset of HTTP responses this module relies on."""
@@ -101,12 +108,45 @@ class PaymentService:
             "description": memo,
             "auto_settle": False,
         }
+        # Some OpenNode accounts expose invoice creation under `/v1/charges` rather than
+        # `/v1/invoices`. Try invoices first, then gracefully fall back to charges on
+        # a 404/403 Not Found style response to improve out-of-the-box compatibility.
         response = self._client.post(
             f"{self._base_url}/v1/invoices",
             json=payload,
             headers=self._build_headers(),
             timeout=self._timeout,
         )
+        if response.status_code >= 400:
+            text_lower = (response.text or "").lower()
+            if response.status_code in {403, 404} or "not found" in text_lower:
+                # Try charges with a callback first; if provider forbids that,
+                # fall back to the minimal payload accepted by charges.
+                charges_payload_with_cb = {
+                    "amount": amount_sats,
+                    "description": memo,
+                    "callback_url": webhook_url,
+                }
+                fallback = self._client.post(
+                    f"{self._base_url}/v1/charges",
+                    json=charges_payload_with_cb,
+                    headers=self._build_headers(),
+                    timeout=self._timeout,
+                )
+                if fallback.status_code >= 400:
+                    minimal_charges_payload = {
+                        "amount": amount_sats,
+                        "description": memo,
+                    }
+                    second = self._client.post(
+                        f"{self._base_url}/v1/charges",
+                        json=minimal_charges_payload,
+                        headers=self._build_headers(),
+                        timeout=self._timeout,
+                    )
+                    response = second
+                else:
+                    response = fallback
         data = self._extract_data_object(response)
 
         try:
@@ -135,6 +175,15 @@ class PaymentService:
             headers=self._build_headers(),
             timeout=self._timeout,
         )
+        if response.status_code >= 400:
+            text_lower = (response.text or "").lower()
+            if response.status_code in {403, 404} or "not found" in text_lower:
+                fallback = self._client.get(
+                    f"{self._base_url}/v1/charges/{invoice_id}",
+                    headers=self._build_headers(),
+                    timeout=self._timeout,
+                )
+                response = fallback
         data = self._extract_data_object(response)
         status_value = str(data.get("status", ""))
         normalized_status = status_value.lower()
@@ -247,8 +296,14 @@ class PaymentService:
             data.get("invoice"),
         )
         for candidate in candidates:
+            # Direct string present at top-level
             if isinstance(candidate, str) and candidate.strip():
                 return candidate
+            # Some providers (OpenNode charges) return an object with a `payreq` field.
+            if isinstance(candidate, Mapping):
+                pr = candidate.get("payreq") or candidate.get("payment_request")
+                if isinstance(pr, str) and pr.strip():
+                    return pr
         msg = "OpenNode response did not include a Lightning payment request."
         raise PaymentServiceError(msg)
 
@@ -277,11 +332,50 @@ class PaymentService:
         return candidates[0]
 
 
+class _DisabledPaymentService:
+    """Fallback that surfaces configuration issues when Lightning is disabled."""
+
+    def __init__(self, *, reason: str) -> None:
+        self._reason = reason
+        self._treasury_wallet_address = ""
+
+    def create_invoice(
+        self,
+        *,
+        amount_msats: int,
+        memo: str,
+        webhook_url: str,
+    ) -> CreatedInvoice:
+        raise PaymentServiceError(self._reason)
+
+    def get_invoice_status(self, *, invoice_id: str) -> InvoiceStatus:
+        raise PaymentServiceError(self._reason)
+
+    def send_payout(
+        self,
+        *,
+        amount_msats: int,
+        lightning_address: str,
+        memo: str | None = None,
+    ) -> PayoutResult:
+        raise PaymentServiceError(self._reason)
+
+    @property
+    def treasury_wallet_address(self) -> str:
+        return self._treasury_wallet_address
+
+
 @lru_cache(maxsize=1)
 def get_payment_service() -> PaymentService:
     """Return a cached `PaymentService` configured from environment variables."""
 
-    settings = get_payment_settings().opennode
+    try:
+        settings = get_payment_settings().opennode
+    except PaymentsConfigurationError as exc:
+        message = f"Lightning payments are disabled: {exc}"
+        logger.warning("%s", message)
+        return cast(PaymentService, _DisabledPaymentService(reason=message))
+
     return PaymentService(client=httpx, settings=settings)
 
 

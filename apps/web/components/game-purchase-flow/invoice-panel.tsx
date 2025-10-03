@@ -68,9 +68,7 @@ export function InvoicePanel({
           {hasAccount ? (
             <p>We&apos;ll create a one-time invoice linked to your Bit Indie account.</p>
           ) : (
-            <p>
-              Guest checkout sends sats directly to the developer. Save the receipt so you can restore the download later.
-            </p>
+            <p>Guest checkout doesn&apos;t require sign-in. Save the receipt so you can restore the download later.</p>
           )}
           <button
             type="button"
@@ -148,31 +146,24 @@ export function InvoicePanel({
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Status</p>
               <p className="mt-2 text-sm text-slate-200">{statusMessage}</p>
             </div>
-            {isGuestCheckout ? (
-              <p className="text-xs text-slate-400">
-                Guest invoices aren&apos;t monitored automatically. After paying, download the receipt so you can restore your
-                purchase later.
-              </p>
-            ) : (
-              <p className="text-xs text-slate-400">
-                We&apos;ll keep refreshing automatically. You can also open the receipt in a new tab:&nbsp;
-                <a
-                  href={receiptUrl ?? invoice.check_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-emerald-300 underline hover:text-emerald-200"
-                >
-                  {receiptUrl ? "View Lightning receipt" : "View purchase status"}
-                </a>
-              </p>
-            )}
+            <p className="text-xs text-slate-400">
+              We&apos;ll keep refreshing automatically. You can also open the receipt in a new tab:&nbsp;
+              <a
+                href={receiptUrl ?? invoice.check_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-300 underline hover:text-emerald-200"
+              >
+                {receiptUrl ? "View Lightning receipt" : "View purchase status"}
+              </a>
+            </p>
           </div>
           <ReceiptActions
             value={receiptLinkToCopy}
             copyState={receiptCopyState}
             onCopy={onCopyReceiptLink}
             onDownload={onDownloadReceipt}
-            description={`Save this ${isGuestCheckout ? "payment request" : "receipt link"} to restore the download later.`}
+            description={`Save this receipt link to restore the download later.`}
           />
           {flowState === "expired" ? (
             <button

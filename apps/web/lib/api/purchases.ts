@@ -92,25 +92,40 @@ export async function createGameInvoice(
   );
 }
 
-export async function getLatestPurchaseForGame(
-  gameId: string,
-  userId: string,
+export type PurchaseLookupRequest = {
+  gameId: string;
+  userId?: string | null;
+  anonId?: string | null;
+  signal?: AbortSignal;
+};
+
+export async function lookupLatestPurchase(
+  request: PurchaseLookupRequest,
 ): Promise<PurchaseRecord | null> {
+  const { gameId, userId, anonId, signal } = request;
+
   const normalizedGameId = requireTrimmedValue(
     gameId,
     "Game ID is required to look up purchases.",
   );
-  const normalizedUserId = requireTrimmedValue(
-    userId,
-    "User ID is required to look up purchases.",
-  );
+  const normalizedUserId = userId?.trim() ?? "";
+  const normalizedAnonId = anonId?.trim() ?? "";
+
+  if (!normalizedUserId && !normalizedAnonId) {
+    throw new Error("A user or guest identifier is required to look up purchases.");
+  }
 
   const url = new URL(buildApiUrl("/v1/purchases/lookup"));
   url.searchParams.set("game_id", normalizedGameId);
-  url.searchParams.set("user_id", normalizedUserId);
+  if (normalizedUserId) {
+    url.searchParams.set("user_id", normalizedUserId);
+  } else {
+    url.searchParams.set("anon_id", normalizedAnonId);
+  }
 
   return requestJson<PurchaseRecord>(url.toString(), {
     cache: "no-store",
+    signal,
     treat404AsNull: true,
     errorMessage: "Unable to load purchase status.",
   });

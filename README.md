@@ -129,6 +129,27 @@ MVP feature flags:
 
 - The catalog pulls real data from the FastAPI backend; run the Docker seed script to explore the full storefront.
 
+### Updating payment environment variables
+
+- The API container reads Lightning settings from `.env` (or `.env.example` during initial setup).
+- After changing `OPENNODE_API_KEY` or `OPENNODE_TREASURY_WALLET`, recreate the API service so it loads the new values:
+
+  ```bash
+  docker compose -f infra/docker-compose.yml up -d --force-recreate api
+  ```
+
+- Confirm the running container sees the values:
+
+  ```bash
+  docker compose -f infra/docker-compose.yml exec api env | grep OPENNODE_
+  ```
+
+### Configuring webhook callbacks
+
+- Set `OPENNODE_WEBHOOK_SECRET` to the value from your OpenNode dashboard when running in production. The API rejects unsigned callbacks.
+- During local development, expose the API with a tunnel (for example `ngrok http 8080`) and point the OpenNode webhook URL to `https://<your-tunnel>/v1/purchases/opennode/webhook` so Lightning charges flip to PAID automatically.
+- In production keep the webhook under HTTPS (e.g. `https://api.example.com/v1/purchases/opennode/webhook`) and rotate the secret periodically. Client polling remains as a fallback if the webhook is delayed.
+
 ### Observability quick start
 
 - API logs are emitted as structured JSON and include the `X-Request-ID` correlation header by default. Override the header name
