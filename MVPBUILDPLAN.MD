@@ -133,7 +133,7 @@ Indexes: `users(account_identifier)`, `games(status, category)`, `purchases(user
 **********Tickets******
 
 M1 — Core Lightning Purchase Flow
-- Implement guest checkout flow that issues Lightning invoices for purchases.
+- Implement guest checkout flow that issues Lightning invoices for purchases. ✅ Done
 - Allow players to restore receipts post-payment so they can re-download purchases.
 
 M2 — First-Party Social Surface
