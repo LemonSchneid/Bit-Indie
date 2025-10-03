@@ -146,7 +146,7 @@ M4 — Moderation Tools
 - Deliver a lightweight admin experience with basic rate limiting to mitigate spam. ✅ Done
 
 M5 — Download Fulfillment
-- Wire up secure distribution of purchased builds via presigned storage URLs.
+- Wire up secure distribution of purchased builds via presigned storage URLs. ✅ Done
 
 M6 — Operational Readiness
 - Round out telemetry with health endpoints, structured logging/tracing, and refreshed README/runbooks documenting the Lightning-first architecture and the removal of legacy social features.

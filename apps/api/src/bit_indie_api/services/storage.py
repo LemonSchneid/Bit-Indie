@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import PurePath
 from typing import Any, Protocol
+from urllib.parse import quote
 
 try:
     import boto3
@@ -134,12 +135,42 @@ class StorageService:
         """Return a time limited download link for the specified object key."""
 
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=self._presign_expiration)
+        disposition = self._build_content_disposition(object_key)
+        params: dict[str, Any] = {"Bucket": self._bucket, "Key": object_key}
+        if disposition:
+            params["ResponseContentDisposition"] = disposition
         url = self._client.generate_presigned_url(
             "get_object",
-            Params={"Bucket": self._bucket, "Key": object_key},
+            Params=params,
             ExpiresIn=self._presign_expiration,
         )
         return PresignedDownload(url=url, expires_at=expires_at)
+
+    @staticmethod
+    def _build_content_disposition(object_key: str) -> str | None:
+        """Return a safe ``Content-Disposition`` header for the object key."""
+
+        filename = PurePath(object_key).name
+        if not filename:
+            return None
+
+        sanitized = (
+            filename.replace("\r", "")
+            .replace("\n", "")
+            .replace('"', "")
+            .replace(";", "")
+            .replace("\\", "")
+            .strip()
+        )
+        if not sanitized:
+            return None
+
+        ascii_name = sanitized.encode("ascii", "ignore").decode("ascii").strip()
+        if not ascii_name:
+            ascii_name = "download"
+
+        encoded = quote(sanitized, safe="")
+        return f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{encoded}'
 
     def build_asset_key(self, *, game_id: str, asset: GameAssetKind, filename: str) -> str:
         """Return an object key suitable for storing the requested asset."""
