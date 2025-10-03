@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from bit_indie_api.core.config import get_storage_settings
+from bit_indie_api.core.config import (
+    StorageConfigurationError,
+    get_storage_settings,
+)
 from bit_indie_api.db import session_scope
 from bit_indie_api.db.models import (
     BuildScanStatus,
@@ -53,11 +56,29 @@ GAME_MEDIA_SLUGS = {
 }
 
 
-def _media_url(object_key: str) -> str:
+# Fallback domain used when storage configuration has not been provided. This keeps the
+# seed script usable in local development environments that skip S3/MinIO setup.
+DEFAULT_MEDIA_BASE_URL = "https://bit-indie.dev/media"
+
+
+def _resolve_media_base_url() -> str:
+    """Return the preferred base URL for seeded media assets."""
+
+    try:
+        settings = get_storage_settings()
+    except StorageConfigurationError:
+        return DEFAULT_MEDIA_BASE_URL
+
+    return settings.public_base_url.rstrip("/")
+
+
+def _media_url(object_key: str, *, base_url: str | None = None) -> str:
     """Build a public asset URL for the provided object key."""
 
-    settings = get_storage_settings()
-    base = settings.public_base_url.rstrip("/")
+    if base_url is None:
+        base = _resolve_media_base_url()
+    else:
+        base = base_url.rstrip("/")
     key = object_key.lstrip("/")
     return f"{base}/{key}"
 
@@ -72,6 +93,7 @@ def _media_object_key(*, game_id: str, slug: str, asset: str) -> str:
 
 def seed() -> None:
     now = _utc_now()
+    media_base_url = _resolve_media_base_url()
 
     with session_scope() as session:
         developer_user = session.get(User, "user-seed-developer")
@@ -132,17 +154,20 @@ def seed() -> None:
                 ),
                 "price_msats": 150_000,
                 "cover_url": _media_url(
-                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="cover")
+                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="cover"),
+                    base_url=media_base_url,
                 ),
                 "hero_url": _media_url(
-                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="hero")
+                    _media_object_key(game_id="game-seed-001", slug="starpath-siege", asset="hero"),
+                    base_url=media_base_url,
                 ),
                 "receipt_thumbnail_url": _media_url(
                     _media_object_key(
                         game_id="game-seed-001",
                         slug="starpath-siege",
                         asset="receipt_thumbnail",
-                    )
+                    ),
+                    base_url=media_base_url,
                 ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.FEATURED,
@@ -164,17 +189,20 @@ def seed() -> None:
                 ),
                 "price_msats": 120_000,
                 "cover_url": _media_url(
-                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="cover")
+                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="cover"),
+                    base_url=media_base_url,
                 ),
                 "hero_url": _media_url(
-                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="hero")
+                    _media_object_key(game_id="game-seed-002", slug="chronorift-tactics", asset="hero"),
+                    base_url=media_base_url,
                 ),
                 "receipt_thumbnail_url": _media_url(
                     _media_object_key(
                         game_id="game-seed-002",
                         slug="chronorift-tactics",
                         asset="receipt_thumbnail",
-                    )
+                    ),
+                    base_url=media_base_url,
                 ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.DISCOVER,
@@ -196,17 +224,20 @@ def seed() -> None:
                 ),
                 "price_msats": 190_000,
                 "cover_url": _media_url(
-                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="cover")
+                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="cover"),
+                    base_url=media_base_url,
                 ),
                 "hero_url": _media_url(
-                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="hero")
+                    _media_object_key(game_id="game-seed-003", slug="lumen-forge", asset="hero"),
+                    base_url=media_base_url,
                 ),
                 "receipt_thumbnail_url": _media_url(
                     _media_object_key(
                         game_id="game-seed-003",
                         slug="lumen-forge",
                         asset="receipt_thumbnail",
-                    )
+                    ),
+                    base_url=media_base_url,
                 ),
                 "category": GameCategory.FINISHED,
                 "status": GameStatus.FEATURED,
@@ -228,17 +259,20 @@ def seed() -> None:
                 ),
                 "price_msats": 95_000,
                 "cover_url": _media_url(
-                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="cover")
+                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="cover"),
+                    base_url=media_base_url,
                 ),
                 "hero_url": _media_url(
-                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="hero")
+                    _media_object_key(game_id="game-seed-004", slug="echoes-of-the-deep", asset="hero"),
+                    base_url=media_base_url,
                 ),
                 "receipt_thumbnail_url": _media_url(
                     _media_object_key(
                         game_id="game-seed-004",
                         slug="echoes-of-the-deep",
                         asset="receipt_thumbnail",
-                    )
+                    ),
+                    base_url=media_base_url,
                 ),
                 "category": GameCategory.EARLY_ACCESS,
                 "status": GameStatus.DISCOVER,
@@ -260,17 +294,20 @@ def seed() -> None:
                 ),
                 "price_msats": 70_000,
                 "cover_url": _media_url(
-                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="cover")
+                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="cover"),
+                    base_url=media_base_url,
                 ),
                 "hero_url": _media_url(
-                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="hero")
+                    _media_object_key(game_id="game-seed-005", slug="quantum-drift-rally", asset="hero"),
+                    base_url=media_base_url,
                 ),
                 "receipt_thumbnail_url": _media_url(
                     _media_object_key(
                         game_id="game-seed-005",
                         slug="quantum-drift-rally",
                         asset="receipt_thumbnail",
-                    )
+                    ),
+                    base_url=media_base_url,
                 ),
                 "category": GameCategory.PROTOTYPE,
                 "status": GameStatus.DISCOVER,
