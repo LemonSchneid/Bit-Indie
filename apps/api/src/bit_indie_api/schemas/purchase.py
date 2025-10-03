@@ -75,7 +75,19 @@ class OpenNodeWebhookPayload(BaseModel):
 class PurchaseDownloadRequest(BaseModel):
     """Request payload for generating a signed download link."""
 
-    user_id: str = Field(..., min_length=1)
+    user_id: str | None = Field(default=None, min_length=1)
+    receipt_token: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_actor(self) -> "PurchaseDownloadRequest":
+        """Ensure callers provide exactly one credential for download access."""
+
+        has_user = bool(self.user_id)
+        has_token = bool(self.receipt_token)
+        if has_user == has_token:
+            msg = "Provide either user_id or receipt_token to request a download link."
+            raise ValueError(msg)
+        return self
 
 
 class PurchaseDownloadResponse(BaseModel):

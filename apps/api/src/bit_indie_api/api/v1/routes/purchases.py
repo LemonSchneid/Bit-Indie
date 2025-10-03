@@ -160,10 +160,17 @@ def create_purchase_download_link(
     """Return a pre-signed download URL for a paid purchase."""
 
     try:
-        result = workflow.create_download_link(
-            purchase_id=purchase_id,
-            user_id=request.user_id,
-        )
+        if request.user_id is not None:
+            result = workflow.create_download_link(
+                purchase_id=purchase_id,
+                user_id=request.user_id,
+            )
+        else:
+            assert request.receipt_token is not None  # model validator guarantees one field
+            result = workflow.create_download_link_from_receipt(
+                purchase_id=purchase_id,
+                receipt_token=request.receipt_token,
+            )
     except PurchaseWorkflowError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

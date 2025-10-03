@@ -774,6 +774,91 @@ def test_create_download_link_blocks_other_users() -> None:
         assert log is None
 
 
+def test_create_download_link_allows_receipt_restore() -> None:
+    """Receipt holders should receive a download link for paid purchases."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(stub, storage=storage_stub)
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/download-link",
+        json={"receipt_token": purchase_id},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["download_url"] == storage_stub.response.url
+    assert storage_stub.object_keys == [f"games/{game_id}/build/build.zip"]
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is not None
+        assert log.purchase_id == purchase_id
+        assert log.user_id == user_id
+        assert log.game_id == game_id
+
+
+def test_create_download_link_rejects_invalid_receipt_token() -> None:
+    """Receipt restore should reject mismatched tokens."""
+
+    _create_schema()
+    user_id, game_id = _seed_game_with_price(price_msats=5000)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        assert game is not None
+        game.build_object_key = f"games/{game_id}/build/build.zip"
+        session.flush()
+
+        purchase = Purchase(
+            user_id=user_id,
+            game_id=game_id,
+            invoice_id="hash123",
+            invoice_status=PurchaseInvoiceStatus.PAID,
+            amount_msats=5000,
+            download_granted=True,
+        )
+        session.add(purchase)
+        session.flush()
+        purchase_id = purchase.id
+
+    storage_stub = _StubStorageService()
+    stub = _StubPaymentService()
+    client = _build_client(stub, storage=storage_stub)
+
+    response = client.post(
+        f"/v1/purchases/{purchase_id}/download-link",
+        json={"receipt_token": "not-the-receipt"},
+    )
+
+    assert response.status_code == 403
+    assert storage_stub.object_keys == []
+
+    with session_scope() as session:
+        log = session.scalar(select(DownloadAuditLog))
+        assert log is None
+
+
 def test_download_game_redirects_to_signed_url() -> None:
     """Authenticated buyers should be redirected to the presigned download."""
 

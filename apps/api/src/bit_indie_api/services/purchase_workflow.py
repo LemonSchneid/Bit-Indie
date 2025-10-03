@@ -61,12 +61,18 @@ class PurchaseWorkflowService:
     payouts: RevenuePayoutManager
     downloads: PurchaseDownloadManager
 
-    def _get_owned_purchase(self, *, purchase_id: str, user_id: str) -> Purchase:
-        """Return the purchase owned by ``user_id`` raising if missing."""
+    def _get_purchase(self, *, purchase_id: str) -> Purchase:
+        """Return the stored purchase raising ``PurchaseNotFoundError`` when missing."""
 
         purchase = self.session.get(Purchase, purchase_id)
         if purchase is None:
             raise PurchaseNotFoundError()
+        return purchase
+
+    def _get_owned_purchase(self, *, purchase_id: str, user_id: str) -> Purchase:
+        """Return the purchase owned by ``user_id`` raising if missing."""
+
+        purchase = self._get_purchase(purchase_id=purchase_id)
         if purchase.user_id != user_id:
             raise PurchasePermissionError()
         return purchase
@@ -134,6 +140,24 @@ class PurchaseWorkflowService:
         purchase = self._get_owned_purchase(
             purchase_id=purchase_id, user_id=user_id
         )
+
+        self.downloads.ensure_downloadable(purchase)
+        download = self.downloads.create_download(purchase=purchase)
+
+        return PurchaseDownloadResult(purchase=purchase, download=download)
+
+    def create_download_link_from_receipt(
+        self,
+        *,
+        purchase_id: str,
+        receipt_token: str,
+    ) -> PurchaseDownloadResult:
+        """Return a presigned download URL for a paid purchase using a receipt token."""
+
+        if receipt_token.strip() != purchase_id:
+            raise PurchasePermissionError()
+
+        purchase = self._get_purchase(purchase_id=purchase_id)
 
         self.downloads.ensure_downloadable(purchase)
         download = self.downloads.create_download(purchase=purchase)

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import type { InvoiceStatus, PurchaseReceipt } from "../../../../lib/api";
 import { getPurchaseReceipt } from "../../../../lib/api";
+import { ReceiptDownloadActions } from "./restore-download";
 import { MatteShell } from "../../../../components/layout/matte-shell";
 
 type PurchaseReceiptPageProps = {
@@ -197,26 +198,18 @@ export default async function PurchaseReceiptPage({
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-[#dcfff2]/80">
             <h2 className="text-xs font-semibold uppercase tracking-[0.3em] text-[#7bffc8]/70">Next steps</h2>
-            {purchase.invoice_status === "PAID" ? (
-              <p className="mt-3">
-                Head back to the game page to grab the latest build. If you paid as a guest, keep this receipt handy to restore downloads on any device.
-              </p>
-            ) : (
-              <p className="mt-3">
-                Pay the Lightning invoice from any compatible wallet. We&apos;ll unlock the download automatically once payment is confirmed.
-              </p>
-            )}
+            <ReceiptDownloadActions
+              purchaseId={purchase.id}
+              invoiceStatus={purchase.invoice_status}
+              downloadGranted={purchase.download_granted}
+              buildAvailable={game.build_available}
+            />
             <Link
               href={gameUrl}
               className="mt-5 inline-flex w-full items-center justify-center rounded-full border border-[#7bffc8]/60 bg-[#7bffc8]/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#7bffc8] hover:text-[#050505] hover:bg-[#7bffc8]/90"
             >
               View game page
             </Link>
-            {game.build_available ? null : (
-              <p className="mt-3 text-xs text-[#b8ffe5]/60">
-                The developer hasn&apos;t uploaded a downloadable build yet. You&apos;ll receive access as soon as it&apos;s available.
-              </p>
-            )}
           </div>
         </aside>
       </section>
