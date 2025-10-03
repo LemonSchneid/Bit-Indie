@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from json import JSONDecodeError
 
 from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from bit_indie_api.api.request_utils import extract_body_markdown
 from bit_indie_api.db import get_session
 from bit_indie_api.db.models import Game
 from bit_indie_api.schemas.comment import CommentCreateRequest, CommentRead
@@ -52,22 +51,7 @@ def get_comment_workflow(
 async def get_raw_comment_body(request: Request) -> str | None:
     """Return the unnormalized comment body from the incoming JSON payload."""
 
-    try:
-        body_bytes = await request.body()
-    except RuntimeError:
-        return None
-    if not body_bytes:
-        return None
-
-    try:
-        payload = json.loads(body_bytes)
-    except JSONDecodeError:
-        return None
-
-    body_md = payload.get("body_md")
-    if isinstance(body_md, str):
-        return body_md
-    return None
+    return await extract_body_markdown(request)
 
 
 @router.get(
