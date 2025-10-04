@@ -19,9 +19,8 @@ export function useStoredUserProfile(): UserProfile | null {
   const isClient = typeof window !== "undefined";
   const { data } = useQuery<UserProfile | null>({
     queryKey: USER_PROFILE_QUERY_KEY,
-    queryFn: async () => loadStoredUserProfile(),
-    initialData: null,
-    enabled: isClient,
+    queryFn: isClient ? () => loadStoredUserProfile() : undefined,
+    initialData: () => null,
   });
 
   useEffect(() => {

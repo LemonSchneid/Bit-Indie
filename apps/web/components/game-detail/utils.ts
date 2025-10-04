@@ -21,10 +21,6 @@ export function getDescriptionParagraphs(description: string | null): string[] {
   return splitIntoParagraphs(description);
 }
 
-export function getReviewParagraphs(body: string): string[] {
-  return splitIntoParagraphs(body);
-}
-
 export function getCommentParagraphs(body: string): string[] {
   return splitIntoParagraphs(body);
 }
