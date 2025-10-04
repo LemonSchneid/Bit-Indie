@@ -89,6 +89,7 @@ def _reset_state(monkeypatch):
     reset_database_state()
     reset_payment_service()
     yield
+    clear_payment_settings_cache()
     reset_database_state()
     reset_payment_service()
 
