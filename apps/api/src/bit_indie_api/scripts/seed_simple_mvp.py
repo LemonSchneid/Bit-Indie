@@ -19,6 +19,9 @@ from bit_indie_api.db import session_scope
 from bit_indie_api.db.models import (
     BuildScanStatus,
     Comment,
+    CommunityPost,
+    CommunityThread,
+    CommunityThreadTag,
     Developer,
     Game,
     GameCategory,
@@ -26,7 +29,6 @@ from bit_indie_api.db.models import (
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
     User,
 )
 
@@ -376,66 +378,7 @@ def seed() -> None:
             comment.body_md = "Landed the first boss on my second attempt. Controller support feels great!"
             comment.is_hidden = False
 
-        review = session.get(Review, "review-seed-001")
-        if review is None:
-            review = Review(
-                id="review-seed-001",
-                game_id=starpath_game.id,
-                game=starpath_game,
-                user_id=player_user.id,
-                user=player_user,
-                title="Brutal but fair",
-                body_md="The aerial arena design keeps every run tense. Each update has improved performance on my Steam Deck.",
-                rating=5,
-                helpful_score=4.6,
-                is_verified_purchase=True,
-                created_at=now,
-            )
-            session.add(review)
-        else:
-            review.user = player_user
-            review.game = starpath_game
-            review.title = "Brutal but fair"
-            review.body_md = (
-                "The aerial arena design keeps every run tense. Each update has improved performance on my Steam Deck."
-            )
-            review.rating = 5
-            review.helpful_score = 4.6
-            review.is_verified_purchase = True
-            review.is_hidden = False
-
         lumen_game = games_by_slug["lumen-forge"]
-        lumen_review = session.get(Review, "review-seed-002")
-        if lumen_review is None:
-            lumen_review = Review(
-                id="review-seed-002",
-                game_id=lumen_game.id,
-                game=lumen_game,
-                user_id=player_user.id,
-                user=player_user,
-                title="Factories that glow",
-                body_md=(
-                    "Shared blueprints make the co-op loop surprisingly welcoming for new players.\n\n"
-                    "Our trio hit late-game reactors without ever needing voice chat."
-                ),
-                rating=4,
-                helpful_score=3.8,
-                is_verified_purchase=True,
-                created_at=now,
-            )
-            session.add(lumen_review)
-        else:
-            lumen_review.user = player_user
-            lumen_review.game = lumen_game
-            lumen_review.title = "Factories that glow"
-            lumen_review.body_md = (
-                "Shared blueprints make the co-op loop surprisingly welcoming for new players.\n\n"
-                "Our trio hit late-game reactors without ever needing voice chat."
-            )
-            lumen_review.rating = 4
-            lumen_review.helpful_score = 3.8
-            lumen_review.is_verified_purchase = True
-            lumen_review.is_hidden = False
 
         chronorift_game = games_by_slug["chronorift-tactics"]
         chronorift_comment = session.get(Comment, "comment-seed-002")
@@ -455,6 +398,136 @@ def seed() -> None:
             chronorift_comment.game = chronorift_game
             chronorift_comment.body_md = "Phase-link combos feel incredible in co-op once the timers click."
             chronorift_comment.is_hidden = False
+
+        roadmap_thread = session.get(CommunityThread, "community-thread-seed-001")
+        if roadmap_thread is None:
+            roadmap_thread = CommunityThread(
+                id="community-thread-seed-001",
+                author_id=developer_user.id,
+                title="Sandbox roadmap update",
+                body_md=(
+                    "We’re locking in Lightning invoice retries, developer console polish, and the new "
+                    "community forum. Flag any blockers so we can tackle them together."
+                ),
+                is_pinned=True,
+                created_at=now - timedelta(days=6),
+                updated_at=now - timedelta(hours=8),
+            )
+            session.add(roadmap_thread)
+        else:
+            roadmap_thread.author_id = developer_user.id
+            roadmap_thread.title = "Sandbox roadmap update"
+            roadmap_thread.body_md = (
+                "We’re locking in Lightning invoice retries, developer console polish, and the new "
+                "community forum. Flag any blockers so we can tackle them together."
+            )
+            roadmap_thread.is_pinned = True
+            roadmap_thread.is_locked = False
+            roadmap_thread.updated_at = now - timedelta(hours=8)
+
+        for tag in ("roadmap", "updates"):
+            if session.get(CommunityThreadTag, (roadmap_thread.id, tag)) is None:
+                session.add(
+                    CommunityThreadTag(
+                        thread_id=roadmap_thread.id,
+                        tag=tag,
+                        created_at=now - timedelta(days=5),
+                        updated_at=now - timedelta(days=5),
+                    )
+                )
+
+        roadmap_post = session.get(CommunityPost, "community-post-seed-001")
+        if roadmap_post is None:
+            roadmap_post = CommunityPost(
+                id="community-post-seed-001",
+                thread_id=roadmap_thread.id,
+                author_id=player_user.id,
+                body_md="Starpath Siege ran flawlessly on my node. Excited for the moderation tools rollout!",
+                created_at=now - timedelta(days=5),
+                updated_at=now - timedelta(days=5),
+            )
+            session.add(roadmap_post)
+        else:
+            roadmap_post.thread_id = roadmap_thread.id
+            roadmap_post.author_id = player_user.id
+            roadmap_post.body_md = "Starpath Siege ran flawlessly on my node. Excited for the moderation tools rollout!"
+            roadmap_post.is_removed = False
+            roadmap_post.updated_at = now - timedelta(days=5)
+
+        roadmap_reply = session.get(CommunityPost, "community-post-seed-002")
+        if roadmap_reply is None:
+            roadmap_reply = CommunityPost(
+                id="community-post-seed-002",
+                thread_id=roadmap_thread.id,
+                parent_post_id=roadmap_post.id,
+                author_id=developer_user.id,
+                body_md="Appreciate the signal—we’re dialing in the moderation dashboard next so everyone stays ahead of spam.",
+                created_at=now - timedelta(days=4, hours=6),
+                updated_at=now - timedelta(days=4, hours=6),
+            )
+            session.add(roadmap_reply)
+        else:
+            roadmap_reply.thread_id = roadmap_thread.id
+            roadmap_reply.parent_post_id = roadmap_post.id
+            roadmap_reply.author_id = developer_user.id
+            roadmap_reply.body_md = (
+                "Appreciate the signal—we’re dialing in the moderation dashboard next so everyone stays ahead of spam."
+            )
+            roadmap_reply.is_removed = False
+            roadmap_reply.updated_at = now - timedelta(days=4, hours=6)
+
+        feedback_thread = session.get(CommunityThread, "community-thread-seed-002")
+        if feedback_thread is None:
+            feedback_thread = CommunityThread(
+                id="community-thread-seed-002",
+                author_id=player_user.id,
+                title="Feedback & feature ideas",
+                body_md="Kick around Lightning UX ideas, storefront quality-of-life tweaks, or moderation tools you’d like to see.",
+                is_pinned=False,
+                created_at=now - timedelta(days=3),
+                updated_at=now - timedelta(days=1),
+            )
+            session.add(feedback_thread)
+        else:
+            feedback_thread.author_id = player_user.id
+            feedback_thread.title = "Feedback & feature ideas"
+            feedback_thread.body_md = (
+                "Kick around Lightning UX ideas, storefront quality-of-life tweaks, or moderation tools you’d like to see."
+            )
+            feedback_thread.is_pinned = False
+            feedback_thread.is_locked = False
+            feedback_thread.updated_at = now - timedelta(days=1)
+
+        for tag in ("feedback", "ideas"):
+            if session.get(CommunityThreadTag, (feedback_thread.id, tag)) is None:
+                session.add(
+                    CommunityThreadTag(
+                        thread_id=feedback_thread.id,
+                        tag=tag,
+                        created_at=now - timedelta(days=3),
+                        updated_at=now - timedelta(days=3),
+                    )
+                )
+
+        feedback_post = session.get(CommunityPost, "community-post-seed-003")
+        if feedback_post is None:
+            feedback_post = CommunityPost(
+                id="community-post-seed-003",
+                thread_id=feedback_thread.id,
+                author_id=developer_user.id,
+                body_md="Thanks for testing guest checkout—drop Lightning UX polish requests here so we can batch them next sprint.",
+                created_at=now - timedelta(days=2),
+                updated_at=now - timedelta(days=2),
+            )
+            session.add(feedback_post)
+        else:
+            feedback_post.thread_id = feedback_thread.id
+            feedback_post.author_id = developer_user.id
+            feedback_post.body_md = (
+                "Thanks for testing guest checkout—drop Lightning UX polish requests here so we can batch them next sprint."
+            )
+            feedback_post.is_removed = False
+            feedback_post.updated_at = now - timedelta(days=2)
 
         paid_purchase = session.get(Purchase, "purchase-seed-paid")
         if paid_purchase is None:

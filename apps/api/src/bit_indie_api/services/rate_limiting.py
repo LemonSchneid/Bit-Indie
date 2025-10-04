@@ -19,12 +19,6 @@ COMMENT_RATE_LIMIT_WINDOW_SECONDS: Final[int] = 3600
 COMMENT_RATE_LIMIT_MAX_ITEMS: Final[int] = 5
 """Maximum number of comments a user may post within the rate limit window."""
 
-REVIEW_RATE_LIMIT_WINDOW_SECONDS: Final[int] = 3600
-"""Duration of the rolling window for review submissions (1 hour)."""
-
-REVIEW_RATE_LIMIT_MAX_ITEMS: Final[int] = 3
-"""Maximum number of reviews a user may submit within the rate limit window."""
-
 FLAG_RATE_LIMIT_WINDOW_SECONDS: Final[int] = 3600
 """Duration of the rolling window governing moderation flag submissions (1 hour)."""
 
@@ -121,9 +115,6 @@ __all__ = [
     "COMMENT_RATE_LIMIT_WINDOW_SECONDS",
     "FLAG_RATE_LIMIT_MAX_ITEMS",
     "FLAG_RATE_LIMIT_WINDOW_SECONDS",
-    "REVIEW_RATE_LIMIT_MAX_ITEMS",
-    "REVIEW_RATE_LIMIT_WINDOW_SECONDS",
     "RateLimitExceeded",
     "enforce_rate_limit",
 ]
-

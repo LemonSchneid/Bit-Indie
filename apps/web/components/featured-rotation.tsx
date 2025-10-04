@@ -60,7 +60,7 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
           </span>
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Spotlighted indie builds</h2>
           <p className="text-sm text-slate-300">
-            Games earn the spotlight with ten verified reviews, a healthy refund score, and fresh updates within the last month.
+            Games earn the spotlight with ten verified player comments, a healthy refund score, and fresh updates within the last month.
           </p>
         </div>
         <div className="hidden shrink-0 items-center gap-2 sm:flex">
@@ -106,7 +106,7 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
             )}
             <div className="flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
-                {current.verified_review_count.toLocaleString("en-US")} verified reviews
+                {current.verified_comment_count.toLocaleString("en-US")} verified comments
               </span>
               <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-slate-100">
                 {refundLabel}
@@ -130,8 +130,8 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Eligibility snapshot</p>
               <ul className="mt-4 space-y-3 text-sm leading-relaxed">
                 <li className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <span className="font-semibold text-white">{current.verified_review_count.toLocaleString("en-US")}</span>{" "}
-                  verified reviews
+                  <span className="font-semibold text-white">{current.verified_comment_count.toLocaleString("en-US")}</span>{" "}
+                  verified comments
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                   <span className="font-semibold text-white">{current.paid_purchase_count.toLocaleString("en-US")}</span>{" "}
@@ -146,7 +146,7 @@ export function FeaturedRotation({ entries }: FeaturedRotationProps): JSX.Elemen
               </ul>
             </div>
             <p className="text-xs text-slate-400">
-              Featured status is recalculated automatically whenever reviews, purchases, or refunds change.
+              Featured status is recalculated automatically whenever comments, purchases, or refunds change.
             </p>
           </div>
         </div>

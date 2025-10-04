@@ -42,8 +42,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       <Link className="transition hover:text-[#7bffc8]" href="/players">
                         Info for Players
                       </Link>
-                      <Link className="transition hover:text-[#7bffc8]" href="/chat">
-                        Chat
+                      <Link className="transition hover:text-[#7bffc8]" href="/community">
+                        Community
                       </Link>
                     </nav>
                     <div className="flex items-center gap-3">

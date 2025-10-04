@@ -97,6 +97,7 @@ export async function lookupLatestPurchaseForUser(
     return { purchase: latest, downloadUnlocked };
   } catch (_error) {
     if (signal?.aborted) {
+      rememberMissing(cacheKey, now + deps.missingTtlMs);
       return null;
     }
     rememberMissing(cacheKey, now + deps.missingTtlMs);

@@ -19,7 +19,6 @@ from bit_indie_api.db.models import (
     ModerationFlagReason,
     ModerationFlagStatus,
     ModerationTargetType,
-    Review,
     User,
 )
 from bit_indie_api.main import create_application
@@ -93,21 +92,6 @@ def _create_comment(game_id: str, user_id: str) -> str:
         return comment.id
 
 
-def _create_review(game_id: str, user_id: str) -> str:
-    """Persist a review attached to the provided game and return its identifier."""
-
-    with session_scope() as session:
-        review = Review(
-            game_id=game_id,
-            user_id=user_id,
-            body_md="Suspicious content",
-            rating=1,
-        )
-        session.add(review)
-        session.flush()
-        return review.id
-
-
 def test_create_flag_requires_existing_user() -> None:
     """The API should reject moderation flags from unknown users."""
 
@@ -155,14 +139,13 @@ def test_create_flag_requires_valid_target() -> None:
     [
         (ModerationTargetType.GAME, _create_game),
         (ModerationTargetType.COMMENT, _create_comment),
-        (ModerationTargetType.REVIEW, _create_review),
     ],
 )
 def test_create_flag_persists_record(
     target_type: ModerationTargetType,
     factory,
 ) -> None:
-    """Valid submissions should persist moderation flags for each target type."""
+    """Valid submissions should persist moderation flags for supported target types."""
 
     _create_schema()
     reporter_id = _create_user()
@@ -272,4 +255,3 @@ def test_create_flag_enforces_rate_limit() -> None:
     assert response.status_code == 429
     assert "rate limit" in response.json()["detail"].lower()
     assert "Retry-After" in response.headers
-

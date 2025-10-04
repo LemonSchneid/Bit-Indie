@@ -95,15 +95,16 @@ export function useGamePurchaseFlow({
     toggleReceiptLookup,
     closeReceiptLookup,
   } = useReceiptLookupForm();
+  const handleDownloadUnlocked = useCallback(() => {
+    setFlowState("paid");
+    setErrorMessage(null);
+  }, [setErrorMessage, setFlowState]);
   const { purchase, setPurchase } = useRestoredPurchase({
     gameId,
     invoice,
     isPurchasable,
     userId: user?.id ?? null,
-    onDownloadUnlocked: () => {
-      setFlowState("paid");
-      setErrorMessage(null);
-    },
+    onDownloadUnlocked: handleDownloadUnlocked,
   });
 
   const { handlePurchaseUpdate, handleInvoiceExpired, handlePollingError } = useMemo(
@@ -164,7 +165,7 @@ export function useGamePurchaseFlow({
       setFlowState("paid");
       setErrorMessage(null);
     },
-    [],
+    [setErrorMessage, setFlowState, setInvoice, setPurchase],
   );
 
   const handleInvoiceCreationError = useCallback((error: unknown) => {
@@ -175,7 +176,7 @@ export function useGamePurchaseFlow({
       return;
     }
     setErrorMessage("Unable to create a Lightning invoice. Please try again.");
-  }, []);
+  }, [setErrorMessage, setFlowState, setInvoice]);
 
   const handleGuestDownload = useCallback(async () => {
     if (!buildAvailable) {
@@ -213,7 +214,13 @@ export function useGamePurchaseFlow({
     } finally {
       setIsDownloadRequestPending(false);
     }
-  }, [buildAvailable, invoice?.purchase_id, purchase?.id]);
+  }, [
+    buildAvailable,
+    invoice,
+    purchase,
+    setDownloadError,
+    setIsDownloadRequestPending,
+  ]);
 
   const createAuthenticatedInvoice = useCallback(
     async (userId: string) => {

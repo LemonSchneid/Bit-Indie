@@ -105,24 +105,30 @@ export function useQuery<TData>({
 }: UseQueryOptions<TData>): { data: TData | undefined } {
   const client = useQueryClient();
   const keyHash = useMemo(() => hashQueryKey(queryKey), [queryKey]);
+  const memoizedQueryKeyRef = useRef<QueryKey>(queryKey);
+  useEffect(() => {
+    memoizedQueryKeyRef.current = queryKey;
+  }, [keyHash, queryKey]);
   const hasMounted = useRef(false);
 
   const [data, setData] = useState<TData | undefined>(() => {
-    const existing = client.getQueryData<TData>(queryKey);
+    const currentKey = memoizedQueryKeyRef.current;
+    const existing = client.getQueryData<TData>(currentKey);
     if (existing !== undefined) {
       return existing;
     }
     if (initialData) {
       const initial = initialData();
-      client.setQueryData(queryKey, initial);
+      client.setQueryData(currentKey, initial);
       return initial;
     }
     return undefined;
   });
 
   useEffect(() => {
-    return client.subscribe(queryKey, () => {
-      setData(client.getQueryData<TData>(queryKey));
+    const currentKey = memoizedQueryKeyRef.current;
+    return client.subscribe(currentKey, () => {
+      setData(client.getQueryData<TData>(currentKey));
     });
   }, [client, keyHash]);
 
@@ -135,7 +141,8 @@ export function useQuery<TData>({
       try {
         const result = await queryFn();
         if (!cancelled) {
-          client.setQueryData(queryKey, result);
+          const currentKey = memoizedQueryKeyRef.current;
+          client.setQueryData(currentKey, result);
           setData(result);
         }
       } catch (error) {

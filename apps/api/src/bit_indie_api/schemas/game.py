@@ -129,7 +129,7 @@ class FeaturedGameSummary(BaseModel):
     """Aggregated metrics presented alongside a featured game."""
 
     game: GameRead
-    verified_review_count: int = Field(ge=0)
+    verified_comment_count: int = Field(ge=0)
     paid_purchase_count: int = Field(ge=0)
     refunded_purchase_count: int = Field(ge=0)
     refund_rate: float = Field(ge=0.0)

@@ -31,7 +31,7 @@ export default function SignInPage(): JSX.Element {
               ))}
             </ul>
             <p className="text-xs text-[#7bffc8]/70">
-              Need help with your account? Visit the <Link className="underline decoration-[#7bffc8]/60 underline-offset-4 transition hover:text-white" href="/chat">support channel</Link> for real-time assistance.
+              Need help with your account? Visit the <Link className="underline decoration-[#7bffc8]/60 underline-offset-4 transition hover:text-white" href="/community">community page</Link> for updates and contact options.
             </p>
           </section>
         </div>

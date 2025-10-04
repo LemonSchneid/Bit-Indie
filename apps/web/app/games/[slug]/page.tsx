@@ -4,15 +4,12 @@ import { GameDetailDescription } from "../../../components/game-detail/descripti
 import { GameDetailHero } from "../../../components/game-detail/hero";
 import { GameCommentsSection } from "../../../components/game-detail/comments-section";
 import { GameDetailSidebar } from "../../../components/game-detail/sidebar";
-import { GameReviewsSection } from "../../../components/game-detail/reviews-section";
 import { MatteShell } from "../../../components/layout/matte-shell";
 import {
   getGameBySlug,
   getGameComments,
-  getGameReviews,
   type GameComment,
   type GameDraft,
-  type GameReview,
 } from "../../../lib/api";
 import {
   formatCategory,
@@ -48,8 +45,6 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const checkoutAvailable = hasPaidPrice && game.active;
   let comments: GameComment[] = [];
   let commentsError: string | null = null;
-  let reviews: GameReview[] = [];
-  let reviewsError: string | null = null;
 
   try {
     comments = await getGameComments(game.id);
@@ -61,19 +56,6 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         error instanceof Error
           ? error.message
           : "Unable to load community comments right now.";
-    }
-  }
-
-  try {
-    reviews = await getGameReviews(game.id);
-  } catch (error) {
-    if (error instanceof Error && error.message === "Reviews are not available for this game.") {
-      reviews = [];
-    } else {
-      reviewsError =
-        error instanceof Error
-          ? error.message
-          : "Unable to load community reviews right now.";
     }
   }
 
@@ -105,8 +87,6 @@ export default async function GameDetailPage({ params }: GamePageProps) {
       </section>
 
       <GameCommentsSection gameTitle={game.title} comments={comments} commentsError={commentsError} />
-
-      <GameReviewsSection gameTitle={game.title} reviews={reviews} reviewsError={reviewsError} />
     </MatteShell>
   );
 }

@@ -23,7 +23,7 @@ from bit_indie_api.db.models import (
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
+    Comment,
     User,
 )
 from bit_indie_api.main import create_application
@@ -707,14 +707,12 @@ def test_list_featured_games_returns_eligible_entries() -> None:
             )
             session.add(purchase)
 
-            review = Review(
+            comment = Comment(
                 game_id=game.id,
                 user_id=buyer.id,
                 body_md="Great tactical depth and music.",
-                rating=5,
-                is_verified_purchase=True,
             )
-            session.add(review)
+            session.add(comment)
 
         session.flush()
         session.refresh(game)
@@ -728,7 +726,7 @@ def test_list_featured_games_returns_eligible_entries() -> None:
     assert len(body) == 1
     entry = body[0]
     assert entry["game"]["slug"] == "aurora-tactics"
-    assert entry["verified_review_count"] == 10
+    assert entry["verified_comment_count"] == 10
     assert entry["paid_purchase_count"] == 10
     assert entry["refund_rate"] == pytest.approx(0.0)
     assert entry["updated_within_window"] is True
@@ -782,14 +780,12 @@ def test_list_featured_games_excludes_games_failing_refund_threshold() -> None:
             )
             session.add(purchase)
 
-            review = Review(
+            comment = Comment(
                 game_id=game.id,
                 user_id=buyer.id,
                 body_md="Fast but buggy build.",
-                rating=3,
-                is_verified_purchase=True,
             )
-            session.add(review)
+            session.add(comment)
 
         refund_ids = session.scalars(
             select(Purchase.id).where(Purchase.game_id == game.id).limit(3)
@@ -868,14 +864,12 @@ def test_list_featured_games_updates_status_for_results_beyond_limit() -> None:
                 )
                 session.add(purchase)
 
-                review = Review(
+                comment = Comment(
                     game_id=game.id,
                     user_id=buyer.id,
                     body_md="Dependably fun matches.",
-                    rating=4,
-                    is_verified_purchase=True,
                 )
-                session.add(review)
+                session.add(comment)
 
         session.flush()
         session.refresh(fresh_game)

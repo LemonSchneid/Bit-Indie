@@ -26,8 +26,9 @@ Legacy social integrations have been removed so the MVP ships with a purely firs
 ## 3. Players
 
 - Guest checkout without creating an account; pay with any Lightning wallet.
-- First‑party comments and reviews; verified badge if you purchased the game.
+- First-party comments and reviews; verified badge if you purchased the game.
 - Lightning identity and optional accounts will arrive after the MVP.
+- Community forum for roadmap updates and feedback (guests read, signed-in players post).
 
 ---
 

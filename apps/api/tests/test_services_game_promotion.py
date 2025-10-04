@@ -11,13 +11,13 @@ from sqlalchemy import select
 
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
+    Comment,
     Developer,
     Game,
     GameStatus,
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
     User,
 )
 from bit_indie_api.services.game_promotion import (
@@ -97,14 +97,12 @@ def test_evaluate_featured_eligibility_meets_thresholds() -> None:
                 refund_status=RefundStatus.NONE,
             )
             session.add(purchase)
-            review = Review(
+            comment = Comment(
                 game_id=game.id,
                 user_id=buyer.id,
                 body_md="Loved the momentum and soundtrack.",
-                rating=5,
-                is_verified_purchase=True,
             )
-            session.add(review)
+            session.add(comment)
 
         session.flush()
         session.refresh(game)
@@ -113,7 +111,7 @@ def test_evaluate_featured_eligibility_meets_thresholds() -> None:
 
         eligibility = evaluate_featured_eligibility(session=session, game=game, reference=reference)
         assert eligibility.meets_thresholds is True
-        assert eligibility.verified_review_count == 10
+        assert eligibility.verified_comment_count == 10
         assert eligibility.paid_purchase_count == 10
         assert eligibility.refunded_purchase_count == 0
 
@@ -155,14 +153,12 @@ def test_update_game_featured_status_demotes_on_refund_rate() -> None:
                 refund_status=RefundStatus.NONE,
             )
             session.add(purchase)
-            review = Review(
+            comment = Comment(
                 game_id=game.id,
                 user_id=buyer.id,
                 body_md="Tense puzzler with great feedback loops.",
-                rating=4,
-                is_verified_purchase=True,
             )
-            session.add(review)
+            session.add(comment)
 
         # Mark enough refunds to breach the 5% limit (2 of 12 ≈ 16.6%).
         refunded_purchase_ids = session.scalars(

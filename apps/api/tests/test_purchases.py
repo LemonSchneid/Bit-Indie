@@ -7,6 +7,7 @@ from bit_indie_api.api.security import require_authenticated_user_id
 from bit_indie_api.core.config import clear_payment_settings_cache
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
+    Comment,
     Developer,
     DownloadAuditLog,
     Game,
@@ -15,7 +16,6 @@ from bit_indie_api.db.models import (
     PayoutStatus,
     Purchase,
     RefundStatus,
-    Review,
     User,
 )
 from bit_indie_api.main import create_application
@@ -565,8 +565,8 @@ def test_webhook_marks_purchase_as_paid() -> None:
         ]
 
 
-def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
-    """Games with a review should be promoted once a purchase is verified."""
+def test_webhook_promotes_game_after_paid_purchase_and_comment() -> None:
+    """Games with a verified comment should be promoted once a purchase is verified."""
 
     _create_schema()
     user_id, game_id = _seed_game_with_price(price_msats=5000)
@@ -581,18 +581,12 @@ def test_webhook_promotes_game_after_paid_purchase_and_review() -> None:
         session.add(purchase)
         session.flush()
 
-        reviewer = User(account_identifier="reviewer-pubkey")
-        session.add(reviewer)
-        session.flush()
-
-        review = Review(
+        comment = Comment(
             game_id=game_id,
-            user_id=reviewer.id,
+            user_id=user_id,
             body_md="Solid gameplay loop",
-            rating=None,
-            is_verified_purchase=False,
         )
-        session.add(review)
+        session.add(comment)
         session.flush()
 
         game = session.get(Game, game_id)

@@ -98,7 +98,7 @@ def list_featured_games(
             summaries.append(
                 FeaturedGameSummary(
                     game=GameRead.model_validate(game),
-                    verified_review_count=eligibility.verified_review_count,
+                    verified_comment_count=eligibility.verified_comment_count,
                     paid_purchase_count=eligibility.paid_purchase_count,
                     refunded_purchase_count=eligibility.refunded_purchase_count,
                     refund_rate=eligibility.refund_rate,

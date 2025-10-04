@@ -15,7 +15,6 @@ from bit_indie_api.db.models import (
     ModerationFlag,
     ModerationFlagStatus,
     ModerationTargetType,
-    Review,
     User,
 )
 from bit_indie_api.schemas.moderation import (
@@ -38,7 +37,6 @@ router = APIRouter(prefix="/v1/moderation/flags", tags=["moderation"])
 _TARGET_MODEL_MAP = {
     ModerationTargetType.GAME: Game,
     ModerationTargetType.COMMENT: Comment,
-    ModerationTargetType.REVIEW: Review,
 }
 
 
@@ -64,7 +62,7 @@ def create_moderation_flag(
     response: Response,
     session: Session = Depends(get_session),
 ) -> ModerationFlagRead:
-    """Persist a moderation flag for games, comments, or reviews."""
+    """Persist a moderation flag for games or comments."""
 
     user = session.get(User, request.user_id)
     if user is None:
@@ -127,4 +125,3 @@ def create_moderation_flag(
 
 
 __all__ = ["create_moderation_flag"]
-

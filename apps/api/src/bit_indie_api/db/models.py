@@ -12,7 +12,6 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum as SqlEnum,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -100,7 +99,6 @@ class ModerationTargetType(str, enum.Enum):
 
     GAME = "GAME"
     COMMENT = "COMMENT"
-    REVIEW = "REVIEW"
 
 
 class ModerationFlagReason(str, enum.Enum):
@@ -140,12 +138,17 @@ class User(TimestampMixin, Base):
         cascade="all,delete-orphan",
         single_parent=True,
     )
-    comments: Mapped[list["Comment"]] = relationship(
-        back_populates="user",
+    community_threads: Mapped[list["CommunityThread"]] = relationship(
+        back_populates="author",
         cascade="all,delete-orphan",
         single_parent=True,
     )
-    reviews: Mapped[list["Review"]] = relationship(
+    community_posts: Mapped[list["CommunityPost"]] = relationship(
+        back_populates="author",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
+    comments: Mapped[list["Comment"]] = relationship(
         back_populates="user",
         cascade="all,delete-orphan",
         single_parent=True,
@@ -227,11 +230,6 @@ class Game(TimestampMixin, Base):
         single_parent=True,
     )
     comments: Mapped[list["Comment"]] = relationship(
-        back_populates="game",
-        cascade="all,delete-orphan",
-        single_parent=True,
-    )
-    reviews: Mapped[list["Review"]] = relationship(
         back_populates="game",
         cascade="all,delete-orphan",
         single_parent=True,
@@ -377,51 +375,93 @@ class Comment(Base):
     user: Mapped[User] = relationship(back_populates="comments")
 
 
-class Review(Base):
-    """User submitted review containing optional rating and purchase verification."""
+class CommunityThread(TimestampMixin, Base):
+    """Top-level discussion thread within the community forum."""
 
-    __tablename__ = "reviews"
-
-    __table_args__ = (
-        CheckConstraint(
-            "(rating BETWEEN 1 AND 5) OR rating IS NULL",
-            name="ck_reviews_rating_range",
-        ),
-    )
+    __tablename__ = "community_threads"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
-    game_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("games.id", ondelete="CASCADE"), nullable=False, index=True
+    author_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str | None] = mapped_column(String(200))
-    body_md: Mapped[str] = mapped_column(Text, nullable=False)
-    rating: Mapped[int | None] = mapped_column(Integer)
-    helpful_score: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0, server_default="0"
+    body_md: Mapped[str | None] = mapped_column(Text)
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
     )
-    is_verified_purchase: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    is_hidden: Mapped[bool] = mapped_column(
+    is_locked: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
 
-    game: Mapped[Game] = relationship(back_populates="reviews")
-    user: Mapped[User] = relationship(back_populates="reviews")
+    author: Mapped[User | None] = relationship(back_populates="community_threads")
+    posts: Mapped[list["CommunityPost"]] = relationship(
+        back_populates="thread",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
+    tag_rows: Mapped[list["CommunityThreadTag"]] = relationship(
+        back_populates="thread",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
 
     @property
-    def author(self) -> User | None:
-        """Expose the associated user for serialization helpers."""
+    def tag_names(self) -> list[str]:
+        """Return the normalized tag names attached to the thread."""
 
-        return self.user
+        return [row.tag for row in self.tag_rows]
+
+
+class CommunityThreadTag(TimestampMixin, Base):
+    """Association table mapping tags to community threads."""
+
+    __tablename__ = "community_thread_tags"
+
+    thread_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("community_threads.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    tag: Mapped[str] = mapped_column(String(40), primary_key=True)
+
+    thread: Mapped[CommunityThread] = relationship(back_populates="tag_rows")
+
+
+class CommunityPost(TimestampMixin, Base):
+    """A post within a community thread supporting a single reply depth."""
+
+    __tablename__ = "community_posts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    thread_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("community_threads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_post_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    author_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    body_md: Mapped[str] = mapped_column(Text, nullable=False)
+    is_removed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+
+    thread: Mapped[CommunityThread] = relationship(back_populates="posts")
+    author: Mapped[User] = relationship(back_populates="community_posts")
+    parent_post: Mapped["CommunityPost" | None] = relationship(
+        remote_side="CommunityPost.id",
+        back_populates="replies",
+    )
+    replies: Mapped[list["CommunityPost"]] = relationship(
+        back_populates="parent_post",
+        cascade="all,delete-orphan",
+        single_parent=True,
+    )
 
 
 class ModerationFlag(TimestampMixin, Base):
-    """User submitted moderation flag for games, comments, or reviews."""
+    """User submitted moderation flag for games or comments."""
 
     __tablename__ = "moderation_flags"
 
@@ -451,6 +491,9 @@ class ModerationFlag(TimestampMixin, Base):
 
 __all__ = [
     "Comment",
+    "CommunityPost",
+    "CommunityThread",
+    "CommunityThreadTag",
     "Developer",
     "Game",
     "GameCategory",
@@ -463,7 +506,6 @@ __all__ = [
     "ModerationFlagStatus",
     "ModerationTargetType",
     "Purchase",
-    "Review",
     "RefundStatus",
     "TimestampMixin",
     "User",

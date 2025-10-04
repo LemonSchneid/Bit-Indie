@@ -35,7 +35,7 @@ export function ReceiptDownloadActions({
           return;
         }
         if (error.message === "Game build is not available for download.") {
-          setErrorMessage("The developer hasn't uploaded a downloadable build yet.");
+          setErrorMessage("The developer hasn&apos;t uploaded a downloadable build yet.");
           return;
         }
         setErrorMessage(error.message);
@@ -50,7 +50,7 @@ export function ReceiptDownloadActions({
   if (invoiceStatus !== "PAID") {
     return (
       <p className="mt-3 text-sm text-[#dcfff2]/80">
-        Pay the Lightning invoice to unlock this download. We'll refresh the receipt once payment is detected.
+        Pay the Lightning invoice to unlock this download. We&apos;ll refresh the receipt once payment is detected.
       </p>
     );
   }
@@ -66,7 +66,7 @@ export function ReceiptDownloadActions({
   if (!buildAvailable) {
     return (
       <p className="mt-3 text-sm text-[#dcfff2]/80">
-        The developer hasn't uploaded a downloadable build yet. You'll be able to restore the download here once it's ready.
+        The developer hasn&apos;t uploaded a downloadable build yet. You&apos;ll be able to restore the download here once it&apos;s ready.
       </p>
     );
   }
@@ -85,7 +85,7 @@ export function ReceiptDownloadActions({
         <p className="text-xs text-rose-200/80">{errorMessage}</p>
       ) : (
         <p className="text-xs text-[#b8ffe5]/60">
-          We'll open a fresh signed link to the latest build. Keep this receipt handy so you can restore downloads on new devices.
+          We&apos;ll open a fresh signed link to the latest build. Keep this receipt handy so you can restore downloads on new devices.
         </p>
       )}
     </div>

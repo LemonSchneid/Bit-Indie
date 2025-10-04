@@ -16,10 +16,12 @@ import { USER_PROFILE_QUERY_KEY } from "../user-session";
  */
 export function useStoredUserProfile(): UserProfile | null {
   const queryClient = useQueryClient();
+  const isClient = typeof window !== "undefined";
   const { data } = useQuery<UserProfile | null>({
     queryKey: USER_PROFILE_QUERY_KEY,
-    initialData: () => loadStoredUserProfile(),
     queryFn: async () => loadStoredUserProfile(),
+    initialData: null,
+    enabled: isClient,
   });
 
   useEffect(() => {
@@ -43,6 +45,8 @@ export function useStoredUserProfile(): UserProfile | null {
       refreshProfile as EventListener,
     );
     window.addEventListener("storage", handleStorage);
+
+    refreshProfile();
 
     return () => {
       window.removeEventListener(

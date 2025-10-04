@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
-from bit_indie_api.db.models import Comment, Game, GameStatus, Purchase, Review
+from bit_indie_api.db.models import Comment, Game, GameStatus, Purchase
 from bit_indie_api.scripts import seed_simple_mvp
 
 
@@ -48,7 +48,6 @@ def test_seed_simple_mvp_populates_repeatable_catalog_fixture() -> None:
         starpath = next(game for game in games if game.slug == "starpath-siege")
         assert starpath.status == GameStatus.FEATURED
 
-        review_ids = set(session.scalars(select(Review.id)).all())
         comment_ids = set(session.scalars(select(Comment.id)).all())
         purchase_ids = set(session.scalars(select(Purchase.id)).all())
 
@@ -56,7 +55,6 @@ def test_seed_simple_mvp_populates_repeatable_catalog_fixture() -> None:
 
     with session_scope() as session:
         assert set(session.scalars(select(Game.slug)).all()) == slugs
-        assert review_ids == set(session.scalars(select(Review.id)).all())
         assert comment_ids == set(session.scalars(select(Comment.id)).all())
         assert purchase_ids == set(session.scalars(select(Purchase.id)).all())
 

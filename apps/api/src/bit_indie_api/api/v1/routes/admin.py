@@ -15,13 +15,11 @@ from bit_indie_api.db.models import (
     ModerationFlag,
     ModerationFlagStatus,
     ModerationTargetType,
-    Review,
     User,
 )
 from bit_indie_api.schemas.moderation import (
     FlaggedCommentSummary,
     FlaggedGameSummary,
-    FlaggedReviewSummary,
     HiddenModerationItem,
     ModerationActionResponse,
     ModerationQueueItem,
@@ -66,8 +64,6 @@ def _serialize_flag(flag: ModerationFlag, *, session: Session) -> ModerationQueu
 
     game_summary: FlaggedGameSummary | None = None
     comment_summary: FlaggedCommentSummary | None = None
-    review_summary: FlaggedReviewSummary | None = None
-
     if flag.target_type is ModerationTargetType.GAME:
         game = session.get(Game, flag.target_id)
         if game is not None:
@@ -77,13 +73,6 @@ def _serialize_flag(flag: ModerationFlag, *, session: Session) -> ModerationQueu
         if comment is not None:
             comment_summary = FlaggedCommentSummary.model_validate(comment)
             related_game = comment.game or session.get(Game, comment.game_id)
-            if related_game is not None:
-                game_summary = FlaggedGameSummary.model_validate(related_game)
-    elif flag.target_type is ModerationTargetType.REVIEW:
-        review = session.get(Review, flag.target_id)
-        if review is not None:
-            review_summary = FlaggedReviewSummary.model_validate(review)
-            related_game = review.game or session.get(Game, review.game_id)
             if related_game is not None:
                 game_summary = FlaggedGameSummary.model_validate(related_game)
 
@@ -97,7 +86,6 @@ def _serialize_flag(flag: ModerationFlag, *, session: Session) -> ModerationQueu
         reporter=reporter_view,
         game=game_summary,
         comment=comment_summary,
-        review=review_summary,
     )
 
 
@@ -151,11 +139,6 @@ def apply_moderation_takedown(
         if comment is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
         comment.is_hidden = True
-    elif target_type is ModerationTargetType.REVIEW:
-        review = session.get(Review, request.target_id)
-        if review is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found.")
-        review.is_hidden = True
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported moderation target.")
 
@@ -185,13 +168,13 @@ def apply_moderation_takedown(
 @router.get(
     "/hidden",
     response_model=list[HiddenModerationItem],
-    summary="List hidden comments and reviews",
+    summary="List hidden comments",
 )
 def list_hidden_moderation_items(
     user_id: str,
     session: Session = Depends(get_session),
 ) -> list[HiddenModerationItem]:
-    """Return hidden first-party comments and reviews for admins to triage."""
+    """Return hidden first-party comments for admins to triage."""
 
     require_admin_user(session=session, user_id=user_id)
 
@@ -214,28 +197,6 @@ def list_hidden_moderation_items(
                 created_at=comment.created_at,
                 game=FlaggedGameSummary.model_validate(related_game),
                 comment=FlaggedCommentSummary.model_validate(comment),
-                review=None,
-            )
-        )
-
-    review_stmt = (
-        select(Review)
-        .options(joinedload(Review.game))
-        .where(Review.is_hidden.is_(True))
-        .order_by(Review.created_at.desc(), Review.id.asc())
-    )
-    for review in session.scalars(review_stmt):
-        related_game = review.game or session.get(Game, review.game_id)
-        if related_game is None:
-            continue
-        items.append(
-            HiddenModerationItem(
-                target_type=ModerationTargetType.REVIEW,
-                target_id=review.id,
-                created_at=review.created_at,
-                game=FlaggedGameSummary.model_validate(related_game),
-                comment=None,
-                review=FlaggedReviewSummary.model_validate(review),
             )
         )
 
@@ -252,7 +213,7 @@ def restore_moderated_target(
     request: ModerationRestoreRequest,
     session: Session = Depends(get_session),
 ) -> ModerationActionResponse:
-    """Unhide moderated comments or reviews and dismiss related flags."""
+    """Unhide moderated comments and dismiss related flags."""
 
     require_admin_user(session=session, user_id=request.user_id)
 
@@ -262,15 +223,10 @@ def restore_moderated_target(
         if comment is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
         comment.is_hidden = False
-    elif target_type is ModerationTargetType.REVIEW:
-        review = session.get(Review, request.target_id)
-        if review is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found.")
-        review.is_hidden = False
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only comments or reviews can be restored via this endpoint.",
+            detail="Only comments can be restored via this endpoint.",
         )
 
     session.flush()

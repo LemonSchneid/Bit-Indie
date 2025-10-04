@@ -5,20 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from bit_indie_api.db.models import (
+    Comment,
     Game,
     GameStatus,
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
 )
 
 # Thresholds governing the featured rotation.
-_FEATURED_MIN_VERIFIED_REVIEWS = 10
+_FEATURED_MIN_VERIFIED_COMMENTS = 10
 _FEATURED_MAX_REFUND_RATE = 0.05
 _FEATURED_UPDATE_WINDOW = timedelta(days=30)
 
@@ -27,7 +27,7 @@ _FEATURED_UPDATE_WINDOW = timedelta(days=30)
 class FeaturedEligibility:
     """Aggregated metrics used to determine featured shelf eligibility."""
 
-    verified_review_count: int
+    verified_comment_count: int
     paid_purchase_count: int
     refunded_purchase_count: int
     updated_within_window: bool
@@ -47,7 +47,7 @@ class FeaturedEligibility:
 
         if not self.is_active:
             return False
-        if self.verified_review_count < _FEATURED_MIN_VERIFIED_REVIEWS:
+        if self.verified_comment_count < _FEATURED_MIN_VERIFIED_COMMENTS:
             return False
         if not self.updated_within_window:
             return False
@@ -61,7 +61,7 @@ def maybe_promote_game_to_discover(*, session: Session, game: Game) -> bool:
 
     A game becomes eligible for the Discover shelf once it has at least one
     verified purchase (an associated ``Purchase`` record marked as paid) and at
-    least one review. The transition only occurs for active games that are
+    least one verified comment. The transition only occurs for active games that are
     currently unlisted. The function returns ``True`` when a promotion is
     applied so callers can persist the change immediately.
     """
@@ -78,13 +78,19 @@ def maybe_promote_game_to_discover(*, session: Session, game: Game) -> bool:
     if has_verified_purchase is None:
         return False
 
-    has_review = session.scalar(
-        select(Review.id)
-        .where(Review.game_id == game.id)
-        .where(Review.is_hidden.is_(False))
+    has_verified_comment = session.scalar(
+        select(Comment.id)
+        .where(Comment.game_id == game.id)
+        .where(Comment.is_hidden.is_(False))
+        .where(
+            exists()
+            .where(Purchase.game_id == game.id)
+            .where(Purchase.user_id == Comment.user_id)
+            .where(Purchase.invoice_status == InvoiceStatus.PAID)
+        )
         .limit(1)
     )
-    if has_review is None:
+    if has_verified_comment is None:
         return False
 
     game.status = GameStatus.DISCOVER
@@ -106,12 +112,17 @@ def evaluate_featured_eligibility(
             updated_at = updated_at.replace(tzinfo=timezone.utc)
         updated_within_window = reference - updated_at <= _FEATURED_UPDATE_WINDOW
 
-    verified_review_count = session.scalar(
+    verified_comment_count = session.scalar(
         select(func.count())
-        .select_from(Review)
-        .where(Review.game_id == game.id)
-        .where(Review.is_hidden.is_(False))
-        .where(Review.is_verified_purchase.is_(True))
+        .select_from(Comment)
+        .where(Comment.game_id == game.id)
+        .where(Comment.is_hidden.is_(False))
+        .where(
+            exists()
+            .where(Purchase.game_id == game.id)
+            .where(Purchase.user_id == Comment.user_id)
+            .where(Purchase.invoice_status == InvoiceStatus.PAID)
+        )
     )
     paid_purchase_count = session.scalar(
         select(func.count())
@@ -127,7 +138,7 @@ def evaluate_featured_eligibility(
     )
 
     return FeaturedEligibility(
-        verified_review_count=int(verified_review_count or 0),
+        verified_comment_count=int(verified_comment_count or 0),
         paid_purchase_count=int(paid_purchase_count or 0),
         refunded_purchase_count=int(refunded_purchase_count or 0),
         updated_within_window=bool(updated_within_window),
@@ -168,4 +179,3 @@ __all__ = [
     "maybe_promote_game_to_discover",
     "update_game_featured_status",
 ]
-

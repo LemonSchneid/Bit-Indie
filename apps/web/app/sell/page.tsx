@@ -37,7 +37,7 @@ export default function SellPage(): JSX.Element {
           Launch your Lightning-ready build in minutes.
         </h1>
         <p className="text-base text-[#b8ffe5]/70">
-          Bit Indie helps small teams move fast. Prepare your listing with the steps below, then invite playtesters or go live to the full marketplace when you are ready.
+          Bit Indie helps small teams move fast. Prepare your listing with the steps below, then go live to the full marketplace when you are ready.
         </p>
       </header>
 
@@ -61,7 +61,7 @@ export default function SellPage(): JSX.Element {
                 <span className="mt-1 h-2 w-2 rounded-full bg-[#7bffc8]" aria-hidden="true" />
                 <div>
                   <p className="font-semibold text-white">Instant payouts</p>
-                  <p>Lightning invoices settle directly to your wallet with transparent status updates.</p>
+                  <p>Lightning invoices settle directly to your wallet with transparent status updates. Developers receive 85% of each sale; Bit Indie takes 15%.</p>
                 </div>
               </li>
               <li className="flex gap-3">
@@ -98,7 +98,7 @@ export default function SellPage(): JSX.Element {
               Open developer console
             </Link>
             <p className="text-xs text-[#b8ffe5]/60">
-              Need onboarding help? Jump into our <Link href="/chat" className="text-[#7bffc8] hover:text-white">chat support</Link> or email <a href="mailto:hello@bitindie.dev" className="text-[#7bffc8] hover:text-white">hello@bitindie.dev</a>.
+              Need onboarding help? Visit our <Link href="/community" className="text-[#7bffc8] hover:text-white">community page</Link> or email <a href="mailto:hello@bitindie.dev" className="text-[#7bffc8] hover:text-white">hello@bitindie.dev</a>.
             </p>
           </div>
         </div>

@@ -8,8 +8,7 @@ export default function AdminDashboardPage(): JSX.Element {
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#ff6b8a]">Developer dashboard</p>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Developer console</h1>
         <p className="text-sm text-[#ffc3d0]/75">
-          Manage Lightning-ready drafts, upload builds, and monitor publish readiness without leaving the
-          admin cockpit.
+          Manage Lightning-ready drafts, upload builds, and monitor publish readiness — all in one place.
         </p>
       </header>
 

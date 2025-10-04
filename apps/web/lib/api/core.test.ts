@@ -9,7 +9,6 @@ const globalScope = globalThis as MutableGlobal;
 
 function reloadCoreModule() {
   delete require.cache[coreModulePath];
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require("./core") as typeof import("./core");
 }
 

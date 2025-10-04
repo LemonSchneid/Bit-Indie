@@ -47,22 +47,6 @@ class FlaggedCommentSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class FlaggedReviewSummary(BaseModel):
-    """Details about a review surfaced in the moderation queue."""
-
-    id: str
-    game_id: str
-    user_id: str
-    title: str | None
-    body_md: str
-    rating: int | None
-    helpful_score: float
-    created_at: datetime
-    is_hidden: bool
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class ModerationQueueItem(BaseModel):
     """Single entry within the admin moderation queue."""
 
@@ -75,7 +59,6 @@ class ModerationQueueItem(BaseModel):
     reporter: ModerationReporter
     game: FlaggedGameSummary | None = None
     comment: FlaggedCommentSummary | None = None
-    review: FlaggedReviewSummary | None = None
 
 
 class ModerationTakedownRequest(BaseModel):
@@ -96,7 +79,7 @@ class ModerationActionResponse(BaseModel):
 
 
 class ModerationFlagCreateRequest(BaseModel):
-    """Player-submitted report targeting games, comments, or reviews."""
+    """Player-submitted report targeting games or comments."""
 
     user_id: str = Field(..., description="Identifier of the reporting user.")
     target_type: ModerationTargetType
@@ -126,20 +109,18 @@ class ModerationRestoreRequest(BaseModel):
 
 
 class HiddenModerationItem(BaseModel):
-    """Details about hidden comments and reviews awaiting potential restoration."""
+    """Details about hidden comments awaiting potential restoration."""
 
     target_type: ModerationTargetType
     target_id: str
     created_at: datetime
     game: FlaggedGameSummary
     comment: FlaggedCommentSummary | None = None
-    review: FlaggedReviewSummary | None = None
 
 
 __all__ = [
     "FlaggedCommentSummary",
     "FlaggedGameSummary",
-    "FlaggedReviewSummary",
     "HiddenModerationItem",
     "ModerationActionResponse",
     "ModerationFlagCreateRequest",

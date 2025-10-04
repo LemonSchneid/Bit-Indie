@@ -31,7 +31,7 @@ export interface GameDraft {
 
 export interface FeaturedGameSummary {
   game: GameDraft;
-  verified_review_count: number;
+  verified_comment_count: number;
   paid_purchase_count: number;
   refunded_purchase_count: number;
   refund_rate: number;

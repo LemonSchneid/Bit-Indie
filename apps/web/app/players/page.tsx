@@ -98,13 +98,13 @@ export default function PlayersPage(): JSX.Element {
               The Bit Indie crew is available during demo hours. Hop into chat for invoice troubleshooting, download resets, or feedback suggestions.
             </p>
             <Link
-              href="/chat"
+              href="/community"
               className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-[0.35em] text-white transition hover:border-[#7bffc8]/70 hover:text-[#e8f9f1]"
             >
               Open chat support
             </Link>
             <p className="text-xs text-[#b8ffe5]/60">
-              Prefer async? Email <a href="mailto:support@bitindie.dev" className="text-[#7bffc8] hover:text-white">support@bitindie.dev</a> and we will follow up within a day.
+              Prefer async? Email <a href="mailto:bitindie@protonmail.com" className="text-[#7bffc8] hover:text-white">bitindie@protonmail.com</a> and we will follow up within a day.
             </p>
           </div>
         </div>

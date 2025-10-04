@@ -9,13 +9,13 @@ import pytest
 
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
+    Comment,
     Developer,
     Game,
     GameStatus,
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
     User,
 )
 from bit_indie_api.services.game_publication import GamePublicationService
@@ -63,7 +63,7 @@ def _add_buyer(session, index: int) -> User:
 
 
 def _seed_featured_metrics(session, game: Game, reference: datetime) -> None:
-    """Populate a game with purchases and reviews meeting featured thresholds."""
+    """Populate a game with purchases and comments meeting featured thresholds."""
 
     for index in range(10):
         buyer = _add_buyer(session, index)
@@ -78,14 +78,12 @@ def _seed_featured_metrics(session, game: Game, reference: datetime) -> None:
         )
         session.add(purchase)
 
-        review = Review(
+        comment = Comment(
             game_id=game.id,
             user_id=buyer.id,
             body_md="Great pacing and soundtrack.",
-            rating=5,
-            is_verified_purchase=True,
         )
-        session.add(review)
+        session.add(comment)
 
     session.flush()
     session.refresh(game)
@@ -154,4 +152,3 @@ def test_unpublish_game_demotes_featured_listing() -> None:
         assert result.featured_eligibility.meets_thresholds is False
         assert game.active is False
         assert game.status is GameStatus.UNLISTED
-

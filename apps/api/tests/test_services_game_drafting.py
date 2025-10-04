@@ -6,12 +6,12 @@ import pytest
 from bit_indie_api.db import Base, get_engine, reset_database_state, session_scope
 from bit_indie_api.db.models import (
     BuildScanStatus,
+    Comment,
     Developer,
     GameStatus,
     InvoiceStatus,
     Purchase,
     RefundStatus,
-    Review,
     User,
 )
 from bit_indie_api.schemas.game import (
@@ -170,14 +170,12 @@ def test_update_draft_refreshes_featured_status() -> None:
             )
             session.add(purchase)
 
-            review = Review(
+            comment = Comment(
                 game_id=game.id,
                 user_id=buyer.id,
                 body_md="Great tactical depth and music.",
-                rating=5,
-                is_verified_purchase=True,
             )
-            session.add(review)
+            session.add(comment)
 
         session.flush()
 

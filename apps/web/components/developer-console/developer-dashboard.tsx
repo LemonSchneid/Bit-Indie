@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   GameDraftForm,
@@ -81,6 +81,7 @@ export function DeveloperDashboard(): JSX.Element {
     status: "idle",
     message: null,
   });
+  const previousDraftRef = useRef<GameDraft | null>(null);
 
   useEffect(() => {
     setProfile(storedProfile);
@@ -108,7 +109,7 @@ export function DeveloperDashboard(): JSX.Element {
   }, []);
 
   const refreshChecklist = useCallback(async () => {
-    if (!profile || !profile.is_admin || !currentDraft) {
+    if (!profile || !currentDraft) {
       setChecklist(null);
       setChecklistState("idle");
       setChecklistError(null);
@@ -136,19 +137,24 @@ export function DeveloperDashboard(): JSX.Element {
       setChecklist(null);
       setChecklistState("idle");
       setChecklistError(null);
-      resetAssetStates();
+      if (previousDraftRef.current) {
+        resetAssetStates();
+      }
+      previousDraftRef.current = null;
       return;
     }
 
+    previousDraftRef.current = currentDraft;
+    resetAssetStates();
     void refreshChecklist();
   }, [currentDraft, refreshChecklist, resetAssetStates]);
 
   const handleUpload = useCallback(
     async (kind: AssetKind, file: File) => {
-      if (!profile || !profile.is_admin) {
+      if (!profile || !profile.is_developer) {
         updateAssetState(kind, {
           status: "error",
-          message: "Sign in with an admin account before uploading assets.",
+          message: "Enable developer tools to upload assets.",
         });
         return;
       }
@@ -234,7 +240,7 @@ export function DeveloperDashboard(): JSX.Element {
     if (!profile || !currentDraft) {
       setPublishState({
         status: "error",
-        message: "Save your draft and ensure you are signed in as an admin to publish.",
+        message: "Save your draft and sign in before publishing.",
       });
       return;
     }
@@ -295,41 +301,31 @@ export function DeveloperDashboard(): JSX.Element {
     return (
       <section className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
         <h2 className="text-lg font-semibold text-white">Sign in required</h2>
-        <p>Sign in with an administrator account to access the developer console.</p>
-      </section>
-    );
-  }
-
-  if (!profile.is_admin) {
-    return (
-      <section className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
-        <h2 className="text-lg font-semibold text-white">Administrator access required</h2>
-        <p>
-          This console is limited to Bit Indie administrators. If you need access, contact the
-          operations team.
-        </p>
+        <p>Sign in to access the developer console.</p>
       </section>
     );
   }
 
   return (
     <div className="space-y-10">
-      <section className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-        <header className="space-y-2">
-          <h2 className="text-lg font-semibold text-white">Admin quick links</h2>
-          <p className="text-sm text-slate-300">
-            Jump directly to moderation and integrity workspaces while your draft autosaves in the
-            background.
-          </p>
-        </header>
-        <div className="flex flex-wrap gap-3">
-          {quickLinks.map((link) => (
-            <Link key={link.href} href={link.href} className={ADMIN_LINK_CLASS}>
-              {link.label}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {profile.is_admin ? (
+        <section className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <header className="space-y-2">
+            <h2 className="text-lg font-semibold text-white">Admin quick links</h2>
+            <p className="text-sm text-slate-300">
+              Jump directly to moderation and integrity workspaces while your draft autosaves in the
+              background.
+            </p>
+          </header>
+          <div className="flex flex-wrap gap-3">
+            {quickLinks.map((link) => (
+              <Link key={link.href} href={link.href} className={ADMIN_LINK_CLASS}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {!profile.is_developer ? (
         <section className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
