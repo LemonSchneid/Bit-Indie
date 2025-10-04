@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 import type { UserProfile } from "../api";
 import { useQuery, useQueryClient } from "../react-query";
@@ -17,9 +17,10 @@ import { USER_PROFILE_QUERY_KEY } from "../user-session";
 export function useStoredUserProfile(): UserProfile | null {
   const queryClient = useQueryClient();
   const isClient = typeof window !== "undefined";
+  const readProfileFromStorage = useCallback(() => loadStoredUserProfile(), []);
   const { data } = useQuery<UserProfile | null>({
     queryKey: USER_PROFILE_QUERY_KEY,
-    queryFn: isClient ? () => loadStoredUserProfile() : undefined,
+    queryFn: isClient ? readProfileFromStorage : undefined,
     initialData: () => null,
   });
 
